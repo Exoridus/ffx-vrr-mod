@@ -17,9 +17,9 @@ internal static unsafe class MemoryProbe
         if (address <= 0x10000) return false;
 
         // A constant upper bound is wrong here. FFX.exe is routinely patched large-address-aware,
-        // and the pinned Fahrenheit reserves its allocations top-down, so a legitimate heap address
-        // sits above 0x7FFF0000 on exactly the installs this mod runs on. Only the memory manager
-        // knows whether the page is there.
+        // so a legitimate heap address can sit above 0x7FFF0000, and Fahrenheit revisions before
+        // afbc37d reserved top-down on purpose, which put every allocation there. Only the memory
+        // manager knows whether the page is there.
         if (VirtualQuery(address, out MEMORY_BASIC_INFORMATION info, (nuint)sizeof(MEMORY_BASIC_INFORMATION)) == 0)
             return false;
 
