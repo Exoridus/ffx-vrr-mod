@@ -191,18 +191,13 @@ public unsafe sealed partial class FpsUnlockModule
     private static bool fmv_playing()
     {
         nint manager = FhUtil.get_at<nint>(EngineAddresses.FmvPlayerManager);
-        return mapped(manager) && *(byte*)(manager + FmvPlaybackFlagOffset) != 0;
+        // The manager pointer is read on every presented frame, including the frames before the
+        // manager exists and after it is gone, and the flag behind it has no other guard.
+        return MemoryProbe.IsReadable(manager, FmvPlaybackFlagOffset + 1)
+            && *(byte*)(manager + FmvPlaybackFlagOffset) != 0;
     }
 
     private const int FmvPlaybackFlagOffset = 0x6D0;
-
-    /// <summary>
-    ///     A cheap plausibility gate rather than a real query. The manager pointer is read on every
-    ///     presented frame, including the frames before the manager exists and after it is gone, and
-    ///     the flag behind it is dereferenced without any other guard.
-    /// </summary>
-    private static bool mapped(nint address)
-        => address > 0x10000 && address < 0x7FFF0000;
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_video_update()

@@ -108,7 +108,7 @@ public unsafe sealed partial class FpsUnlockModule
 
     private void rewrite_fmv_path(nint manager)
     {
-        if (manager <= 0x10000 || manager >= 0x7FFF0000) return;
+        if (!MemoryProbe.IsReadable(manager, EngineAddresses.FmvPathOffset + FmvPathCapacity)) return;
 
         nint buffer = manager + EngineAddresses.FmvPathOffset;
 
