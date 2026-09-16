@@ -95,7 +95,7 @@ public unsafe sealed partial class FpsUnlockModule : FhModule
         string config_path = FpsUnlockConfig.ResolvePath();
         bool   config_found = File.Exists(config_path);
 
-        _config = FpsUnlockConfig.Load(config_path);
+        _config = FpsUnlockConfig.Load(config_path, out string? config_error);
 
         // The engine has no shutdown callback, so the restore is bound to process exit. The parked
         // texture animation step bytes go back first: they are engine work-buffer state rather than
@@ -171,9 +171,12 @@ public unsafe sealed partial class FpsUnlockModule : FhModule
 
         // Said first and unconditionally: a config that was looked for in the wrong directory
         // reads as a run with every default, and nothing else in this log distinguishes the two.
-        _logger.Info(config_found
-            ? $"[FpsUnlock] Config read from {config_path}."
-            : $"[FpsUnlock] No config at {config_path} - every setting is at its default.");
+        if (config_error is not null)
+            _logger.Error($"[FpsUnlock] Config at {config_path} could not be read, every setting is at its default: {config_error}");
+        else
+            _logger.Info(config_found
+                ? $"[FpsUnlock] Config read from {config_path}."
+                : $"[FpsUnlock] No config at {config_path} - every setting is at its default.");
         _logger.Info($"[FpsUnlock] Initialized. present={_config.Present} atel={_config.AtelWaits} camera={_config.Camera} " +
                      $"fades={_config.Fades} motion={_config.Motion} battle={_config.BattleTimers}");
         _logger.Info($"[FpsUnlock] Frame-sequence holds: menu_water={_config.MenuWater} fmv={_config.Fmv} " +

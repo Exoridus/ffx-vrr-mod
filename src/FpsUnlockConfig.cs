@@ -830,10 +830,27 @@ public sealed record FpsUnlockConfig
     /// </summary>
     public bool FieldManagerProbe { get; init; }
 
-    public static FpsUnlockConfig Load(string path)
+    /// <summary>
+    ///     A file that does not parse yields the defaults and a message in <paramref name="error"/>,
+    ///     never an exception. Fahrenheit calls a mod's init from its unmanaged boot entry with no
+    ///     handler in between, so an exception here ends the process before the game window exists,
+    ///     and this file is hand-edited by design.
+    /// </summary>
+    public static FpsUnlockConfig Load(string path, out string? error)
     {
+        error = null;
+
         if (!File.Exists(path)) return new FpsUnlockConfig();
-        return JsonSerializer.Deserialize<FpsUnlockConfig>(File.ReadAllText(path)) ?? new FpsUnlockConfig();
+
+        try
+        {
+            return JsonSerializer.Deserialize<FpsUnlockConfig>(File.ReadAllText(path)) ?? new FpsUnlockConfig();
+        }
+        catch (Exception e)
+        {
+            error = e.Message;
+            return new FpsUnlockConfig();
+        }
     }
 
     /// <summary>
