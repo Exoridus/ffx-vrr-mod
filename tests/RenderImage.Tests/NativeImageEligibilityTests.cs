@@ -23,7 +23,8 @@ public unsafe sealed class NativeImageEligibilityTests
             Assert.Null(f.Module.Failure);
             SetFlags(f, 1, 0, 0);
             Assert.True(f.Module.AdmitReady());
-            f.Module.MarkAdmitted();
+            Assert.True(f.Module.MarkAdmitted());
+            f.Module.AnimationEnd(f.Application); f.Ordinary();
             return f.Flip();
         };
         f.Frame();
@@ -40,7 +41,7 @@ public unsafe sealed class NativeImageEligibilityTests
     public void Queued_independent_image_rechecks_native_flags_at_present(int initialized, int loading, int unreadable)
     {
         using var f = new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame = _ => { f.Admit(); return f.Flip(); };
+        BridgeNative.OnFrame = _ => { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return f.Flip(); };
         f.Frame();
         SetFlags(f, initialized, loading, unreadable);
         BridgeNative.OnAction = _ =>
@@ -63,7 +64,7 @@ public unsafe sealed class NativeImageEligibilityTests
         using var f = new BridgeFixture(); f.Init();
         BridgeNative.OnFrame = _ =>
         {
-            f.Admit();
+            f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary();
             SetFlags(f, initialized, loading, unreadable);
             return f.Flip();
         };
@@ -84,7 +85,7 @@ public unsafe sealed class NativeImageEligibilityTests
     public void Later_unadmitted_native_image_passes_through_ineligible_flags(int initialized, int loading, int unreadable)
     {
         using var f = new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame = _ => { f.Admit(); return f.Flip(); };
+        BridgeNative.OnFrame = _ => { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return f.Flip(); };
         f.Frame();
         BridgeNative.OnAction = _ => { Assert.False(f.Module.Reject()); return 0; };
         f.Action();
@@ -114,7 +115,7 @@ public unsafe sealed class NativeImageEligibilityTests
     }
 
     [Fact]
-    public void Flag_loss_between_decision_and_mark_still_contains_the_independent_image()
+    public void Flag_loss_between_decision_and_mark_keeps_the_image_native()
     {
         using var f = new BridgeFixture(); f.Init();
         BridgeNative.OnFrame = _ =>
@@ -122,13 +123,13 @@ public unsafe sealed class NativeImageEligibilityTests
             f.Module.Animate(f.Application);
             Assert.True(f.Module.AdmitReady());
             SetFlags(f, 0, 1, 0);
-            f.Module.MarkAdmitted();
+            Assert.False(f.Module.MarkAdmitted());
             Assert.Null(f.Module.Failure);
             return f.Flip();
         };
         f.Frame();
         SetFlags(f, 1, 0, 0);
-        BridgeNative.OnAction = _ => { Assert.True(f.Module.Reject()); return 0; };
+        BridgeNative.OnAction = _ => { Assert.False(f.Module.Reject()); return 0; };
         f.Action();
         BridgeNative.OnFrame = _ => { f.Module.Animate(f.Application); Assert.True(f.Module.AdmitReady()); return 0; };
         f.Frame();
@@ -139,7 +140,7 @@ public unsafe sealed class NativeImageEligibilityTests
     public void Producer_refusal_published_during_native_probe_is_visible_to_present()
     {
         using var f = new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame = _ => { f.Admit(); return f.Flip(); };
+        BridgeNative.OnFrame = _ => { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return f.Flip(); };
         f.Frame();
         MemoryProbe.CopyAllowed = address =>
         {

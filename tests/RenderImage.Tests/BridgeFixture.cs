@@ -22,8 +22,9 @@ public unsafe sealed partial class VrrModule
     internal string? Failure => _presentationAdmission.Failure;
     internal bool InitImages() => init_render_images();
     internal bool AdmitReady() => render_image_admission_ready();
-    internal void MarkAdmitted() => render_image_admission_begin();
+    internal bool MarkAdmitted() => render_image_admission_begin();
     internal void Animate(nint app) => render_image_animation_begin(app);
+    internal void AnimationEnd(nint app, bool normal = true) => render_image_animation_end(app, normal);
     internal bool Reject(uint flags = 0) => render_image_rejected_for_present(flags);
     internal void Refuse(string reason) => refuse_independent_presentation(reason);
     internal void Disable() => _config.VrrEnabled = false;
@@ -68,8 +69,18 @@ internal unsafe ref struct FhCallHandle<T>(FhCallLocation location) where T : De
             0x227940 => nameof(BridgeNative.Frame), 0x1b6af0 => nameof(BridgeNative.Flip),
             0x214c00 => nameof(BridgeNative.Slot), 0x193760 => nameof(BridgeNative.Action),
             0x26d810 => nameof(BridgeNative.ActorInstance),
+            0x242bb0 => nameof(BridgeNative.Ordinary), 0x2419d0 => nameof(BridgeNative.Initialize),
+            0x2403e0 => nameof(BridgeNative.FinalizeGraphics), 0x2fa70 => nameof(BridgeNative.ResetGraphics),
             _ => throw new InvalidOperationException("unknown target")
         };
+        if (BridgeNative.NativeGraphicsOriginal && location.Address is 0x242bb0 or 0x2419d0 or 0x2403e0 or 0x2fa70)
+        {
+            nint pointer = location.Address == 0x2fa70
+                ? (nint)(delegate* unmanaged[Cdecl]<void>)&BridgeNative.NativeReset
+                : (nint)(delegate* unmanaged[Cdecl]<uint>)&BridgeNative.NativeResult;
+            _original = Marshal.GetDelegateForFunctionPointer<T>(pointer);
+            return this;
+        }
         _original = BridgeNative.NativeActionOriginal && location.Address == 0x193760
             ? Marshal.GetDelegateForFunctionPointer<T>((nint)(delegate* unmanaged[Thiscall]<nint,uint>)&BridgeNative.NativeAction)
             : (T)Delegate.CreateDelegate(typeof(T), typeof(BridgeNative).GetMethod(name)!);
@@ -105,11 +116,39 @@ internal unsafe static class MemoryProbe
 internal unsafe static class BridgeNative
 {
     internal static readonly Dictionary<nint, Delegate> Callbacks = [];
-    internal static bool Initializing, NativeActionOriginal;
+    internal static bool Initializing, NativeActionOriginal, NativeGraphicsOriginal;
     internal static nint FailHook;
     internal static int Resolutions, Frames, Flips, Slots, Actions, ActorInstances;
     internal static Func<nint,uint>? OnFrame, OnFlip, OnSlot, OnAction;
     internal static Action<nint, nint>? OnActorInstance;
+    internal static Func<uint>? OnOrdinary, OnInitialize, OnFinalize;
+    internal static Action? OnReset;
+    internal static int OrdinaryCalls, InitializeCalls, FinalizeCalls, ResetCalls;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static uint NativeResult() { OrdinaryCalls++; return 0xdeadbeef; }
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void NativeReset() { ResetCalls++; }
+    public static uint Ordinary() { OrdinaryCalls++; return OnOrdinary?.Invoke() ?? 0; }
+    public static uint Initialize()
+    {
+        InitializeCalls++;
+        if (OnInitialize is not null) return OnInitialize();
+        *(uint*)(FhUtil.Base + 0x8cb45c) = 1;
+        return 0;
+    }
+    public static uint FinalizeGraphics()
+    {
+        FinalizeCalls++;
+        if (OnFinalize is not null) return OnFinalize();
+        *(uint*)(FhUtil.Base + 0x8cb45c) = 0;
+        return 0;
+    }
+    public static void ResetGraphics()
+    {
+        ResetCalls++;
+        if (OnReset is not null) OnReset();
+        else *(uint*)(FhUtil.Base + 0x8cb45c) = 0;
+    }
     public static void ActorInstance(nint instance, Matrix4x4* matrix)
     {
         Interlocked.Increment(ref ActorInstances);
@@ -121,18 +160,20 @@ internal unsafe static class BridgeNative
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     public static uint NativeAction(nint self) { Interlocked.Increment(ref Actions); return unchecked((uint)(nuint)self) ^ 0xaabbcc00; }
     public static uint Action(nint self) { Actions++; return OnAction?.Invoke(self) ?? 0xaabbcc01; }
-    internal static uint Invoke(nint rva, nint self)
+    internal static uint Invoke(nint rva, params object[] arguments)
     {
-        try { return (uint)Callbacks[rva].DynamicInvoke(self)!; }
+        try { return (uint)(Callbacks[rva].DynamicInvoke(arguments) ?? 0u); }
         catch (TargetInvocationException error) when (error.InnerException is not null)
         { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
     }
     internal static void Reset()
     {
-        Callbacks.Clear(); Initializing = NativeActionOriginal = false; FailHook = 0;
+        Callbacks.Clear(); Initializing = NativeActionOriginal = NativeGraphicsOriginal = false; FailHook = 0;
         Resolutions = Frames = Flips = Slots = Actions = ActorInstances = 0;
         OnFrame = OnFlip = OnSlot = OnAction = null;
         OnActorInstance = null;
+        OnOrdinary = OnInitialize = OnFinalize = null; OnReset = null;
+        OrdinaryCalls = InitializeCalls = FinalizeCalls = ResetCalls = 0;
         NativeBuild.Supported = true;
         MemoryProbe.CopyAllowed = null;
     }
@@ -160,6 +201,25 @@ internal unsafe sealed class BridgeFixture : IDisposable
         Bytes(0x21516e,[0x6a,1,0x6a,1,0x8d,0x8b,0x64,1,0,0,0xe8,3,0xaf,0xe1,0xff]);
         Bytes(0x214d86,[0x8b,0x4d,8,0xe8,0xd2,0xe9,0xf7,0xff,0x6a,0,0x6a,1,0x8d,0x8e,0x64,1,0,0,
             0xe8,0x73,0xb4,0xe1,0xff,0x5e,0x5d,0xc2,0x0c,0]);
+        Relocated(0x242bb0, [0x8b,0x0d,0,0,0,0,0x56,0xe8,0x74,0x5d,2,0,0x8b,0xf0,0xe8,0x4d,0xbc,0x0d,0,
+            0x8b,0x0d,0,0,0,0,0xe8,0x52,0x7a,1,0,0x8b,0xc6,0x5e,0xc3], 2, 0x8cb9d8);
+        *(nint*)(FhUtil.Base + 0x242bc5) = FhUtil.Base + 0x8cb9d8;
+        Bytes(0x2f963, [0xe8,0x48,0x32,0x21,0]);
+        Relocated(0x2419d0,[0x68,0,0,0,0,0x6a,0x0a,0xe8,0x74,0x6e,0,0,0x83,0xc4,8],1,0x7415c4);
+        Relocated(0x2403e0,[0x68,0,0,0,0,0x6a,0x0a,0xe8,0x64,0x84,0,0,0x83,0xc4,8],1,0x741604);
+        Relocated(0x2fa70,[0x6a,0,0x6a,0,0x6a,0x10,0xff,0x35,0,0,0,0],8,0x8c9ce8);
+        Relocated(0x2419e4,[0xa1,0,0,0,0],1,0x8dede4);
+        Relocated(0x241a09,[0xa3,0,0,0,0],1,0x8dede4);
+        Relocated(0x241b79,[0xc7,5,0,0,0,0,1,0,0,0],2,0x8cb45c);
+        Bytes(0x241b85,[0xc3]);
+        Relocated(0x2403ef,[0x83,0x3d,0,0,0,0,0],2,0x8cb45c);
+        Relocated(0x2403fc,[0x8b,0x0d,0,0,0,0],2,0x8dede4);
+        Relocated(0x240403,[0xc7,5,0,0,0,0,0,0,0,0],2,0x8cb45c);
+        Relocated(0x240412,[0x8b,0x35,0,0,0,0],2,0x8dede4);
+        Relocated(0x24042c,[0xc7,5,0,0,0,0,0,0,0,0],2,0x8dede4);
+        Bytes(0x240634,[0xc3]); Bytes(0x240646,[0xc3]);
+        Relocated(0x2fa7c,[0xc7,5,0,0,0,0,0,0,0,0],2,0x8cb45c);
+        Bytes(0x2fa8c,[0xc3]);
         *(nint*)Application = FhUtil.Base+0x70d998;
         *(nint*)Renderer = FhUtil.Base+0x7363f8;
         *(nint*)(FhUtil.Base+0x70d998+0x10) = FhUtil.Base+0x2f520;
@@ -169,12 +229,22 @@ internal unsafe sealed class BridgeFixture : IDisposable
         BridgeNative.OnFlip = _ => { Slot(); return 0; };
     }
     internal void Bytes(nint rva, ReadOnlySpan<byte> bytes) => bytes.CopyTo(new Span<byte>((void*)(FhUtil.Base+rva),bytes.Length));
-    internal void Init()
+    private void Relocated(nint rva, byte[] bytes, int operandOffset, nint target)
+    {
+        Bytes(rva, bytes);
+        *(nint*)(FhUtil.Base + rva + operandOffset) = FhUtil.Base + target;
+    }
+    internal void Init(bool observeInitialization = true)
     {
         BridgeNative.Initializing = true;
         try { Assert.True(Module.InitImages()); }
         finally { BridgeNative.Initializing = false; }
+        if (observeInitialization) Assert.Equal(0u, Initialize());
     }
+    internal uint Ordinary() => BridgeNative.Invoke(0x242bb0);
+    internal uint Initialize() => BridgeNative.Invoke(0x2419d0);
+    internal uint FinalizeGraphics() => BridgeNative.Invoke(0x2403e0);
+    internal void ResetGraphics() => BridgeNative.Invoke(0x2fa70);
     internal uint Frame() => BridgeNative.Invoke(0x227940,Application);
     internal uint Flip() => BridgeNative.Invoke(0x1b6af0,Renderer);
     internal uint Slot() => BridgeNative.Invoke(0x214c00,RenderThread);
@@ -183,7 +253,7 @@ internal unsafe sealed class BridgeFixture : IDisposable
     {
         Module.Animate(Application);
         Assert.True(Module.AdmitReady());
-        Module.MarkAdmitted();
+        Assert.True(Module.MarkAdmitted());
     }
     public void Dispose() { Marshal.FreeHGlobal(FhUtil.Base); FhUtil.Base=0; BridgeNative.Reset(); }
 }

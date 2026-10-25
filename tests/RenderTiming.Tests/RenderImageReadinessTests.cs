@@ -6,6 +6,17 @@ namespace Fahrenheit.Mods.Vrr;
 public sealed class RenderImageReadinessTests
 {
     [Fact]
+    public void Failed_atomic_image_commit_keeps_the_actual_scheduler_on_native_clock()
+    {
+        var module = new VrrModule { CommitImage = false };
+        module.PreparePass();
+        module.BeginFrame();
+        Assert.False(RenderPassContext.IsActive);
+        Assert.Equal(0, module.AdmittedImages);
+        Assert.Equal(60, module.ReportedRate);
+    }
+
+    [Fact]
     public void Only_a_fully_admitted_image_marks_independent_tracking()
     {
         var module = new VrrModule();

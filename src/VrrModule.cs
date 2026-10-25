@@ -293,10 +293,13 @@ public unsafe sealed partial class VrrModule : FhModule
         sample_particle_population();
         sample_field_managers();
 
+        bool animationNormal = false;
         try
         {
-            return new FhCallHandle<d_frame>(new FhCallLocation(EngineAddresses.FFXApplicationAnimate, 0))
+            uint result = new FhCallHandle<d_frame>(new FhCallLocation(EngineAddresses.FFXApplicationAnimate, 0))
                 .chain_from(h_frame).fnptr!(ptr_this);
+            animationNormal = true;
+            return result;
         }
         finally
         {
@@ -304,6 +307,7 @@ public unsafe sealed partial class VrrModule : FhModule
             diagnostic_raw(2);
             if (_diagnostics?.IsCapturing == true)
                 diagnostic_event("animate_exit", new { duration_ms = Stopwatch.GetElapsedTime(_diagnosticFrameStart).TotalMilliseconds, state = diagnostic_state() });
+            render_image_animation_end(ptr_this, animationNormal);
         }
     }
 

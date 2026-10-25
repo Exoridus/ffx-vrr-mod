@@ -22,27 +22,33 @@ public unsafe sealed partial class VrrModule
         internal readonly nint Application = application;
         internal readonly PresentationAdmission.Image Image = image;
         internal readonly bool Valid = valid;
-        internal bool Animation, Admitted;
+        internal bool Animation, AnimationComplete, Admitted, OrdinaryComplete;
+        internal long AdmissionEpoch;
+        internal int OrdinaryVersion;
     }
 
     private enum RenderImageReservationState { Created, Published, Consumed, Cancelled }
     private sealed class RenderImageReservation(PresentationAdmission.Image image, nint application,
-        bool independentAdmitted, bool nativeEligibilityAtFlip)
+        bool independentAdmitted, bool nativeEligibilityAtFlip, long admissionEpoch, bool ordinaryComplete)
     {
         internal readonly PresentationAdmission.Image Image = image;
         internal readonly nint Application = application;
         internal readonly bool IndependentAdmittedSnapshot = independentAdmitted;
         internal readonly bool NativeEligibilityAtFlip = nativeEligibilityAtFlip;
+        internal readonly long AdmissionEpoch = admissionEpoch;
+        internal readonly bool OrdinaryComplete = ordinaryComplete;
         internal RenderImageReservationState State;
         internal bool SlotRequested;
     }
     private sealed class RenderImageActionScope(PresentationAdmission.Image? image, nint application,
-        bool independentAdmitted, bool nativeEligibilityAtFlip)
+        bool independentAdmitted, bool nativeEligibilityAtFlip, long admissionEpoch, bool ordinaryComplete)
     {
         internal readonly PresentationAdmission.Image? Image = image;
         internal readonly nint Application = application;
         internal readonly bool IndependentAdmittedSnapshot = independentAdmitted;
         internal readonly bool NativeEligibilityAtFlip = nativeEligibilityAtFlip;
+        internal readonly long AdmissionEpoch = admissionEpoch;
+        internal readonly bool OrdinaryComplete = ordinaryComplete;
     }
 
     [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
@@ -56,7 +62,7 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] Image submission binding refused: unsupported executable or pointer width.");
             return false;
         }
-        bool valid = render_image_prefix(RenderImageFrame, [0x55, 0x8b, 0xec, 0x6a, 0xff])
+        bool valid = graphics_lifetime_bindings_valid() && render_image_prefix(RenderImageFrame, [0x55, 0x8b, 0xec, 0x6a, 0xff])
             && render_image_prefix(RenderImageFlip, [0x55, 0x8b, 0xec, 0x83, 0xec, 8, 0x56, 0x8b, 0xf1, 0xf6, 0x46, 4, 1])
             && render_image_prefix(RenderImageSlot, [0x81, 0xc1, 0x64, 1, 0, 0, 0xe8, 0xa5, 0xb6, 0xe1, 0xff, 0x33, 0xc0, 0xc3])
             && render_image_prefix(RenderImageAction, [0x56, 0x8b, 0xf1, 0x8b, 0x56, 0x74, 0x85, 0xd2, 0x75, 4,
@@ -82,6 +88,7 @@ public unsafe sealed partial class VrrModule
             () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageSlot, 0)).hook(this, h_render_image_slot));
         ok &= hook_or_log("render flip action", RenderImageAction,
             () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageAction, 0)).hook(this, h_render_image_action));
+        ok &= init_graphics_lifetime_hooks();
         _renderImagesInstalled = ok;
         return ok;
     }
@@ -110,17 +117,43 @@ public unsafe sealed partial class VrrModule
     }
 
     private bool render_image_admission_ready()
-        => render_image_structural_ready() && render_image_native_eligible(_renderImageFrame.Value!.Application);
-
-    private void render_image_admission_begin()
     {
-        if (!render_image_structural_ready())
+        if (!render_image_structural_ready()) return false;
+        RenderImageFrameScope frame = _renderImageFrame.Value!;
+        long epoch;
+        lock (_graphicsLifetimeGate) epoch = _graphicsEpoch;
+        if (!render_image_native_eligible(frame.Application)) return false;
+        lock (_graphicsLifetimeGate)
+            return graphics_epoch_ready(epoch) && _graphicsReadyThread == Environment.CurrentManagedThreadId
+                && (!frame.Admitted || frame.AdmissionEpoch == epoch) && render_image_structural_ready();
+    }
+
+    private bool render_image_admission_begin()
+    {
+        if (!render_image_structural_ready()) return false;
+        RenderImageFrameScope frame = _renderImageFrame.Value!;
+        long epoch;
+        lock (_graphicsLifetimeGate) epoch = _graphicsEpoch;
+        if (!render_image_native_eligible(frame.Application)) return false;
+        lock (_graphicsLifetimeGate)
         {
-            refuse_independent_presentation("render_image_admission_without_frame");
-            return;
+            if (!graphics_epoch_ready(epoch) || _graphicsReadyThread != Environment.CurrentManagedThreadId
+                || !render_image_structural_ready() || (frame.Admitted && frame.AdmissionEpoch != epoch)) return false;
+            if (!frame.Admitted)
+            {
+                frame.AdmissionEpoch = epoch;
+                frame.Admitted = true;
+                Volatile.Write(ref _renderImageEverAdmitted, 1);
+            }
+            return true;
         }
-        _renderImageFrame.Value!.Admitted = true;
-        Volatile.Write(ref _renderImageEverAdmitted, 1);
+    }
+
+    private void render_image_animation_end(nint application, bool normal)
+    {
+        RenderImageFrameScope? frame = _renderImageFrame.Value;
+        if (frame is { Valid: true, Animation: true } && frame.Application == application)
+            frame.AnimationComplete = normal;
     }
 
     private void render_image_animation_begin(nint application)
@@ -129,6 +162,8 @@ public unsafe sealed partial class VrrModule
         if (frame is { Valid: true } && frame.Application == application)
         {
             frame.Animation = true;
+            frame.AnimationComplete = frame.OrdinaryComplete = false;
+            frame.OrdinaryVersion++;
             return;
         }
         if (frame is not null) frame.Animation = false;
@@ -150,10 +185,16 @@ public unsafe sealed partial class VrrModule
         RenderImageActionScope? scope = _renderImageAction.Value;
         if (scope is not null)
         {
-            bool nativeRejected = scope.IndependentAdmittedSnapshot
-                && (!scope.NativeEligibilityAtFlip || !render_image_native_eligible(scope.Application));
-            return scope.Image is null || nativeRejected || scope.Image.IsRejected
-                || Volatile.Read(ref _renderImageAssociationInvalid) != 0;
+            if (scope.Image is null) return true;
+            if (!scope.IndependentAdmittedSnapshot)
+                return Volatile.Read(ref _renderImageAssociationInvalid) != 0 || scope.Image.IsRejected;
+            long epoch;
+            lock (_graphicsLifetimeGate) epoch = _graphicsEpoch;
+            bool eligible = render_image_native_eligible(scope.Application);
+            lock (_graphicsLifetimeGate)
+                return !scope.NativeEligibilityAtFlip || !scope.OrdinaryComplete || !eligible
+                    || !graphics_epoch_ready(epoch) || scope.AdmissionEpoch != epoch
+                    || Volatile.Read(ref _renderImageAssociationInvalid) != 0 || scope.Image.IsRejected;
         }
         if (Volatile.Read(ref _renderImageEverAdmitted) == 0) return Volatile.Read(ref _renderImageAssociationInvalid) != 0;
         render_image_refuse_association("render_image_missing_action");
@@ -177,8 +218,12 @@ public unsafe sealed partial class VrrModule
                 if (eligible) refuse_independent_presentation("render_image_foreign_frame_thread");
             }
         }
-        if (previous is not null && eligible)
-            refuse_independent_presentation("render_image_nested_frame");
+        if (previous is not null)
+        {
+            previous.OrdinaryComplete = false;
+            previous.OrdinaryVersion++;
+            if (eligible) refuse_independent_presentation("render_image_nested_frame");
+        }
         _renderImageFrame.Value = new(application, _presentationAdmission.BeginImage(), valid);
         try
         {
@@ -207,7 +252,7 @@ public unsafe sealed partial class VrrModule
         nint application = matchingFrame ? frame!.Application : 0;
         bool admitted = matchingFrame && frame!.Admitted;
         bool nativeEligible = matchingFrame && render_image_native_eligible(application);
-        var reservation = new RenderImageReservation(image, application, admitted, nativeEligible);
+        var reservation = new RenderImageReservation(image, application, admitted, nativeEligible, frame?.AdmissionEpoch ?? 0, matchingFrame && frame!.OrdinaryComplete);
         _renderImageReservation.Value = reservation;
         try
         {
@@ -287,7 +332,8 @@ public unsafe sealed partial class VrrModule
         }
         if (consumed is null) render_image_refuse_association("render_image_missing_reservation");
         _renderImageAction.Value = new(consumed?.Image, consumed?.Application ?? 0,
-            consumed?.IndependentAdmittedSnapshot ?? false, consumed?.NativeEligibilityAtFlip ?? false);
+            consumed?.IndependentAdmittedSnapshot ?? false, consumed?.NativeEligibilityAtFlip ?? false,
+            consumed?.AdmissionEpoch ?? 0, consumed?.OrdinaryComplete ?? false);
         try
         {
             // AL is the native boolean result; preserve the original EAX carrier unchanged.

@@ -136,7 +136,8 @@ public unsafe sealed partial class VrrModule
     internal bool ImageReady = true;
     private bool render_image_admission_ready() => ImageReady;
     internal int AdmittedImages;
-    private void render_image_admission_begin() => AdmittedImages++;
+    internal bool CommitImage = true;
+    private bool render_image_admission_begin() { if (!CommitImage) return false; AdmittedImages++; return true; }
     private bool _fieldPauseInstalled => ProducerQualified;
     private bool _battleEffectPauseInstalled;
     internal byte BattleHold;

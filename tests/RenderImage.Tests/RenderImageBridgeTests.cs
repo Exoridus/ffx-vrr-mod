@@ -8,8 +8,8 @@ public sealed class RenderImageBridgeTests
     public void Initializes_whole_guarded_group_without_resolving_originals()
     {
         using var f=new BridgeFixture();
-        f.Init();
-        Assert.Equal(4,BridgeNative.Callbacks.Count);
+        f.Init(false);
+        Assert.Equal(8,BridgeNative.Callbacks.Count);
         Assert.Equal(0,BridgeNative.Resolutions);
         Assert.False(f.Module.AdmitReady());
     }
@@ -18,6 +18,12 @@ public sealed class RenderImageBridgeTests
     [InlineData(0x227940)] [InlineData(0x1b6af0)] [InlineData(0x214c00)]
     [InlineData(0x193760)] [InlineData(0x70d9a8)] [InlineData(0x736400)]
     [InlineData(0x21516e)] [InlineData(0x214d86)]
+    [InlineData(0x242bb0)] [InlineData(0x242bb2)] [InlineData(0x242bc5)] [InlineData(0x242bbe)]
+    [InlineData(0x2f963)] [InlineData(0x2419d0)] [InlineData(0x2419d1)] [InlineData(0x2403e0)]
+    [InlineData(0x2403e1)] [InlineData(0x2fa70)] [InlineData(0x2fa78)] [InlineData(0x2419e4)]
+    [InlineData(0x241a09)] [InlineData(0x241b79)] [InlineData(0x241b85)] [InlineData(0x2403ef)]
+    [InlineData(0x2403fc)] [InlineData(0x240403)] [InlineData(0x240412)] [InlineData(0x24042c)]
+    [InlineData(0x240634)] [InlineData(0x240646)] [InlineData(0x2fa7c)] [InlineData(0x2fa8c)]
     public void A_bad_binding_refuses_before_installing_any_hook(int rva)
     {
         using var f=new BridgeFixture();
@@ -45,7 +51,7 @@ public sealed class RenderImageBridgeTests
         BridgeNative.OnFrame=_=>
         {
             Assert.False(f.Module.AdmitReady());
-            f.Admit();
+            f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary();
             f.Flip();
             f.Module.Refuse("late_worker");
             BridgeNative.OnAction=_=> { Assert.True(f.Module.Reject()); return 0xdeadbe01; };
@@ -61,7 +67,7 @@ public sealed class RenderImageBridgeTests
     public void Consumer_can_execute_before_producer_returns_and_restores_scope()
     {
         using var f=new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame=_=> { f.Admit(); return f.Flip(); };
+        BridgeNative.OnFrame=_=> { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return f.Flip(); };
         BridgeNative.OnFlip=_=> { f.Slot(); Assert.Equal(0xaabbcc01u,f.Action()); return 0; };
         BridgeNative.OnAction=_=> { Assert.False(f.Module.Reject()); return 0xaabbcc01; };
         f.Frame();
@@ -74,7 +80,7 @@ public sealed class RenderImageBridgeTests
     public void Pending_image_cannot_be_rehabilitated_by_a_later_cpu_frame()
     {
         using var f=new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame=_=> { f.Admit(); return f.Flip(); };
+        BridgeNative.OnFrame=_=> { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return f.Flip(); };
         f.Frame();
         BridgeNative.OnFrame=_=> { f.Module.Refuse("later_frame_fault"); return 0; };
         f.Frame();
@@ -93,7 +99,7 @@ public sealed class RenderImageBridgeTests
         using var f=new BridgeFixture(); f.Init();
         f.Flip();
         Assert.Equal(0xaabbcc01u,f.Action());
-        BridgeNative.OnFrame=_=> { f.Admit(); f.Flip(); f.Module.Refuse("fault"); return 0; };
+        BridgeNative.OnFrame=_=> { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); f.Flip(); f.Module.Refuse("fault"); return 0; };
         f.Frame();
         BridgeNative.OnAction=_=> { Assert.True(f.Module.Reject()); return 0; };
         f.Action();
@@ -158,7 +164,7 @@ public sealed class RenderImageBridgeTests
         BridgeNative.OnFrame=_=> { f.Module.Animate(f.Application); Assert.True(f.Module.AdmitReady()); return 0; };
         f.Frame();
         Assert.False(f.Module.Reject());
-        BridgeNative.OnFrame=_=> { f.Admit(); return 0; };
+        BridgeNative.OnFrame=_=> { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return 0; };
         f.Frame();
         Assert.True(f.Module.Reject());
         Assert.False(f.Module.Reject(1));
@@ -189,7 +195,7 @@ public sealed class RenderImageBridgeTests
         int depth=0;
         BridgeNative.OnFrame=_=>
         {
-            if(depth++==0){f.Admit();f.Frame();Assert.False(f.Module.AdmitReady());}
+            if(depth++==0){f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary();f.Frame();Assert.False(f.Module.AdmitReady());}
             return 0;
         };
         f.Frame();
@@ -201,7 +207,7 @@ public sealed class RenderImageBridgeTests
     public void Native_exceptions_restore_frame_and_consumer_scopes()
     {
         using var f=new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame=_=> { f.Admit(); f.Flip(); throw new InvalidOperationException("native frame"); };
+        BridgeNative.OnFrame=_=> { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); f.Flip(); throw new InvalidOperationException("native frame"); };
         Assert.Throws<InvalidOperationException>(()=>f.Frame());
         Assert.False(f.Module.AdmitReady());
         BridgeNative.OnAction=_=>throw new InvalidOperationException("native action");
@@ -279,7 +285,7 @@ public sealed class RenderImageBridgeTests
     public void A_foreign_frame_thread_remains_native_and_cannot_reopen_admission()
     {
         using var f=new BridgeFixture(); f.Init();
-        BridgeNative.OnFrame=_=> { f.Admit(); return 0; };
+        BridgeNative.OnFrame=_=> { f.Admit(); f.Module.AnimationEnd(f.Application); f.Ordinary(); return 0; };
         f.Frame();
         BridgeNative.OnFrame=_=> { f.Module.Animate(f.Application); Assert.False(f.Module.AdmitReady()); return 0; };
         Exception? failure=null;
