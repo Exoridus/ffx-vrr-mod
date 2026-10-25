@@ -91,11 +91,12 @@ public unsafe sealed partial class VrrModule
             return;
         }
         // Recorded syncdata and movie playback keep their existing clock owner until adapted.
-        _render_frame_enabled = _presentationAdmission.Failure is null && !EngineSyncPaced && !fmv_playing()
+        _render_frame_enabled = _presentationAdmission.Failure is null && render_image_admission_ready() && !EngineSyncPaced && !fmv_playing()
             && field_particle_presentation_ready() && !filter_needs_native_clock();
         if (!_render_frame_enabled && !_render_native_owner_reported)
             diagnostic_event("native_clock_owner", new { syncdata = EngineSyncPaced, movie = fmv_playing() });
         _render_native_owner_reported = !_render_frame_enabled;
+        if (_render_frame_enabled) render_image_admission_begin();
         RenderPassContext.IsActive = _render_frame_enabled;
         _render_now = now;
         _render_plan_pending = true;
@@ -163,7 +164,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!IsOwnedRenderLoop) return RenderClockAction.Native;
         _render_clock_seen = true;
-        if (_render_frame_enabled && (_presentationAdmission.Failure is not null || EngineSyncPaced || fmv_playing()
+        if (_render_frame_enabled && (_presentationAdmission.Failure is not null || !render_image_admission_ready() || EngineSyncPaced || fmv_playing()
             || !field_particle_presentation_ready() || filter_needs_native_clock()))
         {
             _render_frame_enabled = false;

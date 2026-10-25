@@ -146,6 +146,7 @@ public unsafe sealed partial class VrrModule : FhModule
                 _logger.Error("[Vrr] VideoTargetFramerate is ignored: the authored movie-to-script clock must remain unchanged. Use a validated per-asset movie manifest for upload cadence.");
 
             ok &= init_timing_hooks();
+            ok &= init_render_images();
             ok &= init_render_scheduler();
             ok &= init_vrr_presenter();
             ok &= init_battle_hooks();
@@ -272,6 +273,7 @@ public unsafe sealed partial class VrrModule : FhModule
         _frames++;
         MemoryProbe.NextFrame();
         diagnostic_frame_begin();
+        render_image_animation_begin(ptr_this);
         render_scheduler_begin_frame();
         trace_battle_state();
         load_telemetry_frame();

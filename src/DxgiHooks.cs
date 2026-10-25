@@ -71,8 +71,13 @@ public unsafe sealed partial class VrrModule
         {
             var next = new FhCallHandle<d_present>(new FhCallLocation(_target)).chain_from(Present).fnptr!;
             DxgiSwapchainState? state = _owner.presenter_state((nint)swapchain);
-            if (state is null || state.Resizing)
-                return next(swapchain, interval, flags);
+            if (state is null) return next(swapchain, interval, flags);
+            if (state.Resizing)
+            {
+                if (!_owner.render_image_rejected_for_present(flags)) return next(swapchain, interval, flags);
+                Interlocked.Increment(ref _owner._present_rejections);
+                return 0;
+            }
             int fullscreen = 0;
             int modeResult = (int)swapchain->GetFullscreenState((BOOL*)&fullscreen, null);
             var args = state.Lifecycle.Active
@@ -96,7 +101,12 @@ public unsafe sealed partial class VrrModule
             if (depth != null) depth->AddRef();
             _inside_present = true;
             int result;
-            try { result = next(swapchain, args.Interval, args.Flags); }
+            bool rejected;
+            try
+            {
+                rejected = _owner.render_image_rejected_for_present(flags);
+                result = rejected ? 0 : next(swapchain, args.Interval, args.Flags);
+            }
             finally
             {
                 if (released) _owner.device_lock_reacquire();
@@ -107,6 +117,11 @@ public unsafe sealed partial class VrrModule
                 _inside_present = false;
             }
             long timestamp = Stopwatch.GetTimestamp();
+            if (rejected)
+            {
+                Interlocked.Increment(ref _owner._present_rejections);
+                return 0;
+            }
             _owner.present_telemetry(callStart - paceStart, timestamp - callStart, owned && !released, released);
             _owner.diagnostic_present(result, args.Interval, args.Flags, (nint)swapchain, timestamp);
             state.Lifecycle.CompletePresent(result, args.Flags, timestamp);

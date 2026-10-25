@@ -151,7 +151,7 @@ public unsafe sealed partial class VrrModule
         render_scheduler = _render_scheduler_active, simulation_ticks = _simulation_ticks,
         additional_images = _additional_images, discarded_steps = _simulation_debt_dropped,
         presenter_active = _presenter_active, present_attempts = _present_attempts,
-        present_successes = _present_successes, last_present_timestamp = _last_present_timestamp,
+        present_successes = _present_successes, present_rejections = _present_rejections, last_present_timestamp = _last_present_timestamp,
         keep_fps = KeepFps, sync = EngineSyncPaced,
         sg_count = FhUtil.get_at<uint>(EngineAddresses.SgCount),
         v_count = FhUtil.get_at<uint>(EngineAddresses.SgVCount),

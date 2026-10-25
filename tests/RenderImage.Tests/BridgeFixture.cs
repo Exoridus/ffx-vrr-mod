@@ -1,0 +1,162 @@
+global using System.Runtime.CompilerServices;
+global using System.Runtime.InteropServices;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+using Xunit;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
+namespace Fahrenheit.Mods.Vrr;
+
+public unsafe sealed partial class VrrModule
+{
+    private readonly PresentationAdmission _presentationAdmission = new();
+    private readonly TestConfig _config = new();
+    private readonly TestLogger _logger = new();
+    private bool _presenter_active = true;
+    internal bool ModeReady = true;
+    internal long? CurrentImage => _renderImageAction.Value?.Image?.Serial;
+    private bool RenderSchedulerReady => ModeReady;
+    internal string? Failure => _presentationAdmission.Failure;
+    internal bool InitImages() => init_render_images();
+    internal bool AdmitReady() => render_image_admission_ready();
+    internal void MarkAdmitted() => render_image_admission_begin();
+    internal void Animate(nint app) => render_image_animation_begin(app);
+    internal bool Reject(uint flags = 0) => render_image_rejected_for_present(flags);
+    internal void Refuse(string reason) => refuse_independent_presentation(reason);
+    internal void Disable() => _config.VrrEnabled = false;
+    internal void Presenter(bool active) => _presenter_active = active;
+    private bool hook_or_log(string name, nint rva, Func<bool> install) => install();
+    private void refuse_independent_presentation(string reason, Exception? error = null)
+        => _presentationAdmission.Refuse(reason);
+    internal sealed class TestConfig { internal bool VrrEnabled = true; }
+    internal sealed class TestLogger { internal void Error(string message) { } }
+}
+
+internal readonly record struct FhCallLocation(nint Address, int Offset = 0);
+internal unsafe ref struct FhCallHandle<T>(FhCallLocation location) where T : Delegate
+{
+    private T? _original;
+    internal T? fnptr => BridgeNative.Initializing ? throw new InvalidOperationException("early fnptr") : _original;
+    internal bool hook(VrrModule owner, T callback)
+    {
+        BridgeNative.Callbacks.Add(location.Address, callback);
+        return location.Address != BridgeNative.FailHook;
+    }
+    internal FhCallHandle<T> chain_from(T callback)
+    {
+        if (BridgeNative.Initializing) throw new InvalidOperationException("early resolution");
+        BridgeNative.Resolutions++;
+        string name = location.Address switch
+        {
+            0x227940 => nameof(BridgeNative.Frame), 0x1b6af0 => nameof(BridgeNative.Flip),
+            0x214c00 => nameof(BridgeNative.Slot), 0x193760 => nameof(BridgeNative.Action),
+            _ => throw new InvalidOperationException("unknown target")
+        };
+        _original = BridgeNative.NativeActionOriginal && location.Address == 0x193760
+            ? Marshal.GetDelegateForFunctionPointer<T>((nint)(delegate* unmanaged[Thiscall]<nint,uint>)&BridgeNative.NativeAction)
+            : (T)Delegate.CreateDelegate(typeof(T), typeof(BridgeNative).GetMethod(name)!);
+        return this;
+    }
+}
+
+internal static class NativeBuild
+{
+    internal static bool Supported = true;
+    internal static bool TryValidate(out string error) { error = "unsupported test image"; return Supported; }
+}
+
+internal unsafe static class FhUtil
+{
+    internal static nint Base;
+    internal static T* ptr_at<T>(nint rva) where T : unmanaged => (T*)(Base + rva);
+}
+
+internal unsafe static class MemoryProbe
+{
+    internal static bool IsReadable(nint address, int count)
+        => count > 0 && address >= FhUtil.Base && (nuint)(address-FhUtil.Base)+(uint)count <= 0x900000;
+    internal static bool TryCopy(nint address, Span<byte> target)
+    {
+        if (!IsReadable(address, target.Length)) return false;
+        new ReadOnlySpan<byte>((void*)address, target.Length).CopyTo(target);
+        return true;
+    }
+}
+
+internal unsafe static class BridgeNative
+{
+    internal static readonly Dictionary<nint, Delegate> Callbacks = [];
+    internal static bool Initializing, NativeActionOriginal;
+    internal static nint FailHook;
+    internal static int Resolutions, Frames, Flips, Slots, Actions;
+    internal static Func<nint,uint>? OnFrame, OnFlip, OnSlot, OnAction;
+    public static uint Frame(nint self) { Frames++; return OnFrame?.Invoke(self) ?? 0; }
+    public static uint Flip(nint self) { Flips++; return OnFlip?.Invoke(self) ?? 0; }
+    public static uint Slot(nint self) { Slots++; return OnSlot?.Invoke(self) ?? 0; }
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    public static uint NativeAction(nint self) { Interlocked.Increment(ref Actions); return unchecked((uint)(nuint)self) ^ 0xaabbcc00; }
+    public static uint Action(nint self) { Actions++; return OnAction?.Invoke(self) ?? 0xaabbcc01; }
+    internal static uint Invoke(nint rva, nint self)
+    {
+        try { return (uint)Callbacks[rva].DynamicInvoke(self)!; }
+        catch (TargetInvocationException error) when (error.InnerException is not null)
+        { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
+    }
+    internal static void Reset()
+    {
+        Callbacks.Clear(); Initializing = NativeActionOriginal = false; FailHook = 0;
+        Resolutions = Frames = Flips = Slots = Actions = 0;
+        OnFrame = OnFlip = OnSlot = OnAction = null;
+        NativeBuild.Supported = true;
+    }
+}
+
+internal unsafe sealed class BridgeFixture : IDisposable
+{
+    internal readonly VrrModule Module = new();
+    internal nint Application => FhUtil.Base + 0x780000;
+    internal nint Renderer => Application + 0x124;
+    internal nint RenderThread => FhUtil.Base + 0x8c96f8;
+    internal const nint Context = 0x7777;
+    internal BridgeFixture()
+    {
+        Assert.Equal(4, IntPtr.Size);
+        BridgeNative.Reset();
+        FhUtil.Base = Marshal.AllocHGlobal(0x900000);
+        new Span<byte>((void*)FhUtil.Base, 0x900000).Clear();
+        Bytes(0x227940, [0x55,0x8b,0xec,0x6a,0xff]);
+        Bytes(0x1b6af0, [0x55,0x8b,0xec,0x83,0xec,8,0x56,0x8b,0xf1,0xf6,0x46,4,1]);
+        Bytes(0x214c00, [0x81,0xc1,0x64,1,0,0,0xe8,0xa5,0xb6,0xe1,0xff,0x33,0xc0,0xc3]);
+        Bytes(0x193760, [0x56,0x8b,0xf1,0x8b,0x56,0x74,0x85,0xd2,0x75,4,0x32,0xc0,0x5e,0xc3,
+            0x8b,0x0a,0x33,0xc0,0x38,0x86,0x1c,0x13,0,0,0x6a,0,0x0f,0x95,0xc0,0x50,0x52,0xff,0x51,0x20,0xb0,1,0x5e,0xc3]);
+        Bytes(0x21516e,[0x6a,1,0x6a,1,0x8d,0x8b,0x64,1,0,0,0xe8,3,0xaf,0xe1,0xff]);
+        Bytes(0x214d86,[0x8b,0x4d,8,0xe8,0xd2,0xe9,0xf7,0xff,0x6a,0,0x6a,1,0x8d,0x8e,0x64,1,0,0,
+            0xe8,0x73,0xb4,0xe1,0xff,0x5e,0x5d,0xc2,0x0c,0]);
+        *(nint*)Application = FhUtil.Base+0x70d998;
+        *(nint*)Renderer = FhUtil.Base+0x7363f8;
+        *(nint*)(FhUtil.Base+0x70d998+0x10) = FhUtil.Base+0x2f520;
+        *(nint*)(FhUtil.Base+0x70d998+0x1c) = FhUtil.Base+0x2f770;
+        *(nint*)(FhUtil.Base+0x70d998+0x28) = FhUtil.Base+0x2f4f0;
+        *(nint*)(FhUtil.Base+0x7363f8+8) = FhUtil.Base+0x1b6c50;
+        BridgeNative.OnFlip = _ => { Slot(); return 0; };
+    }
+    internal void Bytes(nint rva, ReadOnlySpan<byte> bytes) => bytes.CopyTo(new Span<byte>((void*)(FhUtil.Base+rva),bytes.Length));
+    internal void Init()
+    {
+        BridgeNative.Initializing = true;
+        try { Assert.True(Module.InitImages()); }
+        finally { BridgeNative.Initializing = false; }
+    }
+    internal uint Frame() => BridgeNative.Invoke(0x227940,Application);
+    internal uint Flip() => BridgeNative.Invoke(0x1b6af0,Renderer);
+    internal uint Slot() => BridgeNative.Invoke(0x214c00,RenderThread);
+    internal uint Action() => BridgeNative.Invoke(0x193760,Context);
+    internal void Admit()
+    {
+        Module.Animate(Application);
+        Assert.True(Module.AdmitReady());
+        Module.MarkAdmitted();
+    }
+    public void Dispose() { Marshal.FreeHGlobal(FhUtil.Base); FhUtil.Base=0; BridgeNative.Reset(); }
+}

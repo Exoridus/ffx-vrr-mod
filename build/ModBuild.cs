@@ -164,7 +164,7 @@ static async Task<int> Run(string[] args)
         foreach (var folder in new[] { "tests", "build/tests" })
             if (Directory.Exists(Path.Combine(context, folder)))
                 foreach (var test in Directory.GetFiles(Path.Combine(context, folder), "*.csproj", SearchOption.AllDirectories))
-                    Execute("dotnet", Path.GetFileName(test) is "Dxgi.Tests.csproj" or "ParticlePresentation.Tests.csproj"
+                    Execute("dotnet", Path.GetFileName(test) is "Dxgi.Tests.csproj" or "ParticlePresentation.Tests.csproj" or "RenderImage.Tests.csproj"
                         ? ["test", test, "-c", configuration, "--arch", "x86", "--verbosity", "minimal"]
                         : ["test", test, "-c", configuration, "--verbosity", "minimal"], context, environment);
     if (command == "mod-pack")

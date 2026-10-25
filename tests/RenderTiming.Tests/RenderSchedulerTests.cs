@@ -133,6 +133,10 @@ public unsafe sealed partial class VrrModule
     internal int FieldPauseInstalls;
     private bool init_field_particle_pause() { FieldPauseInstalls++; return ProducerQualified; }
     private bool field_particle_presentation_ready() => ProducerQualified;
+    internal bool ImageReady = true;
+    private bool render_image_admission_ready() => ImageReady;
+    internal int AdmittedImages;
+    private void render_image_admission_begin() => AdmittedImages++;
     private bool _fieldPauseInstalled => ProducerQualified;
     private bool _battleEffectPauseInstalled;
     internal byte BattleHold;

@@ -33,7 +33,7 @@ namespace Fahrenheit.Mods.Vrr
         internal void OrdinaryInvalidation() { lock (_textureFrameLock) { _textureFrameBank?.Dispose(); _textureFrameBank = null; } }
     }
     internal sealed class TestTextureConfig { internal bool TextureBlendProbe, TextureFrameInterpolation; }
-    internal sealed class TestTextureLogger { internal void Warning(string text) { } }
+    internal sealed class TestTextureLogger { internal void Warning(string text) { } internal void Error(string text) { } }
     internal static class NativeBuild
     {
         internal static bool Valid = true;

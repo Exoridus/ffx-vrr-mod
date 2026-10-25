@@ -12,6 +12,7 @@ public unsafe sealed partial class VrrModule
     private readonly Lock _presenter_lock = new();
     private long _present_attempts;
     private long _present_successes;
+    private long _present_rejections;
     private long _last_present_timestamp;
     private volatile bool _presenter_active;
     private bool _presenter_initialized_device;
