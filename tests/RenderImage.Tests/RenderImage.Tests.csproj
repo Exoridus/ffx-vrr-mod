@@ -11,5 +11,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <Compile Include="../../src/PresentationAdmission.cs" Link="PresentationAdmission.cs" />
     <Compile Include="../../src/VrrModule.RenderImages.cs" Link="VrrModule.RenderImages.cs" />
+    <Compile Include="../../src/VrrModule.RenderActors.cs" Link="VrrModule.RenderActors.cs" />
+    <Compile Include="../../src/RenderActorHistory.cs" Link="RenderActorHistory.cs" />
+    <Compile Include="../../src/RenderCameraHistory.cs" Link="RenderCameraHistory.cs" />
   </ItemGroup>
 </Project>

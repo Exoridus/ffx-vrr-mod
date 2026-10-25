@@ -1,5 +1,7 @@
+global using Debug = System.Diagnostics.Debug;
 global using System.Runtime.CompilerServices;
 global using System.Runtime.InteropServices;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using Xunit;
@@ -29,6 +31,20 @@ public unsafe sealed partial class VrrModule
     private bool hook_or_log(string name, nint rva, Func<bool> install) => install();
     private void refuse_independent_presentation(string reason, Exception? error = null)
         => _presentationAdmission.Refuse(reason);
+    internal object ActorGate => _renderActorLock;
+    internal int ActorCallbacks => Volatile.Read(ref _renderActorCallbacks);
+    internal bool ActorSampling => _renderActorsSampling;
+    internal bool ActorActive => _renderActorsActive;
+    internal void ActorBegin() => render_actors_begin_simulation();
+    internal void ActorComplete() => render_actors_complete_simulation();
+    internal void ActorCallback() => h_render_actor_instance(0, null);
+    internal void CaptureActor(float x) => _renderActorHistory.Capture(1, new(1, 2, 3, 4),
+        Matrix4x4.CreateTranslation(x, 0, 0), []);
+    internal bool HasActorPair => _renderActorHistory.TryInterpolateCurrent(1, new(1, 2, 3, 4), [],
+        .5f, out _, []);
+    private float _renderCameraAlpha;
+    private void render_camera_set_presentation_alpha(float alpha) => _renderCameraAlpha = alpha;
+    private void diagnostic_actor_pose(nint actor, Matrix4x4 root, ReadOnlySpan<Matrix4x4> bones, bool rendered) { }
     internal sealed class TestConfig { internal bool VrrEnabled = true; }
     internal sealed class TestLogger { internal void Error(string message) { } }
 }
@@ -51,6 +67,7 @@ internal unsafe ref struct FhCallHandle<T>(FhCallLocation location) where T : De
         {
             0x227940 => nameof(BridgeNative.Frame), 0x1b6af0 => nameof(BridgeNative.Flip),
             0x214c00 => nameof(BridgeNative.Slot), 0x193760 => nameof(BridgeNative.Action),
+            0x26d810 => nameof(BridgeNative.ActorInstance),
             _ => throw new InvalidOperationException("unknown target")
         };
         _original = BridgeNative.NativeActionOriginal && location.Address == 0x193760
@@ -89,8 +106,14 @@ internal unsafe static class BridgeNative
     internal static readonly Dictionary<nint, Delegate> Callbacks = [];
     internal static bool Initializing, NativeActionOriginal;
     internal static nint FailHook;
-    internal static int Resolutions, Frames, Flips, Slots, Actions;
+    internal static int Resolutions, Frames, Flips, Slots, Actions, ActorInstances;
     internal static Func<nint,uint>? OnFrame, OnFlip, OnSlot, OnAction;
+    internal static Action<nint, nint>? OnActorInstance;
+    public static void ActorInstance(nint instance, Matrix4x4* matrix)
+    {
+        Interlocked.Increment(ref ActorInstances);
+        OnActorInstance?.Invoke(instance, (nint)matrix);
+    }
     public static uint Frame(nint self) { Frames++; return OnFrame?.Invoke(self) ?? 0; }
     public static uint Flip(nint self) { Flips++; return OnFlip?.Invoke(self) ?? 0; }
     public static uint Slot(nint self) { Slots++; return OnSlot?.Invoke(self) ?? 0; }
@@ -106,8 +129,9 @@ internal unsafe static class BridgeNative
     internal static void Reset()
     {
         Callbacks.Clear(); Initializing = NativeActionOriginal = false; FailHook = 0;
-        Resolutions = Frames = Flips = Slots = Actions = 0;
+        Resolutions = Frames = Flips = Slots = Actions = ActorInstances = 0;
         OnFrame = OnFlip = OnSlot = OnAction = null;
+        OnActorInstance = null;
         NativeBuild.Supported = true;
     }
 }

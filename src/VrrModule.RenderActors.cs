@@ -100,8 +100,12 @@ public unsafe sealed partial class VrrModule
     {
         lock (_renderActorLock)
         {
-            // The main-loop caller must have joined native skeleton/draw jobs before completing history.
-            Debug.Assert(System.Threading.Volatile.Read(ref _renderActorCallbacks) == 0);
+            if (System.Threading.Volatile.Read(ref _renderActorCallbacks) != 0)
+            {
+                refuse_independent_presentation("actor_callbacks_outstanding");
+                reset_render_actors();
+                return;
+            }
             _renderActorHistory.CompleteSimulation();
             _renderActorsSampling = false;
             foreach (var key in _renderActorStates.Where(pair => pair.Value.Generation != _renderActorGeneration).Select(pair => pair.Key).ToArray())
