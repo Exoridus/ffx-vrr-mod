@@ -332,7 +332,7 @@ public unsafe sealed partial class VrrModule : FhModule
            $"{motion_sequence_counts()}, " +
            $"{frame_sequence_counts()}, {lens_sprite_counts()}, " +
            $"{texture_animation_counts()} cam_acc={_camera_acc_calls} {motion_speed_counts()}, " +
-           $"{cross_fade_counts()}, {filter_hold_counts()}, {pad_latch_counts()}, {viewport_rollback_counts()}, {upstream_ui_counts()}, {load_telemetry_counts()}, {device_lock_counts()}, {atel_wait_counts()}, " +
+           $"{cross_fade_counts()}, {filter_hold_counts()}, {pad_latch_counts()}, {viewport_rollback_counts()}, {upstream_ui_counts()}, {load_telemetry_counts()}, {atel_wait_counts()}, " +
            $"{particle_timeline_counts()}, {frame_skip_counts()}, {eternal_calm_counts()}, " +
            $"{idle_sway_counts()}, {neck_counts()}, {buoyancy_counts()}, " +
            $"{atel_worker_motion_counts()}, {ch_facing_counts()}, {ch_ramp_counts()}, " +
