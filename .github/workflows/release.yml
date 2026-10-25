@@ -98,7 +98,9 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v2
         with:
           tag_name: ${{ inputs.version || github.ref_name }}
-          target_commitish: ${{ github.sha }}
+          # No target_commitish: it makes the release API repoint the tag ref, which the
+          # protected release-tag ruleset denies to the Actions token (403). The tag a tag
+          # push already created, or the default branch for a dispatch, is the right target.
           prerelease: true
           # Immutable releases reject uploads after publication, so assets go up on a draft first.
           draft: true
