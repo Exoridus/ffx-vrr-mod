@@ -180,8 +180,6 @@ public unsafe sealed partial class VrrModule
         if (!_particle_pilot_installed) return Refuse("pilot_not_installed");
         if (Environment.CurrentManagedThreadId != _particle_pilot_thread) return Refuse("wrong_thread");
         if (Volatile.Read(ref _particle_pilot_invalid) != 0) return Refuse("pilot_invalid");
-        // The battle effect pause draws every battle, overlay and native effect pass without stepping it.
-        if (_battleEffectPauseInstalled) { _qualificationRefusal = ""; return true; }
         return particle_pilot_scene_qualified(Refuse);
     }
 
@@ -297,6 +295,12 @@ public unsafe sealed partial class VrrModule
             if (!RenderPassContext.IsPresentation) original(family, mode);
             return;
         }
+        if (RenderPassContext.IsPresentation && (family > 1 || mode > 1 || !particle_presentation_is_qualified()))
+        {
+            _logger.Error("[Vrr] Particle presentation rejected an unexpected worker scope.");
+            reset_particle_presentation();
+            return;
+        }
         if (RenderPassContext.IsPresentation && _battleEffectPauseInstalled && !_particle_pilot_worker && !gameover_pilot_applies(family, mode))
         {
             opu_held_walk(original, family, mode);
@@ -310,12 +314,6 @@ public unsafe sealed partial class VrrModule
         try
         {
             if (!RenderPassContext.IsPresentation) { original(family, mode); return; }
-            if (family > 1 || mode > 1 || !particle_presentation_is_qualified())
-            {
-                _logger.Error("[Vrr] Particle presentation rejected an unexpected worker scope.");
-                reset_particle_presentation();
-                return;
-            }
             nint root = pilot_pointer((nint)FhUtil.ptr_at<byte>(PilotRoots + family * 4));
             var addresses = new List<nint>();
             if (!pilot_read_list(root, mode, addresses)) { reset_particle_presentation(); return; }
@@ -401,8 +399,6 @@ public unsafe sealed partial class VrrModule
         if (_particle_pilot_dd is not { } owner || owner.Manager != manager
             || Environment.CurrentManagedThreadId != _particle_pilot_thread)
         {
-            // The caller already raised the particle pause flag: the program draws without stepping.
-            if (RenderPassContext.IsPresentation && _battleEffectPauseInstalled && _particle_pilot_dd is null) return original(manager, mode);
             if (RenderPassContext.IsPresentation) { reset_particle_presentation(); return 0; }
             return original(manager, mode);
         }

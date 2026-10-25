@@ -28,6 +28,31 @@ public sealed class RenderActivationTests : IDisposable
         Assert.True(RenderPassContext.IsActive);
     }
 
+    [Fact]
+    public void Producer_change_after_image_admission_returns_to_native_before_the_pass()
+    {
+        var module = new VrrModule();
+        module.PreparePass();
+        module.BeginFrame();
+        Assert.True(RenderPassContext.IsActive);
+        module.ProducerQualified = false;
+        long serial = RenderPassContext.SimulationSerial;
+        int calls = 0;
+        NativeClock.Advance = () => calls++;
+        try
+        {
+            module.RunNativePass();
+            Assert.Equal(1, calls);
+            Assert.Equal(serial + 1, RenderPassContext.SimulationSerial);
+            Assert.False(RenderPassContext.IsActive);
+            Assert.False(RenderPassContext.IsPresentation);
+            Assert.Equal(60, module.ReportedRate);
+            Assert.True(module.CameraResets > 0);
+            Assert.True(module.ActorResets > 0);
+        }
+        finally { NativeClock.Advance = null; }
+    }
+
     [Theory]
     [InlineData("render main loop")]
     [InlineData("render exec count")]

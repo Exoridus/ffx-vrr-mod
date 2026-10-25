@@ -60,6 +60,8 @@ public unsafe sealed partial class VrrModule
     internal bool InitializeSpriteClock() => init_particle_sprite_clock();
     internal bool InitializePilot() => init_particle_presentation();
     internal bool QualifyPilot() => particle_presentation_is_qualified();
+    internal void EnableBattlePause() => _battleEffectPauseInstalled = true;
+    internal string QualificationRefusal => _qualificationRefusal;
     internal void EnterParticleLoop() => particle_presentation_enter_loop();
     internal void ResetPilot() => reset_particle_presentation();
     internal void RunWorker(ushort family, byte mode) => h_particle_pilot_worker(family, mode);
