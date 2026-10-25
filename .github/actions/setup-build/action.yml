@@ -15,6 +15,14 @@ runs:
     - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
+    - name: Install the x86 .NET runtime for x86 test hosts
+      shell: pwsh
+      run: |
+        $root = "${env:ProgramFiles(x86)}\dotnet"
+        $script = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+        Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile $script
+        & $script -Channel 10.0 -Runtime dotnet -Architecture x86 -InstallDir $root -NoPath
+        "DOTNET_ROOT_X86=$root" | Out-File -FilePath $env:GITHUB_ENV -Append
     - uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
       if: inputs.full-build == 'true'
     - name: Integrate vcpkg
