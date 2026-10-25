@@ -91,11 +91,12 @@ internal unsafe static class FhUtil
 
 internal unsafe static class MemoryProbe
 {
+    internal static Func<nint, bool>? CopyAllowed;
     internal static bool IsReadable(nint address, int count)
         => count > 0 && address >= FhUtil.Base && (nuint)(address-FhUtil.Base)+(uint)count <= 0x900000;
     internal static bool TryCopy(nint address, Span<byte> target)
     {
-        if (!IsReadable(address, target.Length)) return false;
+        if (CopyAllowed?.Invoke(address) == false || !IsReadable(address, target.Length)) return false;
         new ReadOnlySpan<byte>((void*)address, target.Length).CopyTo(target);
         return true;
     }
@@ -133,6 +134,7 @@ internal unsafe static class BridgeNative
         OnFrame = OnFlip = OnSlot = OnAction = null;
         OnActorInstance = null;
         NativeBuild.Supported = true;
+        MemoryProbe.CopyAllowed = null;
     }
 }
 
@@ -149,6 +151,7 @@ internal unsafe sealed class BridgeFixture : IDisposable
         BridgeNative.Reset();
         FhUtil.Base = Marshal.AllocHGlobal(0x900000);
         new Span<byte>((void*)FhUtil.Base, 0x900000).Clear();
+        Bytes(0x8cb45c, [1,0,0,0]);
         Bytes(0x227940, [0x55,0x8b,0xec,0x6a,0xff]);
         Bytes(0x1b6af0, [0x55,0x8b,0xec,0x83,0xec,8,0x56,0x8b,0xf1,0xf6,0x46,4,1]);
         Bytes(0x214c00, [0x81,0xc1,0x64,1,0,0,0xe8,0xa5,0xb6,0xe1,0xff,0x33,0xc0,0xc3]);

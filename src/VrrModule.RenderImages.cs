@@ -22,19 +22,27 @@ public unsafe sealed partial class VrrModule
         internal readonly nint Application = application;
         internal readonly PresentationAdmission.Image Image = image;
         internal readonly bool Valid = valid;
-        internal bool Animation;
+        internal bool Animation, Admitted;
     }
 
     private enum RenderImageReservationState { Created, Published, Consumed, Cancelled }
-    private sealed class RenderImageReservation(PresentationAdmission.Image image)
+    private sealed class RenderImageReservation(PresentationAdmission.Image image, nint application,
+        bool independentAdmitted, bool nativeEligibilityAtFlip)
     {
         internal readonly PresentationAdmission.Image Image = image;
+        internal readonly nint Application = application;
+        internal readonly bool IndependentAdmittedSnapshot = independentAdmitted;
+        internal readonly bool NativeEligibilityAtFlip = nativeEligibilityAtFlip;
         internal RenderImageReservationState State;
         internal bool SlotRequested;
     }
-    private sealed class RenderImageActionScope(PresentationAdmission.Image? image)
+    private sealed class RenderImageActionScope(PresentationAdmission.Image? image, nint application,
+        bool independentAdmitted, bool nativeEligibilityAtFlip)
     {
         internal readonly PresentationAdmission.Image? Image = image;
+        internal readonly nint Application = application;
+        internal readonly bool IndependentAdmittedSnapshot = independentAdmitted;
+        internal readonly bool NativeEligibilityAtFlip = nativeEligibilityAtFlip;
     }
 
     [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
@@ -87,18 +95,31 @@ public unsafe sealed partial class VrrModule
     private static bool render_image_pointer_is(nint address, nint expected)
         => MemoryProbe.IsReadable(address, sizeof(nint)) && *(nint*)address == expected;
 
-    private bool render_image_admission_ready()
+    private bool render_image_structural_ready()
         => _renderImagesInstalled && _presenter_active && Volatile.Read(ref _renderImageAssociationInvalid) == 0
             && _presentationAdmission.Failure is null
             && _renderImageFrame.Value is { Valid: true, Animation: true };
 
+    private static bool render_image_native_eligible(nint application)
+    {
+        Span<byte> initialized = stackalloc byte[sizeof(uint)];
+        Span<byte> loading = stackalloc byte[1];
+        return MemoryProbe.TryCopy((nint)FhUtil.ptr_at<byte>(0x8cb45c), initialized)
+            && MemoryMarshal.Read<uint>(initialized) == 1
+            && MemoryProbe.TryCopy(application + 0x3ad, loading) && loading[0] == 0;
+    }
+
+    private bool render_image_admission_ready()
+        => render_image_structural_ready() && render_image_native_eligible(_renderImageFrame.Value!.Application);
+
     private void render_image_admission_begin()
     {
-        if (!render_image_admission_ready())
+        if (!render_image_structural_ready())
         {
             refuse_independent_presentation("render_image_admission_without_frame");
             return;
         }
+        _renderImageFrame.Value!.Admitted = true;
         Volatile.Write(ref _renderImageEverAdmitted, 1);
     }
 
@@ -127,8 +148,13 @@ public unsafe sealed partial class VrrModule
         if ((flags & 1) != 0) return false;
         if (Volatile.Read(ref _renderImageAssociationInvalid) != 0) return true;
         RenderImageActionScope? scope = _renderImageAction.Value;
-        if (scope is not null) return scope.Image is null || scope.Image.IsRejected
-            || Volatile.Read(ref _renderImageAssociationInvalid) != 0;
+        if (scope is not null)
+        {
+            bool nativeRejected = scope.IndependentAdmittedSnapshot
+                && (!scope.NativeEligibilityAtFlip || !render_image_native_eligible(scope.Application));
+            return scope.Image is null || nativeRejected || scope.Image.IsRejected
+                || Volatile.Read(ref _renderImageAssociationInvalid) != 0;
+        }
         if (Volatile.Read(ref _renderImageEverAdmitted) == 0) return Volatile.Read(ref _renderImageAssociationInvalid) != 0;
         render_image_refuse_association("render_image_missing_action");
         return true;
@@ -176,9 +202,12 @@ public unsafe sealed partial class VrrModule
         if (frame is { Valid: true } && renderer != frame.Application + 0x124
             && _presenter_active && RenderSchedulerReady)
             refuse_independent_presentation("render_image_foreign_renderer");
-        PresentationAdmission.Image image = frame is { Valid: true } && renderer == frame.Application + 0x124
-            ? frame.Image : _presentationAdmission.BeginImage();
-        var reservation = new RenderImageReservation(image);
+        bool matchingFrame = frame is { Valid: true } && renderer == frame.Application + 0x124;
+        PresentationAdmission.Image image = matchingFrame ? frame!.Image : _presentationAdmission.BeginImage();
+        nint application = matchingFrame ? frame!.Application : 0;
+        bool admitted = matchingFrame && frame!.Admitted;
+        bool nativeEligible = matchingFrame && render_image_native_eligible(application);
+        var reservation = new RenderImageReservation(image, application, admitted, nativeEligible);
         _renderImageReservation.Value = reservation;
         try
         {
@@ -245,7 +274,7 @@ public unsafe sealed partial class VrrModule
         Interlocked.CompareExchange(ref _renderImageConsumerThread, thread, 0);
         bool owned = Volatile.Read(ref _renderImageConsumerThread) == thread && previous is null;
         if (!owned) render_image_refuse_association("render_image_action_owner");
-        PresentationAdmission.Image? image = null;
+        RenderImageReservation? consumed = null;
         lock (_renderImageQueueLock)
         {
             while (_renderImageQueue.TryPeek(out var cancelled) && cancelled.State == RenderImageReservationState.Cancelled)
@@ -253,11 +282,12 @@ public unsafe sealed partial class VrrModule
             if (_renderImageQueue.TryDequeue(out var reservation) && reservation.State == RenderImageReservationState.Published)
             {
                 reservation.State = RenderImageReservationState.Consumed;
-                if (owned) image = reservation.Image;
+                if (owned) consumed = reservation;
             }
         }
-        if (image is null) render_image_refuse_association("render_image_missing_reservation");
-        _renderImageAction.Value = new(image);
+        if (consumed is null) render_image_refuse_association("render_image_missing_reservation");
+        _renderImageAction.Value = new(consumed?.Image, consumed?.Application ?? 0,
+            consumed?.IndependentAdmittedSnapshot ?? false, consumed?.NativeEligibilityAtFlip ?? false);
         try
         {
             // AL is the native boolean result; preserve the original EAX carrier unchanged.
