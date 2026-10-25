@@ -7,10 +7,10 @@ if (args.Length != 2) throw new ArgumentException("Expected mod root and payload
 string root = Path.GetFullPath(args[0]), payload = Path.GetFullPath(args[1]);
 string tools = Path.Combine(root, ".workspace", "av1");
 Directory.CreateDirectory(tools);
-string source = Path.Combine(root, "native", "av1", "fhav1.c");
+string source = Path.Combine(root, "src", "native", "av1", "fhav1.c");
 string recipe = Path.Combine(root, "build", "PrepareAv1.cs");
 string sourceHash = Hash(source), recipeHash = Hash(recipe);
-string testHash = Hash(Path.Combine(root, "native", "av1", "tests", "fhav1_test.c"));
+string testHash = Hash(Path.Combine(root, "src", "native", "av1", "tests", "fhav1_test.c"));
 const string ffmpegVersion = "8.0.1";
 const string ffmpegHash = "05EE0B03119B45C0BDB4DF654B96802E909E0A752F72E4FE3794F487229E5A41";
 const string configure = "--toolchain=msvc --arch=x86 --target-os=win32 --disable-everything --disable-autodetect --disable-programs --disable-doc --disable-network --disable-avformat --disable-avdevice --disable-avfilter --disable-swresample --disable-swscale --disable-x86asm --enable-shared --disable-static --enable-decoder=av1 --enable-hwaccel=av1_d3d11va,av1_d3d11va2 --enable-d3d11va --disable-debug --disable-symver";
@@ -90,7 +90,7 @@ if (!current)
     lines.AddRange(["if errorlevel 1 exit /b %errorlevel%", $"ninja -C \"{dav1dBuild}\"", "if errorlevel 1 exit /b %errorlevel%",
         $"cl /nologo /O2 /MD /LD /I\"{Path.Combine(dav1dSource, "include")}\" /I\"{ffmpegSource}\" /I\"{ffmpegBuild}\" \"{source}\" /Fo:\"{Path.Combine(tools, "fhav1.obj")}\" /link \"{Path.Combine(dav1dBuild, "src", "libdav1d.a")}\" \"{Path.Combine(ffmpegBuild, "libavcodec", "avcodec.lib")}\" \"{Path.Combine(ffmpegBuild, "libavutil", "avutil.lib")}\" /OUT:\"{output}\"",
         "if errorlevel 1 exit /b %errorlevel%",
-        $"cl /nologo /O2 /MD \"{Path.Combine(root, "native", "av1", "tests", "fhav1_test.c")}\" /Fo:\"{Path.Combine(tools, "fhav1-test.obj")}\" /Fe:\"{Path.Combine(tools, "fhav1-test.exe")}\""
+        $"cl /nologo /O2 /MD \"{Path.Combine(root, "src", "native", "av1", "tests", "fhav1_test.c")}\" /Fo:\"{Path.Combine(tools, "fhav1-test.obj")}\" /Fe:\"{Path.Combine(tools, "fhav1-test.exe")}\""
     ]);
     Batch("build.cmd", lines);
 }
@@ -129,7 +129,8 @@ async Task<string> Download(string name, string url, string hash)
 void Batch(string name, IEnumerable<string> commands)
 {
     string file = Path.Combine(tools, name);
-    File.WriteAllText(file, "@echo off\r\ncall \"" + vcvars + "\" x86\r\nif errorlevel 1 exit /b %errorlevel%\r\n"
+    // An inherited VSINSTALLDIR from another Visual Studio makes vcvarsall look for that installation's tools.
+    File.WriteAllText(file, "@echo off\r\nset \"VSINSTALLDIR=\"\r\ncall \"" + vcvars + "\" x86\r\nif errorlevel 1 exit /b %errorlevel%\r\n"
         + string.Join("\r\n", commands.Select(c => c + "\r\nif errorlevel 1 exit /b %errorlevel%")) + "\r\n");
     Run("cmd", ["/d", "/c", file]);
 }

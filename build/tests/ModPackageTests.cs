@@ -107,11 +107,10 @@ public sealed class ModPackageTests : IDisposable
         Assert.Throws<InvalidDataException>(() => ModPackage.Validate(Payload, "fhvrr", "1.2.3"));
     }
     [Fact]
-    public void AllowsVideoInstructionsButRejectsBundledMovieAssets()
+    public void AllowsEmptyVideoDirectoryButRejectsBundledMovieAssets()
     {
         string directory = Path.Combine(Payload, "video");
         Directory.CreateDirectory(directory);
-        File.WriteAllText(Path.Combine(directory, "README.txt"), "Optional AV1 movies.");
         ModPackage.Validate(Payload, "example", "1.2.3");
         File.WriteAllText(Path.Combine(directory, "opl.webm"), "private movie");
         Assert.Throws<InvalidDataException>(() => ModPackage.Validate(Payload, "example", "1.2.3"));

@@ -12,8 +12,7 @@
         <PublishDir>$(MSBuildProjectDirectory)/artifacts/deploy/$(Configuration)/mods/$(AssemblyName)/</PublishDir>
     </PropertyGroup>
     <ItemGroup>
-        <None Update="video/README.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
         <PackageReference Include="TerraFX.Interop.Windows" Version="10.0.26100.6" />
-        <Compile Remove="build/**;.workspace/**;tools/**;test/**;tests/**;obj/**;bin/**" />
+        <Compile Remove="build/**;.workspace/**;tests/**;obj/**;bin/**" />
     </ItemGroup>
 </Project>

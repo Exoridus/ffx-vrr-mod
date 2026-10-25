@@ -24,10 +24,10 @@ public unsafe sealed class MenuWaterPreflightTests : IDisposable
     }
 
     [Fact]
-    public void MissingPackFailsBeforeAnyNativePatchOrAllocation()
+    public void MissingPackIsSkippedBeforeAnyNativePatchOrAllocation()
     {
         var module = new VrrModule(Path.Combine(_root, "x"));
-        Assert.False(module.Preflight());
+        Assert.True(module.Preflight());
         Assert.False(module.HasPreparedPaths);
         Assert.False(module.HasNativeStorage);
         Assert.Equal(0, PatchJournal.Writes);
@@ -51,17 +51,17 @@ public unsafe sealed class MenuWaterPreflightTests : IDisposable
         var module = new VrrModule(CreatePack());
         Assert.True(module.Preflight());
         *FhUtil.ptr_at<byte>(0x25b6d9) = 0;
-        Assert.False(module.Preflight());
+        Assert.True(module.Preflight());
         Assert.False(module.HasPreparedPaths);
         Assert.False(module.HasNativeStorage);
         Assert.Equal(0, PatchJournal.Writes);
     }
 
     [Fact]
-    public void InstallationRequiresSuccessfulPreflight()
+    public void InstallationWithoutPreflightLeavesNativeWater()
     {
         var module = new VrrModule(CreatePack());
-        Assert.False(module.Initialize());
+        Assert.True(module.Initialize());
         Assert.False(module.HasNativeStorage);
         Assert.Equal(0, PatchJournal.Writes);
     }
@@ -102,7 +102,7 @@ namespace Fahrenheit.Mods.Vrr
         private static float TargetFramerate => 60;
     }
     internal sealed record TestConfig(string ExpandedMenuWaterPack) { internal bool MenuWater => true; }
-    internal sealed class TestLogger { internal void Error(string message) { } internal void Info(string message) { } }
+    internal sealed class TestLogger { internal void Error(string message) { } internal void Warning(string message) { } internal void Info(string message) { } }
     internal sealed class PatchJournal
     {
         internal static int Writes;

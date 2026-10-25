@@ -27,7 +27,7 @@
     to any CPU, exactly so it can be unit-tested in isolation from the engine-hook code.
   -->
   <ItemGroup>
-    <Compile Include="..\src\RenderInterpolator.cs" Link="RenderInterpolator.cs" />
+    <Compile Include="..\..\src\RenderInterpolator.cs" Link="RenderInterpolator.cs" />
   </ItemGroup>
 
 </Project>

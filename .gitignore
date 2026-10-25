@@ -22,8 +22,7 @@ TestResults/
 *.tmp
 *.cache
 
-# Video assets are never committed. They live on the NAS and are staged by
-# tools/stage-efl.ps1 into this tree only at packaging time.
+# Game-derived texture packs (efl/) are never committed.
 efl/
 
 /artifacts/

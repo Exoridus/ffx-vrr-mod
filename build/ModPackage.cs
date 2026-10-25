@@ -20,7 +20,7 @@ internal static class ModPackage
         {
             var relative = Path.GetRelativePath(payload, file).Replace('\\', '/');
             var first = relative.Split('/')[0];
-            if (relative.Contains('/') && first is not ("lang" or "resources" or "efl") && relative != "video/README.txt")
+            if (relative.Contains('/') && first is not ("lang" or "efl"))
                 throw new InvalidDataException($"Unexpected payload directory: {relative}");
             if (!relative.Contains('/') && relative != id + ".dll" && relative != id + ".pdb" &&
                 relative != id + ".manifest.json" && relative != id + ".deps.json" &&
@@ -39,7 +39,8 @@ internal static class ModPackage
     private static bool ReviewedRuntimeDependency(string file, string relative, string id)
         => ReviewedAv1Dependency(file, relative, id) || id == "fhvrr" && relative == "TerraFX.Interop.Windows.dll"
             && Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file)))
-                == "BD40445EBECE5AA98EEF4C625C168E434B703041E43BC5D492B7687F92ABE2FC";
+                == "BD40445EBECE5AA98EEF4C625C168E434B703041E43BC5D492B7687F92ABE2FC"
+            || id == "fhvrr" && relative == "TerraFX.Interop.Windows.LICENSE.txt";
 
     private static bool ReviewedAv1Dependency(string file, string relative, string id)
     {
@@ -120,6 +121,10 @@ internal static class ModPackage
                     using var destination = entry.Open();
                     source.CopyTo(destination);
                 }
+                foreach (var directory in Directory.EnumerateDirectories(payload, "*", SearchOption.AllDirectories)
+                    .Where(d => !Directory.EnumerateFileSystemEntries(d).Any()).Order(StringComparer.Ordinal))
+                    archive.CreateEntry(prefix + Path.GetRelativePath(payload, directory).Replace('\\', '/') + "/")
+                        .LastWriteTime = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
             }
             using (var archive = ZipFile.OpenRead(temporary))
             {

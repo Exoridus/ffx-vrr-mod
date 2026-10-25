@@ -33,18 +33,17 @@ public unsafe sealed partial class VrrModule
         }
         catch (Exception error)
         {
-            _logger.Error($"Expanded menu water preflight failed: {error.Message}");
-            return false;
+            // The pack is an optional add-on; without it the native water frames are used.
+            _logger.Warning($"Expanded menu water pack not used: {error.Message}");
+            return true;
         }
     }
 
     private bool init_expanded_menu_water()
     {
-        if (string.IsNullOrWhiteSpace(_config.ExpandedMenuWaterPack)) return true;
+        if (_expanded_menu_water_prepared_paths is not { } paths) return true;
         try
         {
-            string[] paths = _expanded_menu_water_prepared_paths
-                ?? throw new InvalidOperationException("Expanded menu water requires successful preflight before initialization.");
             nint table = Marshal.AllocHGlobal(140 * 4);
             try
             {

@@ -110,7 +110,7 @@ static async Task<int> Run(string[] args)
     Recreate(context, state);
     foreach (var file in Directory.GetFiles(root, "*", SearchOption.TopDirectoryOnly).Where(f => Path.GetExtension(f) is ".csproj" or ".props" or ".targets" || Path.GetFileName(f) is "global.json" or ".editorconfig"))
         File.Copy(file, Path.Combine(context, Path.GetFileName(file)), true);
-    foreach (var directory in new[] { "src", "resources", "lang", "efl", "tests", "test", "native" })
+    foreach (var directory in new[] { "src", "lang", "efl", "tests" })
         CopyTree(Path.Combine(root, directory), Path.Combine(context, directory));
     Directory.CreateDirectory(Path.Combine(context, "build"));
     foreach (var name in new[] { "SettingsMigration.cs" })
@@ -128,8 +128,6 @@ static async Task<int> Run(string[] args)
         cacheIdentity = "local-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("", sdkPackages.Values))))[..16];
     }
     new XDocument(new XElement("configuration", sources, mapping)).Save(Path.Combine(context, "NuGet.config"));
-    Directory.CreateDirectory(Path.Combine(context, "video"));
-    File.Copy(Path.Combine(root, "video", "README.txt"), Path.Combine(context, "video", "README.txt"), true);
     var inputs = Directory.GetFiles(context, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
         .ToDictionary(f => Path.GetRelativePath(context, f).Replace('\\', '/'), f => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(f))));
     var cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FahrenheitModBuild", "packages", sdkVersion, cacheIdentity);
@@ -149,8 +147,12 @@ static async Task<int> Run(string[] args)
         File.WriteAllText(Path.Combine(payload, id + ".manifest.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
     Execute("dotnet", ["run", "--file", Path.Combine(root, "build", "PrepareAv1.cs"), "--", root, payload], root);
+    foreach (var license in Directory.GetFiles(Path.Combine(root, "build", "licenses")))
+        File.Copy(license, Path.Combine(payload, Path.GetFileName(license)), true);
+    // Ships empty: players drop optional replacement movies here.
+    Directory.CreateDirectory(Path.Combine(payload, "video"));
     ModPackage.Validate(payload, id, version);
-    foreach (var asset in new[] { "lang", "resources", "efl" })
+    foreach (var asset in new[] { "lang", "efl" })
         foreach (var file in Directory.Exists(Path.Combine(root, asset)) ? Directory.EnumerateFiles(Path.Combine(root, asset), "*", SearchOption.AllDirectories) : [])
         {
             if (Path.GetFileName(file) == ".gitkeep") continue;
@@ -159,7 +161,7 @@ static async Task<int> Run(string[] args)
                 throw new InvalidDataException($"Missing or changed runtime asset: {Path.GetRelativePath(root, file)}");
         }
     if (command != "mod-build")
-        foreach (var folder in new[] { "test", "tests", "build/tests" })
+        foreach (var folder in new[] { "tests", "build/tests" })
             if (Directory.Exists(Path.Combine(context, folder)))
                 foreach (var test in Directory.GetFiles(Path.Combine(context, folder), "*.csproj", SearchOption.AllDirectories))
                     Execute("dotnet", Path.GetFileName(test) is "Dxgi.Tests.csproj" or "ParticlePresentation.Tests.csproj"
