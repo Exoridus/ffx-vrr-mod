@@ -222,6 +222,8 @@ public unsafe sealed partial class VrrModule : FhModule
 
     private void cleanup_runtime(bool failedStartup = false)
     {
+        _render_mode_ready = false;
+        _render_frame_enabled = false;
         _initialized = false;
         bool waterRestored = false;
         try { restore_expanded_menu_water(); waterRestored = true; }

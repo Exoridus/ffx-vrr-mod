@@ -9,6 +9,7 @@ namespace Fahrenheit.Mods.Vrr;
 public unsafe sealed partial class VrrModule
 {
     private const int EffectAdvanceMode = 0;
+    private bool CanHoldLegacyEffects => !RenderSchedulerReady || IsOwnedRenderLoop;
 
     private long _effect_advances;
     private long _effect_draws;
@@ -58,13 +59,13 @@ public unsafe sealed partial class VrrModule
         if (mode == EffectAdvanceMode) _effect_advances++;
         else                           _effect_draws++;
 
-        if (RenderPassContext.IsPresentation && mode == EffectAdvanceMode)
+        if (IsOwnedPresentationPass && mode == EffectAdvanceMode)
         {
             _effect_held++;
             diagnostic_gameover_effect(mode, true, "held_presentation");
             return;
         }
-        if (_config.EffectHold && mode == EffectAdvanceMode && !advance_this_frame()
+        if (CanHoldLegacyEffects && _config.EffectHold && mode == EffectAdvanceMode && !_advance_frame
             && (_config.EffectHoldInBattle || hold_is_inert_below()))
         {
             _effect_held++;
@@ -90,8 +91,9 @@ public unsafe sealed partial class VrrModule
         _eternal_calls++;
 
         // With the battle effect pause a presentation pass draws this list and its walks hold every unit's state.
-        bool held = RenderPassContext.IsPresentation ? !_battleEffectPauseInstalled
-            : _config.EffectHold && _config.EternalEffectHold && !advance_this_frame();
+        bool presentation = IsOwnedPresentationPass;
+        bool held = presentation ? !_battleEffectPauseInstalled
+            : CanHoldLegacyEffects && _config.EffectHold && _config.EternalEffectHold && !_advance_frame;
         var original = new FhCallHandle<d_eternal_run>(new FhCallLocation(EngineAddresses.EternalEffectRunAfter, 0))
             .chain_from(h_eternal_run_after);
 
@@ -99,7 +101,7 @@ public unsafe sealed partial class VrrModule
          * shatter, enemy breath). Skipping it on a held simulation tick left that image without them:
          * the dark/bright flicker. With the battle effect pause the tick runs the list as a held
          * walk instead, exactly as a presentation pass does: drawn, not stepped. */
-        if (held && !RenderPassContext.IsPresentation && _battleEffectPauseInstalled)
+        if (held && !presentation && _battleEffectPauseInstalled)
         {
             _eternal_held++;
             byte previous = battle_effects_hold_begin();

@@ -15,7 +15,7 @@ public unsafe sealed partial class VrrModule
     private long _simulation_ticks, _additional_images, _simulation_debt_dropped;
     private double _render_previous_time;
     private volatile bool _render_frame_enabled;
-    private bool _render_mode_ready;
+    private volatile bool _render_mode_ready;
     private volatile bool _render_inside_loop;
     private int? _render_particle_pause_before;
     private bool _render_plan_pending;
@@ -23,6 +23,11 @@ public unsafe sealed partial class VrrModule
     private float _render_input_delta;
     private bool _render_native_owner_reported;
     private int _render_owner_thread;
+    private bool RenderSchedulerReady => _render_mode_ready && _render_scheduler_active;
+    private bool IsOwnedRenderLoop => RenderSchedulerReady && _render_inside_loop
+        && _render_owner_thread == Environment.CurrentManagedThreadId;
+    private bool OwnsRenderPass => IsOwnedRenderLoop && _render_frame_enabled;
+    private bool IsOwnedPresentationPass => OwnsRenderPass && RenderPassContext.IsPresentation;
     private float PresentationTargetHz
     {
         get
@@ -77,7 +82,13 @@ public unsafe sealed partial class VrrModule
         double now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
         RenderPassContext.BeginImage(_render_previous_time > 0 ? Math.Clamp(now - _render_previous_time, 0, 0.25) : 1d / TargetFramerate);
         _render_previous_time = now;
-        if (!_render_scheduler_active) return;
+        if (!RenderSchedulerReady)
+        {
+            _render_frame_enabled = false;
+            RenderPassContext.IsActive = false;
+            RenderPassContext.IsPresentation = false;
+            return;
+        }
         // Recorded syncdata and movie playback keep their existing clock owner until adapted.
         _render_frame_enabled = !EngineSyncPaced && !fmv_playing() && field_particle_presentation_ready() && !filter_needs_native_clock();
         if (!_render_frame_enabled && !_render_native_owner_reported)
@@ -106,7 +117,7 @@ public unsafe sealed partial class VrrModule
 
     private void render_scheduler_enter_loop(float delta)
     {
-        if (!_render_scheduler_active) return;
+        if (!RenderSchedulerReady) return;
         System.Threading.Interlocked.CompareExchange(ref _render_owner_thread, Environment.CurrentManagedThreadId, 0);
         particle_presentation_enter_loop();
         _render_clock_seen = false;
@@ -122,7 +133,7 @@ public unsafe sealed partial class VrrModule
 
     private void render_scheduler_exit_loop()
     {
-        if (!_render_scheduler_active) return;
+        if (!_render_inside_loop) return;
         // A draw callback can derive this global from exec zero; do not carry that pause into simulation.
         viewport_restore(RenderPassContext.IsPresentation);
         party_swap_end_pass(RenderPassContext.IsPresentation);
@@ -148,7 +159,7 @@ public unsafe sealed partial class VrrModule
 
     private RenderClockAction render_scheduler_clock(float nativeDelta)
     {
-        if (!_render_scheduler_active) return RenderClockAction.Native;
+        if (!IsOwnedRenderLoop) return RenderClockAction.Native;
         _render_clock_seen = true;
         if (_render_frame_enabled && (EngineSyncPaced || fmv_playing() || !field_particle_presentation_ready() || filter_needs_native_clock()))
         {
@@ -233,7 +244,7 @@ public unsafe sealed partial class VrrModule
     private uint h_render_exec()
     {
         uint native = new FhCallHandle<d_render_exec>(new FhCallLocation(RenderGetExec, 0)).chain_from(h_render_exec).fnptr!();
-        return _render_frame_enabled && _render_inside_loop
+        return OwnsRenderPass
             ? FixedSimulationClock.ResolveExec(native, RenderPassContext.IsPresentation) : native;
     }
 
@@ -241,7 +252,7 @@ public unsafe sealed partial class VrrModule
     private void h_render_calc_rate()
     {
         new FhCallHandle<d_render_void>(new FhCallLocation(RenderCalcRate, 0)).chain_from(h_render_calc_rate).fnptr!();
-        if (!RenderPassContext.IsPresentation) return;
+        if (!IsOwnedPresentationPass) return;
         FhUtil.set_at(RenderRateInteger, 0);
         FhUtil.set_at(RenderRateFloat, 0f);
     }
@@ -249,13 +260,13 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_render_particle_emit(nint manager)
     {
-        if (!RenderPassContext.IsPresentation)
+        if (!IsOwnedPresentationPass)
             new FhCallHandle<d_render_emit>(new FhCallLocation(RenderParticleEmit, 0)).chain_from(h_render_particle_emit).fnptr!(manager);
     }
 
     private int? render_pause_particles()
     {
-        if (!RenderPassContext.IsPresentation) return null;
+        if (!IsOwnedPresentationPass) return null;
         int previous = FhUtil.get_at<int>(EngineAddresses.PpvUserStopPartF);
         FhUtil.set_at(EngineAddresses.PpvUserStopPartF, 1);
         return previous;

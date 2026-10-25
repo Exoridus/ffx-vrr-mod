@@ -22,7 +22,9 @@ public sealed class EffectRenderOwnershipTests
         NativeClock.EffectCalls = NativeClock.EternalCalls = 0;
         try
         {
-            new VrrModule().RunEffectsWithoutLegacyHold(advance);
+            var module = new VrrModule();
+            module.SetHookScope(true, true, true, presentation);
+            module.RunEffectsWithoutLegacyHold(advance);
             Assert.Equal(expected, NativeClock.EffectCalls);
             Assert.Equal(expected, NativeClock.EternalCalls);
         }
@@ -53,7 +55,9 @@ public sealed class EffectRenderOwnershipTests
         NativeClock.EternalCalls = 0;
         try
         {
-            new VrrModule().RunEternal(hold, eternal, advance);
+            var module = new VrrModule();
+            module.SetHookScope(true, true, true, presentation);
+            module.RunEternal(hold, eternal, advance);
             Assert.Equal(expected, NativeClock.EternalCalls);
         }
         finally { RenderPassContext.IsPresentation = false; }
@@ -106,7 +110,15 @@ public unsafe sealed partial class VrrModule
 
     private void init_gameover_probe() { }
     private void diagnostic_gameover_effect(int mode, bool held, string phase) { }
-    private bool advance_this_frame() => _advance_frame;
+    private bool advance_this_frame() => !RenderPassContext.IsPresentation && _advance_frame;
+
+    internal void RunEffectsWithLegacyHold(bool advance)
+    {
+        _config = new SchedulerConfig { EffectHold = true, EternalEffectHold = true };
+        _advance_frame = advance;
+        h_effect_process(0);
+        h_eternal_run_after();
+    }
 }
 
 internal sealed partial record SchedulerConfig
@@ -121,7 +133,7 @@ internal static partial class NativeClock
     internal static readonly List<string> Hooks = [];
     internal static int EffectCalls, EternalCalls;
     public static void Effect(int mode) => EffectCalls++;
-    public static void Eternal() => EternalCalls++;
+    public static void Eternal() { EternalCalls++; EternalAction?.Invoke(); }
 }
 
 internal static partial class EngineAddresses

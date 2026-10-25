@@ -41,7 +41,7 @@ public unsafe sealed partial class VrrModule
         System.Threading.Interlocked.Increment(ref _fps_simulated);
         if (action == RenderClockAction.Native)
         {
-            if (!_render_scheduler_active) RenderPassContext.BeginSimulation();
+            if (!IsOwnedRenderLoop) RenderPassContext.BeginSimulation();
             decide_frame_advance();
             advance_overlay_spawn_clock();
 

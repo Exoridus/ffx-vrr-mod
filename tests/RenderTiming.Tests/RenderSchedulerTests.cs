@@ -77,6 +77,7 @@ public sealed class RenderSchedulerTests
     {
         var module = new VrrModule();
         Assert.True(module.InitScheduler());
+        module.ArmScheduler();
         Assert.Equal(1, module.FieldPauseInstalls);
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);
@@ -94,6 +95,7 @@ public sealed class RenderSchedulerTests
     {
         var module = new VrrModule { ProducerQualified = false };
         Assert.True(module.InitScheduler());
+        module.ArmScheduler();
         Assert.Equal(1, module.FieldPauseInstalls);
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
@@ -133,8 +135,9 @@ public unsafe sealed partial class VrrModule
     private bool field_particle_presentation_ready() => ProducerQualified;
     private bool _fieldPauseInstalled => ProducerQualified;
     private bool _battleEffectPauseInstalled;
-    private byte battle_effects_hold_begin() => 0;
-    private void battle_effects_hold_end(byte previous) { }
+    internal byte BattleHold;
+    private byte battle_effects_hold_begin() { byte previous = BattleHold; BattleHold = 1; return previous; }
+    private void battle_effects_hold_end(byte previous) { BattleHold = previous; }
     private bool init_battle_effect_pause() => true;
     private void battle_effects_begin_pass(bool presentation) { }
     private void battle_effects_end_pass() { }
@@ -148,6 +151,21 @@ public unsafe sealed partial class VrrModule
     private void pad_latch_pass_decided(bool presentation) { }
     private void pad_latch_end_pass() { }
     internal void BeginFrame() => render_scheduler_begin_frame();
+    internal void ArmScheduler() => _render_mode_ready = true;
+    internal void SetHookScope(bool armed, bool frame, bool inside, bool presentation)
+    {
+        _render_mode_ready = armed;
+        _render_scheduler_active = true;
+        _render_frame_enabled = frame;
+        _render_inside_loop = inside;
+        _render_owner_thread = Environment.CurrentManagedThreadId;
+        RenderPassContext.IsActive = frame;
+        RenderPassContext.IsPresentation = presentation;
+    }
+    internal void SetBattlePause(byte previous) { _battleEffectPauseInstalled = true; BattleHold = previous; }
+    internal uint ReadExec() => h_render_exec();
+    internal void CalculateRate() => h_render_calc_rate();
+    internal void Emit() => h_render_particle_emit(123);
     internal bool InitScheduler() => init_render_scheduler();
     internal double? ChosenRate;
     internal float CameraAlpha;
@@ -164,7 +182,8 @@ public unsafe sealed partial class VrrModule
     private const nint DiagnosticMainLoop = 0;
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void d_diag_loop(float delta);
     private void h_diag_loop(float delta) { }
-    private bool hook_or_log(string name, nint rva, Func<bool> hook) => hook();
+    internal string? RejectedHook;
+    private bool hook_or_log(string name, nint rva, Func<bool> hook) => hook() && name != RejectedHook;
     private void diagnostic_event(string kind, object data) { }
     private bool init_render_camera() => true;
     private bool init_render_actors() => true;
@@ -184,6 +203,8 @@ public unsafe sealed partial class VrrModule
     {
         _render_mode_ready = true;
         _render_scheduler_active = _render_frame_enabled = _render_mode_ready;
+        _render_inside_loop = true;
+        _render_owner_thread = Environment.CurrentManagedThreadId;
         RenderPassContext.IsActive = true;
         RenderPassContext.IsPresentation = false;
         _render_plan = new(1, 0.5f, false, 0);
@@ -230,6 +251,9 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
             {
                 "d_effect_process" => nameof(NativeClock.Effect),
                 "d_eternal_run" => nameof(NativeClock.Eternal),
+                "d_render_exec" => nameof(NativeClock.Exec),
+                "d_render_void" => nameof(NativeClock.Calculate),
+                "d_render_emit" => nameof(NativeClock.Emit),
                 _ => nameof(NativeClock.Tick),
             };
             return (T)Delegate.CreateDelegate(typeof(T), typeof(NativeClock).GetMethod(method)!);
@@ -245,7 +269,8 @@ internal static partial class NativeClock
 }
 internal static class FhUtil
 {
-    public static void set_at<T>(nint rva, T value) { }
+    internal static readonly List<(nint Address, object? Value)> Writes = [];
+    public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
     public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer : default!;
 }
 internal static partial class EngineAddresses
