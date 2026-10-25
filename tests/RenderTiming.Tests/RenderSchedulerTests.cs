@@ -151,6 +151,8 @@ public unsafe sealed partial class VrrModule
     private void pad_latch_pass_decided(bool presentation) { }
     private void pad_latch_end_pass() { }
     internal void BeginFrame() => render_scheduler_begin_frame();
+    internal void RefusePresentation(string reason) => _presentationAdmission.Refuse(reason);
+    internal void EndPass() => render_scheduler_exit_loop();
     internal void ArmScheduler() => _render_mode_ready = true;
     internal void SetHookScope(bool armed, bool frame, bool inside, bool presentation)
     {

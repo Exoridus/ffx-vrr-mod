@@ -19,5 +19,6 @@
     <Compile Include="../../src/VrrModule.FieldParticlePresentation.cs" Link="VrrModule.FieldParticlePresentation.cs" />
     <Compile Include="../../src/VrrModule.FieldParticleRestart.cs" Link="VrrModule.FieldParticleRestart.cs" />
     <Compile Include="../../src/RenderPassContext.cs" Link="RenderPassContext.cs" />
+    <Compile Include="../../src/PresentationAdmission.cs" Link="PresentationAdmission.cs" />
   </ItemGroup>
 </Project>

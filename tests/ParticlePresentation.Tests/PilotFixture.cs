@@ -62,6 +62,9 @@ public unsafe sealed partial class VrrModule
     internal bool QualifyPilot() => particle_presentation_is_qualified();
     internal void EnableBattlePause() => _battleEffectPauseInstalled = true;
     internal string QualificationRefusal => _qualificationRefusal;
+    private readonly PresentationAdmission _presentationAdmission = new();
+    internal string? PresentationFailure => _presentationAdmission.Failure;
+    internal IReadOnlyList<string> PresentationErrors => _logger.Errors;
     internal void EnterParticleLoop() => particle_presentation_enter_loop();
     internal void ResetPilot() => reset_particle_presentation();
     internal void RunWorker(ushort family, byte mode) => h_particle_pilot_worker(family, mode);
@@ -90,7 +93,12 @@ public unsafe sealed partial class VrrModule
 }
 
 internal sealed class PilotConfig { internal bool VrrEnabled = true, ParticleTimeline = true, ParticleSpriteClock, FieldParticleRestartHold = true; }
-internal sealed class PilotLogger { internal void Error(string message) { } internal void Info(string message) { } }
+internal sealed class PilotLogger
+{
+    internal readonly List<string> Errors = [];
+    internal void Error(string message) => Errors.Add(message);
+    internal void Info(string message) { }
+}
 internal static class NativeBuild
 {
     internal static bool TryValidate(out string error) { error = ""; return true; }

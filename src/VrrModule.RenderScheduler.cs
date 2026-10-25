@@ -9,6 +9,7 @@ public unsafe sealed partial class VrrModule
     private const nint RenderRateInteger = 0x1fcbbec;
     private const nint RenderRateFloat = 0x1fcbbe8;
     private FixedSimulationClock _simulationClock = new();
+    private readonly PresentationAdmission _presentationAdmission = new();
     private bool _render_scheduler_active, _render_simulation_pass, _render_clock_seen;
     private int _render_steps_remaining;
     private SimulationFramePlan _render_plan;
@@ -69,9 +70,9 @@ public unsafe sealed partial class VrrModule
     }
 
     private string _render_gate_reason()
-        => EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
+        => _presentationAdmission.Failure ?? (EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
             : !_fieldPauseInstalled ? "field_pause_not_installed"
-            : filter_needs_native_clock() ? "screen_filter" : _qualificationRefusal;
+            : filter_needs_native_clock() ? "screen_filter" : _qualificationRefusal);
 
     // Only reached when the Sg_DrawFilter presentation hold was refused.
     private bool filter_needs_native_clock()
@@ -90,7 +91,8 @@ public unsafe sealed partial class VrrModule
             return;
         }
         // Recorded syncdata and movie playback keep their existing clock owner until adapted.
-        _render_frame_enabled = !EngineSyncPaced && !fmv_playing() && field_particle_presentation_ready() && !filter_needs_native_clock();
+        _render_frame_enabled = _presentationAdmission.Failure is null && !EngineSyncPaced && !fmv_playing()
+            && field_particle_presentation_ready() && !filter_needs_native_clock();
         if (!_render_frame_enabled && !_render_native_owner_reported)
             diagnostic_event("native_clock_owner", new { syncdata = EngineSyncPaced, movie = fmv_playing() });
         _render_native_owner_reported = !_render_frame_enabled;
@@ -161,7 +163,8 @@ public unsafe sealed partial class VrrModule
     {
         if (!IsOwnedRenderLoop) return RenderClockAction.Native;
         _render_clock_seen = true;
-        if (_render_frame_enabled && (EngineSyncPaced || fmv_playing() || !field_particle_presentation_ready() || filter_needs_native_clock()))
+        if (_render_frame_enabled && (_presentationAdmission.Failure is not null || EngineSyncPaced || fmv_playing()
+            || !field_particle_presentation_ready() || filter_needs_native_clock()))
         {
             _render_frame_enabled = false;
             RenderPassContext.IsActive = false;

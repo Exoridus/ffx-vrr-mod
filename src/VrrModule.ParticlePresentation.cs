@@ -178,9 +178,17 @@ public unsafe sealed partial class VrrModule
     {
         bool Refuse(string reason) { _qualificationRefusal = reason; return false; }
         if (!_particle_pilot_installed) return Refuse("pilot_not_installed");
+        if (_presentationAdmission.Failure is { } failure) return Refuse(failure);
         if (Environment.CurrentManagedThreadId != _particle_pilot_thread) return Refuse("wrong_thread");
         if (Volatile.Read(ref _particle_pilot_invalid) != 0) return Refuse("pilot_invalid");
         return particle_pilot_scene_qualified(Refuse);
+    }
+
+    private void refuse_independent_presentation(string reason, Exception? error = null)
+    {
+        if (!_presentationAdmission.Refuse(reason)) return;
+        string detail = error is null ? "" : $" {error.Message}";
+        _logger.Error($"[Vrr] Independent presentation disabled until restart ({reason}).{detail}");
     }
 
     /// <summary>The Game Over pilot's scene: no live battle state, and every overlay owner observed and replayable.</summary>
@@ -291,13 +299,14 @@ public unsafe sealed partial class VrrModule
             reset_particle_presentation();
         if (thread != Volatile.Read(ref _particle_pilot_thread))
         {
+            if (RenderPassContext.IsPresentation) refuse_independent_presentation("worker_thread_changed");
             reset_particle_presentation();
             if (!RenderPassContext.IsPresentation) original(family, mode);
             return;
         }
         if (RenderPassContext.IsPresentation && (family > 1 || mode > 1 || !particle_presentation_is_qualified()))
         {
-            _logger.Error("[Vrr] Particle presentation rejected an unexpected worker scope.");
+            refuse_independent_presentation("unexpected_worker_scope");
             reset_particle_presentation();
             return;
         }
@@ -308,7 +317,13 @@ public unsafe sealed partial class VrrModule
         }
         bool previousWorker = _particle_pilot_worker;
         byte previousMode = _particle_pilot_mode;
-        if (previousWorker) { reset_particle_presentation(); if (!RenderPassContext.IsPresentation) original(family, mode); return; }
+        if (previousWorker)
+        {
+            if (RenderPassContext.IsPresentation) refuse_independent_presentation("nested_worker");
+            reset_particle_presentation();
+            if (!RenderPassContext.IsPresentation) original(family, mode);
+            return;
+        }
         _particle_pilot_worker = family == 1 && FhUtil.get_at<int>(GameOverMagicId) == 670;
         _particle_pilot_mode = mode;
         try
@@ -316,14 +331,24 @@ public unsafe sealed partial class VrrModule
             if (!RenderPassContext.IsPresentation) { original(family, mode); return; }
             nint root = pilot_pointer((nint)FhUtil.ptr_at<byte>(PilotRoots + family * 4));
             var addresses = new List<nint>();
-            if (!pilot_read_list(root, mode, addresses)) { reset_particle_presentation(); return; }
+            if (!pilot_read_list(root, mode, addresses))
+            {
+                refuse_independent_presentation("worker_owner_list_changed");
+                reset_particle_presentation();
+                return;
+            }
             if (addresses.Count == 0)
             {
                 if (_battleEffectPauseInstalled) opu_held_walk(original, family, mode);
                 else original(family, mode);
                 return;
             }
-            if (family != 1 || mode != 1) { reset_particle_presentation(); return; }
+            if (family != 1 || mode != 1)
+            {
+                refuse_independent_presentation("worker_draw_route_changed");
+                reset_particle_presentation();
+                return;
+            }
             int opcode = FhUtil.get_at<int>(PilotOpcode);
             fixed (ushort* program = PilotProgram)
             {
@@ -364,7 +389,12 @@ public unsafe sealed partial class VrrModule
                     nint manager = pilot_pointer(address + 0xbc), resource = pilot_pointer(address + 0xd0);
                     if (!_particle_pilot_owners.TryGetValue(address, out var owner) || !pilot_owner_matches(owner))
                     {
-                        if (_particle_pilot_owners.Count >= PilotOwnerLimit) { reset_particle_presentation(); return original(scratch, pc); }
+                        if (_particle_pilot_owners.Count >= PilotOwnerLimit)
+                        {
+                            if (RenderPassContext.IsPresentation) refuse_independent_presentation("owner_capacity");
+                            reset_particle_presentation();
+                            return original(scratch, pc);
+                        }
                         owner = new(root, address, manager, resource, Interlocked.Read(ref _particle_pilot_epoch));
                         _particle_pilot_owners[address] = owner;
                     }
@@ -377,6 +407,7 @@ public unsafe sealed partial class VrrModule
                 Span<byte> visualState = stackalloc byte[0x40];
                 if (!MemoryProbe.TryCopy(visualOwner.Manager + 0x40, visualState))
                 {
+                    refuse_independent_presentation("dd_state_unreadable");
                     visualOwner.Capture.Invalidate();
                     Interlocked.Exchange(ref _particle_pilot_invalid, 1);
                     return pc + 4;
@@ -399,19 +430,29 @@ public unsafe sealed partial class VrrModule
         if (_particle_pilot_dd is not { } owner || owner.Manager != manager
             || Environment.CurrentManagedThreadId != _particle_pilot_thread)
         {
-            if (RenderPassContext.IsPresentation) { reset_particle_presentation(); return 0; }
+            if (RenderPassContext.IsPresentation)
+            {
+                refuse_independent_presentation("manager_scope_changed");
+                reset_particle_presentation();
+                return 0;
+            }
             return original(manager, mode);
         }
         if (RenderPassContext.IsPresentation)
         {
             if (!pilot_owner_matches(owner) || !owner.Capture.CanPresent(manager, owner.Epoch, _particle_pilot_thread)
-                || !pilot_calls_match(owner)) { reset_particle_presentation(); return 0; }
+                || !pilot_calls_match(owner))
+            {
+                refuse_independent_presentation("manager_owner_changed");
+                reset_particle_presentation();
+                return 0;
+            }
             try { return pilot_replay_calls(owner); }
             catch (Exception error)
             {
                 owner.Capture.Invalidate();
                 Interlocked.Exchange(ref _particle_pilot_invalid, 1);
-                _logger.Error($"[Vrr] Particle presentation rejected renderer failure: {error.Message}");
+                refuse_independent_presentation("renderer_failure", error);
                 return 0;
             }
         }

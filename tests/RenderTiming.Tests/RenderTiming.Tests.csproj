@@ -16,6 +16,7 @@
     <Compile Include="../../src/VrrModule.BattlePresentation.cs" Link="VrrModule.BattlePresentation.cs" />
     <Compile Include="../../src/BattleEffectState.cs" Link="BattleEffectState.cs" />
     <Compile Include="../../src/RenderPassContext.cs" Link="RenderPassContext.cs" />
+    <Compile Include="../../src/PresentationAdmission.cs" Link="PresentationAdmission.cs" />
     <Compile Include="../../src/VrrModule.Effects.cs" Link="VrrModule.Effects.cs" />
     <Compile Include="../../src/VrrModule.RenderScheduler.cs" Link="VrrModule.RenderScheduler.cs" />
     <Compile Include="../../src/VrrModule.SimulationPass.cs" Link="VrrModule.SimulationPass.cs" />
