@@ -10,7 +10,7 @@ was unloaded" is more setup than the question deserves. The unloaded module list
 is a minidump stream; that question is a table lookup.
 
 ```
-dotnet run DumpRead.cs "C:\Games\Final Fantasy X-X2 - HD Remaster\ffx-dumps\ffx.dmp"
+dotnet run DumpRead.cs "C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY FFX&FFX-2 HD Remaster\ffx-dumps\ffx.dmp"
 ```
 
 Dumps are produced by `FFX-mit-Dump-starten.cmd` in the game directory, which

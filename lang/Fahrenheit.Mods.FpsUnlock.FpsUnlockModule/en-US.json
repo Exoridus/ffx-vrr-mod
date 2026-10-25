@@ -1,6 +1,0 @@
-{
-  "fhfpsunlock.name": "Frame Rate",
-  "fhfpsunlock.desc": "Retimes the engine's 30 Hz-bound systems for the rate the game actually runs at.",
-  "fhfpsunlock.target_framerate.name": "Target Frame Rate (0 = Match Display)",
-  "fhfpsunlock.target_framerate.desc": "The rate to retime for. 0 measures the display and follows it. 30 leaves every duration as the game authored it, which is the same as turning the retiming off. Values in between and above are allowed; 60 and 120 are the tested ones."
-}

@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,53 +14,41 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  DOTNET_VERSION: "10.0.x"
-  MOD_ID: fhfpsunlock
-  # Throwaway tag for exercising the release packaging on every run. Without
-  # this a green CI says nothing about whether a release would succeed.
-  PREFLIGHT_TAG: v0.0.0-ci
-
 jobs:
-  build:
-    name: Build
+  mod:
+    name: ${{ matrix.configuration }}
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
     steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
-          fetch-tags: true
-
-      - name: Setup build environment
-        uses: ./.github/actions/setup-build
+      - uses: ./.github/actions/setup-build
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Bootstrap Fahrenheit
-        shell: pwsh
-        run: pwsh tools/bootstrap.ps1
-
-      - name: Build Fahrenheit host
-        shell: pwsh
-        run: pwsh tools/build-fahrenheit.ps1 -Configuration Release
-
-      - name: Build
-        shell: pwsh
-        run: pwsh build.ps1 -Configuration Release -OutDir .release/stage
-
-      - name: Upload mod payload
+          full-build: ${{ matrix.configuration == 'Release' }}
+      - name: Verify Debug payload and tests
+        if: matrix.configuration == 'Debug'
+        shell: cmd
+        run: build.cmd mod-verify --sdk local --configuration Debug
+      - name: Build and verify mod + full development packages
+        if: matrix.configuration == 'Release'
+        shell: cmd
+        run: build.cmd mod-pack --sdk local --configuration Release --tag v0.0.0-ci --out-dir .release --full true
+      - name: Upload installable development packages
+        if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ env.MOD_ID }}-mod-${{ github.sha }}
-          path: .release/stage
+          name: development-packages-${{ github.sha }}
+          path: |
+            .release/*.zip
+            .release/*-source.tar.xz
+            .release/*.sha256
+            .release/*.provenance.json
+            .release/release-notes.md
           if-no-files-found: error
           include-hidden-files: true
-
-      - name: Package release archive (preflight)
-        shell: pwsh
-        run: ./.github/scripts/New-ReleasePackage.ps1 -ModId $env:MOD_ID -Tag $env:PREFLIGHT_TAG -StageDir .release/stage -OutDir .release -FahrenheitDeployDir .workspace/fahrenheit/artifacts/deploy/rel
-
-      - name: Generate release notes (preflight)
-        shell: pwsh
-        run: ./.github/scripts/New-ReleaseNotes.ps1 -ModId $env:MOD_ID -Tag $env:PREFLIGHT_TAG -Repository $env:GITHUB_REPOSITORY -OutFile .release/release-notes.md
+          compression-level: 0
+          retention-days: 14

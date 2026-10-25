@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <Compile Include="../../src/VrrModule.LensSprite.cs" Link="LensSprite.cs" />
+    <Compile Include="../../src/ParticleUvClock.cs" Link="ParticleUvClock.cs" />
+    <Compile Include="../../src/VrrModule.ParticleUv.cs" Link="ParticleUv.cs" />
+    <Compile Include="../../src/RenderPassContext.cs" Link="RenderPassContext.cs" />
+    <Compile Include="../../src/VrrModule.ParticleTimeline.cs" Link="ParticleTimeline.cs" />
+    <Compile Include="../../src/VrrModule.BattleCursor.cs" Link="BattleCursor.cs" />
+    <Compile Include="../../src/VrrModule.DreamOverlay.cs" Link="DreamOverlay.cs" />
+    <Compile Include="../../src/VrrModule.MoveLeadIn.cs" Link="MoveLeadIn.cs" />
+    <Compile Include="../../src/VrrModule.Battle.cs" Link="Battle.cs" />
+    <Compile Include="../../src/VrrModule.AtelDefaults.cs" Link="AtelDefaults.cs" />
+    <Compile Include="../../src/VrrModule.TexturePresentation.cs" Link="TexturePresentation.cs" />
+    <Compile Include="../../src/VrrModule.TextureFramePhase.cs" Link="VrrModule.TextureFramePhase.cs" />
+    <Compile Include="../../src/TextureBlendProbeState.cs" Link="TextureBlendProbeState.cs" />
+    <Compile Include="../../src/TextureFramePhase.cs" Link="TextureFramePhase.cs" />
+    <Compile Include="../../src/TextureUvHistory.cs" Link="TextureUvHistory.cs" />
+    <Compile Include="../../src/VrrModule.TextureAnimation.cs" Link="TextureAnimation.cs" />
+    <Compile Include="../../src/VrrModule.StartupTiming.cs" Link="StartupTiming.cs" />
+    <Compile Include="../../src/FmvReplacementMetadata.cs" Link="FmvReplacementMetadata.cs" />
+    <Compile Include="../../src/FmvVideoLibrary.cs" Link="FmvVideoLibrary.cs" />
+    <Compile Include="../../src/VrrModule.FmvAudio.cs" Link="VrrModule.FmvAudio.cs" />
+    <Compile Include="../../src/FmvPlaybackLab.cs" Link="FmvPlaybackLab.cs" />
+    <Compile Include="../../src/VrrModule.FmvSurfaces.cs" Link="FmvSurfaces.cs" />
+    <Compile Include="../../src/VrrConfig.cs" Link="VrrConfig.cs" />
+    <Compile Include="../../src/FrameRateCounter.cs" Link="FrameRateCounter.cs" />
+    <Compile Include="../../src/RenderInterpolator.cs" Link="RenderInterpolator.cs" />
+    <Compile Include="../../src/RenderCameraHistory.cs" Link="RenderCameraHistory.cs" />
+    <Compile Include="../../src/RenderActorHistory.cs" Link="RenderActorHistory.cs" />
+    <Compile Include="../../src/DiagnosticSession.cs" Link="DiagnosticSession.cs" />
+    <Compile Include="../../src/BinaryTraceSession.cs" Link="BinaryTraceSession.cs" />
+    <Compile Include="../../src/DiagnosticWatchPlan.cs" Link="DiagnosticWatchPlan.cs" />
+    <Compile Include="../../src/TimingOwnership.cs" Link="TimingOwnership.cs" />
+    <Compile Include="../../src/VrrModule.AtelWaits.cs" Link="AtelWaits.cs" />
+    <Compile Include="../../src/VrrModule.VideoOverride.cs" Link="VideoOverride.cs" />
+    <Compile Include="../../src/VrrModule.Av1.cs" Link="Av1.cs" />
+    <Compile Include="../../src/VrrModule.FarplaneDiagnostics.cs" Link="FarplaneDiagnostics.cs" />
+    <Compile Include="../../src/VrrModule.GameOver.cs" Link="GameOver.cs" />
+    <Compile Include="../../src/VrrModule.Buoyancy.cs" Link="Buoyancy.cs" />
+  </ItemGroup>
+</Project>

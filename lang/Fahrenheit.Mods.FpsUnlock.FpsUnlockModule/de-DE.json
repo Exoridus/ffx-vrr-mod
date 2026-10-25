@@ -1,6 +1,0 @@
-{
-  "fhfpsunlock.name": "Bildrate",
-  "fhfpsunlock.desc": "Rechnet die auf 30 Hz festgelegten Systeme der Engine auf die Rate um, mit der das Spiel wirklich läuft.",
-  "fhfpsunlock.target_framerate.name": "Zielbildrate (0 = Anzeige übernehmen)",
-  "fhfpsunlock.target_framerate.desc": "Die Rate, auf die umgerechnet wird. 0 misst die Anzeige und folgt ihr. 30 lässt jede Dauer so, wie das Spiel sie angelegt hat, entspricht also abgeschaltet. Werte dazwischen und darüber sind erlaubt; getestet sind 60 und 120."
-}

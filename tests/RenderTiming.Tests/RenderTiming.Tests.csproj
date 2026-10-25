@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <Compile Include="../../src/ParticlePresentationCapture.cs" Link="ParticlePresentationCapture.cs" />
+    <Compile Include="../../src/FixedSimulationClock.cs" Link="FixedSimulationClock.cs" />
+    <Compile Include="../../src/VrrConfig.cs" Link="VrrConfig.cs" />
+    <Compile Include="../../src/VrrModule.BattlePresentation.cs" Link="VrrModule.BattlePresentation.cs" />
+    <Compile Include="../../src/BattleEffectState.cs" Link="BattleEffectState.cs" />
+    <Compile Include="../../src/RenderPassContext.cs" Link="RenderPassContext.cs" />
+    <Compile Include="../../src/VrrModule.Effects.cs" Link="VrrModule.Effects.cs" />
+    <Compile Include="../../src/VrrModule.RenderScheduler.cs" Link="VrrModule.RenderScheduler.cs" />
+    <Compile Include="../../src/VrrModule.SimulationPass.cs" Link="VrrModule.SimulationPass.cs" />
+  </ItemGroup>
+</Project>

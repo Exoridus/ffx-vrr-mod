@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <Compile Include="../../src/DxgiPresentationPolicy.cs" Link="DxgiPresentationPolicy.cs" />
+    <Compile Include="../../src/TextureBlendProbeState.cs" Link="TextureBlendProbeState.cs" />
+    <Compile Include="../../src/TextureFrameGpuBlender.cs" Link="TextureFrameGpuBlender.cs" />
+    <Compile Include="../../src/TextureDrawDispatch.cs" Link="TextureDrawDispatch.cs" />
+    <Compile Include="../../src/VrrModule.TextureDraw.cs" Link="VrrModule.TextureDraw.cs" />
+    <Compile Include="../../src/VrrModule.TextureDevice.cs" Link="VrrModule.TextureDevice.cs" />
+    <PackageReference Include="TerraFX.Interop.Windows" Version="10.0.26100.6" />
+  </ItemGroup>
+</Project>

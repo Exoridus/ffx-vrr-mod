@@ -1,4 +1,4 @@
-namespace Fahrenheit.Mods.FpsUnlock;
+namespace Fahrenheit.Mods.Vrr;
 
 /// <summary>
 ///     Hook targets and globals, as RVAs relative to the FFX.exe image base.
@@ -17,25 +17,25 @@ public static class EngineAddresses
     ///     the Steam callbacks, calls updateFFX (which drives the main loop and Sg_MainLoop) and then
     ///     chains into Phyre::PFramework::PApplication::animate.
     /// </summary>
-    public const nint FFXApplicationAnimate = 0x2F600;
+    public const nint FFXApplicationAnimate = 0x2F520;
 
     /// <summary>
     ///     updateFFX. Cdecl, takes the frame delta. The main loop body itself; it repeats while
     ///     gElapsedFrameCount_frameSkip is non-zero without recomputing the delta.
     /// </summary>
-    public const nint UpdateFFX = 0x4228D0;
+    public const nint UpdateFFX = 0x422840;
 
     /// <summary>Phyre::PFramework::PWindowWin32Base::SetFlipVSyncInterval. Cdecl.</summary>
-    public const nint SetFlipVSyncInterval = 0x225250;
+    public const nint SetFlipVSyncInterval = 0x225090;
 
     /// <summary>Sg_MainCalcRate. Computes sg_rate from the vertical/horizontal blank ratio each frame.</summary>
-    public const nint SgMainCalcRate = 0x4207D0;
+    public const nint SgMainCalcRate = 0x4206C0;
 
     /// <summary>
     ///     The frame-pacing routine that advances the vertical blank counters. It adds a hardcoded 2
     ///     to both, which is the engine's assumption of two vertical blanks per 30 Hz frame.
     /// </summary>
-    public const nint AdvanceVBlankCounters = 0x421F90;
+    public const nint AdvanceVBlankCounters = 0x421E80;
 
     /// <summary>
     ///     iSyncGetData(float* total, float* next, int* rate). Cdecl. The one source of the syncdata
@@ -50,17 +50,17 @@ public static class EngineAddresses
     ///     answering 999 disables the recorded pacing through the door the engine already has, rather
     ///     than by writing a state it would not otherwise be in.
     /// </summary>
-    public const nint ISyncGetData = 0x27AAE0;
+    public const nint ISyncGetData = 0x27A930;
 
     /// <summary>Sg_SetKeepFps. Cdecl, sbyte in, returns the previous value.</summary>
-    public const nint SgSetKeepFps = 0x421C00;
+    public const nint SgSetKeepFps = 0x421AE0;
 
     /// <summary>
     ///     Sg_GetKeepFps. Cdecl, no parameters, returns the sbyte at <see cref="SgKeepFps"/>. Its
     ///     only non-debug caller is the motion advance; the other three are the debug window's
     ///     label, its toggle, and yiAnimInfo_init.
     /// </summary>
-    public const nint SgGetKeepFps = 0x4206B0;
+    public const nint SgGetKeepFps = 0x4205A0;
 
     /// <summary>
     ///     yiAnimInfo_init(info). Stdcall. Picks the clock the event worker's animation curves run
@@ -79,7 +79,7 @@ public static class EngineAddresses
     ///     sbyte. The KEEP_FPS flag itself, which Sg_GetKeepFps returns. Read directly rather than
     ///     mirrored through the setter, so a write this module does not see cannot desynchronise it.
     /// </summary>
-    public const nint SgKeepFps = 0xEFBBEC;
+    public const nint SgKeepFps = 0xEFBC34;
 
     // --- Character and motion ---
 
@@ -88,13 +88,16 @@ public static class EngineAddresses
     ///     motion speed into the frame accumulator at actor+0x740, and applies sg_rate only when
     ///     the actor's flag word at +0x194 carries 0x100000 and KEEP_FPS is set.
     /// </summary>
-    public const nint MotionAdvance = 0x438D10;
+    public const nint MotionAdvance = 0x438C90;
 
     /// <summary>The actor's flag word, tested by the motion advance for 0x40 and 0x100000.</summary>
     public const int ActorFlagsOffset = 0x194;
 
     /// <summary>Ch_CalcMain(float delta). The engine passes a fixed delta of 0.033373334.</summary>
-    public const nint ChCalcMain = 0x432E90;
+    public const nint ChCalcMain = 0x432E10;
+
+    /// <summary>Zero-argument job wait, called after buoyancy and before character worker dispatch.</summary>
+    public const nint CharacterJobBarrier = 0x644B80;
 
     /// <summary>
     ///     chr. Pointer-valued global holding the base of the Ch work record array, one 0x880 byte
@@ -111,7 +114,7 @@ public static class EngineAddresses
     public const nint NbMaxChr = 0x1FC44E0;
 
     /// <summary>Ch_SetMotionSpeed(Actor*, ushort). Animation speed follows motion speed unless KEEP_FPS is set.</summary>
-    public const nint ChSetMotionSpeed = 0x42B400;
+    public const nint ChSetMotionSpeed = 0x42B380;
 
     /// <summary>
     ///     The walk motion controller, the first of Ch_CalcMain's two loop-1 controllers. Selects one
@@ -119,17 +122,17 @@ public static class EngineAddresses
     ///     by it; the rest of the function picks the motion or sequence to play.
     ///
     ///     Not hooked. The three rate loads inside it are patched at their operands; see
-    ///     FpsUnlockModule.ChFacing.cs for why neither the function nor the literal pool is the right
+    ///     VrrModule.ChFacing.cs for why neither the function nor the literal pool is the right
     ///     place.
     /// </summary>
-    public const nint ChWalkMotionController = 0x435C30;
+    public const nint ChWalkMotionController = 0x435BB0;
 
     /// <summary>
     ///     The swim motion controller, the second one. Carries the same three-way facing selection
     ///     with the same three constants, and additionally the 0.15 per call stroke impulse on
     ///     Chr+0x504 that the buoyancy hold already brackets.
     /// </summary>
-    public const nint ChSwimMotionController = 0x435DB0;
+    public const nint ChSwimMotionController = 0x435D30;
 
     /// <summary>
     ///     <c>void(Chr* actor, float angle, float degreesPerCall)</c>, the arm behind ATEL
@@ -140,7 +143,7 @@ public static class EngineAddresses
     ///     A rate of zero takes the other branch: it assigns the target to the current angle as well
     ///     and stores zero, which is a snap rather than a slow turn. Measured cdecl, one caller.
     /// </summary>
-    public const nint ChSetPitchTarget = 0x435870;
+    public const nint ChSetPitchTarget = 0x4357F0;
 
     /// <summary>
     ///     <c>bool __thiscall BigFileStream::checkExists(BigFileStream*, const char* path)</c>. MD5-hashes
@@ -151,7 +154,7 @@ public static class EngineAddresses
     ///     The catalog records __stdcall with one parameter, which is its default rather than a
     ///     measurement.
     /// </summary>
-    public const nint BigFileCheckExists = 0x21C000;
+    public const nint BigFileCheckExists = 0x21BE40;
 
     /// <summary>
     ///     <c>VFile* __thiscall BigFileStream::openFile(BigFileStream*, const char* path)</c>, the open
@@ -161,7 +164,7 @@ public static class EngineAddresses
     ///
     ///     Measured thiscall: 204 bytes ending in ret 4, path at [ebp+8], same cookie prologue.
     /// </summary>
-    public const nint BigFileOpenFile = 0x21C0D0;
+    public const nint BigFileOpenFile = 0x21BF10;
 
     /// <summary>
     ///     The arm for all seven of an actor's <c>{current, target, frames}</c> ramp records at
@@ -174,27 +177,27 @@ public static class EngineAddresses
     ///     character fade system. The stepper is FUN_008360a0, called seven times per actor per
     ///     presented frame from Ch_CalcMain.
     /// </summary>
-    public const nint ChSetRampTarget = 0x42BA10;
+    public const nint ChSetRampTarget = 0x42B990;
 
     /// <summary>
     ///     Unnamed motion parameter setter: (chr_id, stat_id, float value). stat ids 0x03..0x06 are
     ///     MOTION_RUN_SPEED, _RETURN, _V0 and _ACC. Reached from ATEL call targets 70A8 and 70B2.
     /// </summary>
-    public const nint SetMotionParamFloat = 0x3B4AA0;
+    public const nint SetMotionParamFloat = 0x3B4A90;
 
     /// <summary>MsSetChrStatInfo(chr_id, stat_id, target_id, value). Reached from ATEL call targets 70AB and 7018.</summary>
-    public const nint MsSetChrStatInfo = 0x3B4B80;
+    public const nint MsSetChrStatInfo = 0x0;
 
     /// <summary>MsEffectSetSpeed(byte chr_id, ushort speed).</summary>
-    public const nint MsEffectSetSpeed = 0x3884F0;
+    public const nint MsEffectSetSpeed = 0x388430;
 
     // --- Camera ---
 
     /// <summary>MsCameraMoveFrame(camera_id, _, _, frame_count, _). Cutscenes synchronise on camWait.</summary>
-    public const nint MsCameraMoveFrame = 0x3BDDD0;
+    public const nint MsCameraMoveFrame = 0x3BDE50;
 
     /// <summary>MsCameraMoveAcc(camera_id, mode_non_ref, mode_polar, + four timing arguments).</summary>
-    public const nint MsCameraMoveAcc = 0x3BD7E0;
+    public const nint MsCameraMoveAcc = 0x3BD860;
 
     // --- Fades, flash, alpha ---
 
@@ -202,10 +205,10 @@ public static class EngineAddresses
     ///     The common fade routine behind Sg_FadeIn/InW/Out/OutW: (frame_count, mode_in, mode_w).
     ///     Reached from ATEL call targets 4004 through 4007.
     /// </summary>
-    public const nint SgFadeCommon = 0x42CE40;
+    public const nint SgFadeCommon = 0x42CDC0;
 
     /// <summary>Sg_Flash(frame_count, ...). ATEL call target 4003.</summary>
-    public const nint SgFlash = 0x42CD20;
+    public const nint SgFlash = 0x42CCA0;
 
     /// <summary>
     ///     Sg_AccSetAlpha(alpha, frame_count). Cdecl, measured: the body ends in a tail jmp to
@@ -215,9 +218,9 @@ public static class EngineAddresses
     ///
     ///     It seeds filter slot 0 rather than expressing a duration: the stored step is
     ///     max(1, |alpha - current| / frame_count), so a doubled frame count cannot buy a half step
-    ///     once |delta| drops below it. See FpsUnlockModule.CrossFade.
+    ///     once |delta| drops below it. See VrrModule.CrossFade.
     /// </summary>
-    public const nint SgAccSetAlpha = 0x42BD90;
+    public const nint SgAccSetAlpha = 0x42BD10;
 
     /// <summary>
     ///     Sg_DrawFilter(). Cdecl and void, measured: a plain c3 at 0x0082C277, closing the
@@ -225,10 +228,29 @@ public static class EngineAddresses
     ///     site in Sg_MainLoop pushes nothing and cleans nothing. Runs once per main loop pass and
     ///     steps all five filter slots.
     /// </summary>
-    public const nint SgDrawFilter = 0x42C140;
+    public const nint SgDrawFilter = 0x42C0C0;
+
+    /// <summary>
+    ///     int. Bit mask of the five filter slots (screen fade, flash, cross-fade) that Sg_DrawFilter is
+    ///     still stepping; it clears a slot's bit when that slot's counter reaches zero. Read from the
+    ///     first compare in Sg_DrawFilter (cmp [0x01300704], 0 in the installed executable).
+    /// </summary>
+    public const nint FilterActiveMask = 0xF00704;
+
+    /// <summary>
+    ///     Four dwords Sg_DrawFilter writes for its consumers: two flags, a latch and a progress float
+    ///     (mov dword [0x012FFAE8], 1 / fstp [0x012FFAF4] at Sg_DrawFilter+0x28F). v3 0x012FFAA0.
+    /// </summary>
+    public const nint FilterOutputs = 0xEFFAE8;
+
+    /// <summary>uint. Fade type Sg_DrawFilter publishes (fadeType, mov [0x00C496D0], eax at +0x28A).</summary>
+    public const nint FilterFadeType = 0x8496D0;
+
+    /// <summary>byte. Btl.battle_state, 0 outside battle. Btl sits at 0xD2A8D0; the sibling Parry mod gates on it.</summary>
+    public const nint BattleState = 0xD2A8E0;
 
     /// <summary>TkSetFadeOut(frame_count). ATEL call target 00BB; also reachable outside it.</summary>
-    public const nint TkSetFadeOut = 0x48EAC0;
+    public const nint TkSetFadeOut = 0x48EB50;
 
     // --- ATEL ---
 
@@ -236,7 +258,7 @@ public static class EngineAddresses
     ///     Init handler of ATEL call target 0000 ("wait", 53,676 call sites), the frame-based wait.
     ///     One-frame waits are idle loops and must not be scaled.
     /// </summary>
-    public const nint AtelWaitInit = 0x45C3E0;
+    public const nint AtelWaitInit = 0x45C4E0;
 
     /// <summary>
     ///     Exec handler of ATEL call target 0000, called once per pass with the counter the init
@@ -249,7 +271,7 @@ public static class EngineAddresses
     ///     already at the right rate. A counter scaled at init then takes twice as many movie
     ///     frames to run out.
     /// </summary>
-    public const nint AtelWaitExec = 0x45C570;
+    public const nint AtelWaitExec = 0x45C6B0;
 
     /// <summary>
     ///     Movie frames elapsed since the FMV manager last latched its own frame number:
@@ -259,10 +281,10 @@ public static class EngineAddresses
     ///     Its other caller is the ATEL camera interpolator at 0x468930, which adds the same delta
     ///     to a float frame accumulator under the same movie-camera condition.
     /// </summary>
-    public const nint MovieFrameDelta = 0x245F40;
+    public const nint MovieFrameDelta = 0x245D90;
 
     /// <summary>AtelPopStackInteger(worker, stack).</summary>
-    public const nint AtelPopStackInteger = 0x46DE90;
+    public const nint AtelPopStackInteger = 0x46DF00;
 
     // --- ATEL worker move and rotation records ---
     //
@@ -283,7 +305,7 @@ public static class EngineAddresses
     ///     carries a stack cookie (a1 d8 13 c6 00 33 c5 89 45 fc), which the entry detour does not
     ///     disturb - the cookie is checked against the frame the original itself sets up.
     /// </summary>
-    public const nint AtelMoveRecordRead = 0x468930;
+    public const nint AtelMoveRecordRead = 0x468990;
 
     /// <summary>
     ///     Rotation record reader, void(worker, thread). Cdecl, two arguments, no stack cookie.
@@ -291,7 +313,7 @@ public static class EngineAddresses
     ///     takes, dereferenced as an int immediately (iVar6 = (int)param_2, then iVar6 + 0x48).
     ///     A binding built from the Ghidra signature marshals it through the floating point path.
     /// </summary>
-    public const nint AtelRotRecordRead = 0x4694B0;
+    public const nint AtelRotRecordRead = 0x469510;
 
     /// <summary>
     ///     Position integrator for ATEL workers that are not bound to a Ch character,
@@ -305,7 +327,7 @@ public static class EngineAddresses
     ///     against the corrected delta, so this is the only translation path the module does not
     ///     otherwise reach.
     /// </summary>
-    public const nint AtelWorkerIntegratePos = 0x462960;
+    public const nint AtelWorkerIntegratePos = 0x4629C0;
 
     /// <summary>
     ///     movie_have_camera. Cdecl, no arguments, a pure read: true only outside the Luca theatre
@@ -313,16 +335,16 @@ public static class EngineAddresses
     ///     tells the move reader's type 7 to advance by the FMV decoder's own frame delta rather
     ///     than by one, and the module evaluates it rather than inferring it from the delta.
     /// </summary>
-    public const nint MovieHaveCamera = 0x36F0D0;
+    public const nint MovieHaveCamera = 0x36EFC0;
 
     // Group A, the twelve per-call rate setters. Each writes a rate in radians per call, so each is
     // divided by the scale.
 
     /// <summary>ATEL setYawTurnStepAllLevels [006Dh] -> move+0x3c on all nine levels. Cdecl.</summary>
-    public const nint AtelSetYawTurnStepAllLevels = 0x46F150;
+    public const nint AtelSetYawTurnStepAllLevels = 0x46F1C0;
 
     /// <summary>ATEL setPitchTurnStepAllLevels [006Eh] -> move+0x40 on all nine levels. Cdecl.</summary>
-    public const nint AtelSetPitchTurnStepAllLevels = 0x46F100;
+    public const nint AtelSetPitchTurnStepAllLevels = 0x46F170;
 
     /// <summary>
     ///     ATEL setGravity [0094h] -> move+0x34, the per-call velocity increment, on the calling
@@ -338,44 +360,44 @@ public static class EngineAddresses
     ///     It is not the acceleration of a thrown blitzball. The blitzball script corpus starts only
     ///     move types 1 and 2, neither of which reads this field.
     /// </summary>
-    public const nint AtelSetMoveGravity = 0x46EFD0;
+    public const nint AtelSetMoveGravity = 0x46F040;
 
     /// <summary>
     ///     The <c>mov eax, 0xA</c> inside AtelInitBasicWork that feeds the only write of
     ///     worker+0xb16, move type 9's lead-in threshold in passes. Patched rather than hooked; see
-    ///     FpsUnlockModule.MoveLeadIn.cs.
+    ///     VrrModule.MoveLeadIn.cs.
     /// </summary>
-    public const nint AtelMoveLeadInLoad = 0x46CDE5;
+    public const nint AtelMoveLeadInLoad = 0x46CE55;
 
     /// <summary>ATEL setYawTurnStep [002Bh] -> move+0x3c on one level. Cdecl, three arguments.</summary>
-    public const nint AtelSetYawTurnStep = 0x4714C0;
+    public const nint AtelSetYawTurnStep = 0x471520;
 
     /// <summary>ATEL setPitchTurnStep [002Ch] -> move+0x40 on one level. Cdecl, three arguments.</summary>
-    public const nint AtelSetPitchTurnStep = 0x4714A0;
+    public const nint AtelSetPitchTurnStep = 0x471500;
 
     /// <summary>ATEL setAllRotationRate1 [006Fh] -> rot+0x10, the yaw rate, on all nine levels. Cdecl.</summary>
-    public const nint AtelSetYawRotRateAllLevels = 0x46F240;
+    public const nint AtelSetYawRotRateAllLevels = 0x46F2B0;
 
     /// <summary>ATEL [00E4h] -> rot+0x14, the alternate yaw rate flag 0x200 selects, on all nine levels. Cdecl.</summary>
-    public const nint AtelSetAltYawRotRateAllLevels = 0x46F290;
+    public const nint AtelSetAltYawRotRateAllLevels = 0x46F300;
 
     /// <summary>ATEL setAllRotationRate2 [0070h] -> rot+0x18, the pitch rate, on all nine levels. Cdecl.</summary>
-    public const nint AtelSetPitchRotRateAllLevels = 0x46F1F0;
+    public const nint AtelSetPitchRotRateAllLevels = 0x46F260;
 
     /// <summary>ATEL setAllRotationRate3 [0071h] -> rot+0x1c, the roll rate, on all nine levels. Cdecl.</summary>
-    public const nint AtelSetRollRotRateAllLevels = 0x46F1A0;
+    public const nint AtelSetRollRotRateAllLevels = 0x46F210;
 
     /// <summary>ATEL setRotationSpeed1 [002Eh] -> rot+0x10 on one level, 8,440 script sites. Cdecl, three arguments.</summary>
-    public const nint AtelSetYawRotRate = 0x471520;
+    public const nint AtelSetYawRotRate = 0x471580;
 
     /// <summary>ATEL [00E3h] -> rot+0x14 on one level. Cdecl, three arguments.</summary>
-    public const nint AtelSetAltYawRotRate = 0x471540;
+    public const nint AtelSetAltYawRotRate = 0x4715A0;
 
     /// <summary>ATEL setRotationSpeed2 [002Fh] -> rot+0x18 on one level, 9,451 script sites. Cdecl, three arguments.</summary>
-    public const nint AtelSetPitchRotRate = 0x471500;
+    public const nint AtelSetPitchRotRate = 0x471560;
 
     /// <summary>ATEL setRotationSpeed3 [0030h] -> rot+0x1c on one level. Cdecl, three arguments.</summary>
-    public const nint AtelSetRollRotRate = 0x4714E0;
+    public const nint AtelSetRollRotRate = 0x471540;
 
     // Group B, the four watchdog deadlines. Each is a frame count stored sixteen bits wide, so each
     // is multiplied by the scale and clamped to what a short can hold.
@@ -385,27 +407,27 @@ public static class EngineAddresses
     ///     of which pass 60. Cdecl; the argument arrives as a full dword (8b 4d 0c) and is stored
     ///     sixteen bits wide (66 89).
     /// </summary>
-    public const nint AtelSetTurnDeadlineAllLevels = 0x46F010;
+    public const nint AtelSetTurnDeadlineAllLevels = 0x46F080;
 
     /// <summary>ATEL [0072h] -> move+0x04 on one level, no script sites. Cdecl, three arguments.</summary>
-    public const nint AtelSetTurnDeadline = 0x4704C0;
+    public const nint AtelSetTurnDeadline = 0x470520;
 
     /// <summary>ATEL [0075h] -> rot+0x04 on all nine levels, no script sites. Cdecl.</summary>
-    public const nint AtelSetRotDeadlineAllLevels = 0x46F0B0;
+    public const nint AtelSetRotDeadlineAllLevels = 0x46F120;
 
     /// <summary>ATEL [0073h] -> rot+0x04 on one level, no script sites. Cdecl, three arguments.</summary>
-    public const nint AtelSetRotDeadline = 0x471110;
+    public const nint AtelSetRotDeadline = 0x471170;
 
     // --- Battle, menu, particles, FMV ---
 
     /// <summary>TOBtlCtrlLimitTimer. Divides by a fixed 30 or 25 depending on the mode.</summary>
-    public const nint TOBtlCtrlLimitTimer = 0x491A30;
+    public const nint TOBtlCtrlLimitTimer = 0x491AC0;
 
     /// <summary>rnd. Used by the limit timer to jitter its last displayed digit.</summary>
-    public const nint Rnd = 0x3989B0;
+    public const nint Rnd = 0x3989A0;
 
     /// <summary>pppFpStopStatus. Particle timing is self-driven, so particles are stopped rather than retimed.</summary>
-    public const nint PppFpStopStatus = 0x32A840;
+    public const nint PppFpStopStatus = 0x32A750;
 
     /// <summary>
     ///     _pppStartPart(manager, time_step, data, flags). Cdecl. Starts one particle manager and
@@ -413,27 +435,27 @@ public static class EngineAddresses
     ///     frame. It is the only place a manager's step is set, and it is where every source of a
     ///     step converges: the global ppv step, and the literal 0x1000 the magic path passes.
     /// </summary>
-    public const nint PppStartPart = 0x3124A0;
+    public const nint PppStartPart = 0x3123C0;
 
     /// <summary>
     ///     pppPartLoop. Runs every active manager and calls pppDataRcv at its end, which is where the
     ///     broadcast lives that writes the global step into every manager's +0x10.
     /// </summary>
-    public const nint PppPartLoop = 0x362330;
+    public const nint PppPartLoop = 0x362240;
 
     /// <summary>
     ///     _pppRunPart(manager, mode). Cdecl, returns a status. The single choke point of the
     ///     particle advance: pppPartLoop is only one of its eight callers, and the cutscene and
     ///     battle paths reach it without going through the loop at all.
     /// </summary>
-    public const nint PppRunPart = 0x312330;
+    public const nint PppRunPart = 0x312250;
 
     /// <summary>
     ///     _pppRunPartFp(manager, mode). Cdecl, returns a status. The field half of the particle
     ///     system, reached from pppFpLoop by way of yiCallFieldParticle. A cutscene's particles go
     ///     through this and never through _pppRunPart.
     /// </summary>
-    public const nint PppRunPartFp = 0x3123D0;
+    public const nint PppRunPartFp = 0x3122F0;
 
     /// <summary>
     ///     pppFpLoop. Void, no arguments, and it ends on a plain ret, so the caller cleans. The field
@@ -444,7 +466,7 @@ public static class EngineAddresses
     ///     with no time term: while the result is still zero or above the group is skipped entirely,
     ///     and at -1 every object is freed and the group is started again.
     /// </summary>
-    public const nint PppFpLoop = 0x329BA0;
+    public const nint PppFpLoop = 0x329AB0;
 
     /// <summary>
     ///     MsEffectProcess(mode). Cdecl, measured: every ret in the function is a plain c3.
@@ -465,13 +487,13 @@ public static class EngineAddresses
     ///     One pass per presented frame is therefore the normal case, and at 60 Hz that is twice the
     ///     rate the effects were authored for.
     /// </summary>
-    public const nint MsEffectProcess = 0x387EC0;
+    public const nint MsEffectProcess = 0x387E00;
 
     /// <summary>
     ///     _player_chrs, the base of the battle Chr array, which MsGetChrTop returns unchanged. Zero
     ///     outside battle, which is what makes the per-actor half of MsEffectProcess inert there.
     /// </summary>
-    public const nint PlayerChrs = 0xD334CC;
+    public const nint PlayerChrs = 0xD334D4;
 
     /// <summary>
     ///     The non-actor effect overlay's state byte, the global counterpart of Chr+0xdfb. Values 4
@@ -485,33 +507,33 @@ public static class EngineAddresses
     ///     Its counters are literal increments - a sprite step of +1 per call and a blink
     ///     countdown of rand() % 0x5a + 0x3c - so it carries nothing to scale.
     /// </summary>
-    public const nint ChrTexAnimAdvanceOld = 0x37FFD0;
+    public const nint ChrTexAnimAdvanceOld = 0x37FF00;
 
     /// <summary>
     ///     The eternal effect set's second entry point, efftOverTbl+0x10. Ghidra names the pair
     ///     op_effect_run_before and op_effect_run_after: both run FUN_0080cd60 over a different
     ///     object list, so neither is a draw and both decrement the per-channel wait bytes.
     /// </summary>
-    public const nint EternalEffectRunAfter = 0x400590;
+    public const nint EternalEffectRunAfter = 0x400670;
 
     /// <summary>
     ///     KeLnsShp_Update(work). The sprite frame clock of the lens and flare family: adds a fixed
     ///     0x200 to an accumulator per call and compares it against the current frame's duration.
     ///     Its four callers are the four Lns draw kernels, so it advances once per drawn frame.
     /// </summary>
-    public const nint KeLnsShpUpdate = 0x36ACF0;
+    public const nint KeLnsShpUpdate = 0x36ABE0;
 
     /// <summary>
     ///     Ch_SeqFrame(work). The motion sequence VM. Its wait opcode counts raw calls at
     ///     work+0x72a and nothing corrects it.
     /// </summary>
-    public const nint ChSeqFrame = 0x437840;
+    public const nint ChSeqFrame = 0x4377C0;
 
     /// <summary>
     ///     The motion cross-fade, FUN_00839630(work, hokan). Blends each channel by
     ///     (target - current) / hokan; the advance counts hokan down immediately afterwards.
     /// </summary>
-    public const nint ChMotionInterpolate = 0x439630;
+    public const nint ChMotionInterpolate = 0x4395B0;
 
     /// <summary>
     ///     The idle look-around, FUN_00834570(actor). Cdecl with one argument, measured: the body
@@ -523,7 +545,7 @@ public static class EngineAddresses
     ///     looks around at all. Everything the function advances is counted in calls, and no branch
     ///     in it reads sg_rate.
     /// </summary>
-    public const nint ChIdleSway = 0x434570;
+    public const nint ChIdleSway = 0x4344F0;
 
     /// <summary>
     ///     Ch_NeckCalc(actor), the head and neck tracking. Cdecl with one argument, measured: both
@@ -539,16 +561,16 @@ public static class EngineAddresses
     ///     0x418, the yaw blend on 0x41c, and the slerp fade on 0x4bc. The rates of the last two
     ///     are shared .rdata constants with dozens of other readers, so they are not patchable.
     /// </summary>
-    public const nint ChNeckCalc = 0x434950;
+    public const nint ChNeckCalc = 0x4348D0;
 
     /// <summary>
     ///     graphicTextureVideoUpdate. The texture video path, which is not the FMV path and is not
     ///     reached by the FMV frameskip.
     /// </summary>
-    public const nint GraphicTextureVideoUpdate = 0x244470;
+    public const nint GraphicTextureVideoUpdate = 0x2442C0;
 
     /// <summary>graphicDrawMainMenuWaterEffect. One scrolling image per frame.</summary>
-    public const nint GraphicDrawMainMenuWaterEffect = 0x23EAD0;
+    public const nint GraphicDrawMainMenuWaterEffect = 0x23E920;
 
     /// <summary>
     ///     graphicVideoUpdate. Stdcall, no arguments. The video update the FMV path runs per frame,
@@ -556,14 +578,14 @@ public static class EngineAddresses
     ///     29.97 source. Preferred over PhyFMVPlayerManager::UpdateTexture (0x2D77B0), which sits
     ///     deeper in the manager and cannot be skipped without leaving it mid-state.
     /// </summary>
-    public const nint GraphicVideoUpdate = 0x245FA0;
+    public const nint GraphicVideoUpdate = 0x245DF0;
 
     /// <summary>
     ///     sFMVPlayerManager, the PhyFMVPlayerManager singleton pointer. Byte 0x6D0 of the instance
     ///     is the playback flag graphicVideoUpdate tests before it does anything: while it is clear
     ///     the function returns immediately, so a call is not a video frame.
     /// </summary>
-    public const nint FmvPlayerManager = 0x8DED2C;
+    public const nint FmvPlayerManager = 0x8DED3C;
 
     /// <summary>
     ///     PhyFMVPlayerManager's playback entry, thiscall with one stack argument. It compares the
@@ -573,7 +595,7 @@ public static class EngineAddresses
     ///     than a literal - so it can be rewritten in place here, once per video, instead of
     ///     answering for every file the engine opens.
     /// </summary>
-    public const nint FmvPlayStart = 0x2D7560;
+    public const nint FmvPlayStart = 0x2D7430;
 
     /// <summary>
     ///     Offset of that path buffer inside the manager. The trace in the engine's own log is what
@@ -589,14 +611,14 @@ public static class EngineAddresses
     ///     keeps the pointer and dereferences it on every rendered frame, so writing it directly is
     ///     seen without going back through the setter.
     /// </summary>
-    public const nint CrossFadeSlot0Counter = 0xF006C4;
+    public const nint CrossFadeSlot0Counter = 0xF0070C;
 
     /// <summary>
     ///     short. Filter slot 0's current alpha, 0 to 0x80. On the HD build this is the motion blur
     ///     weight: the render pass divides it by 128 and hands it to MotionBlur::setMotionBlurWeight.
     ///     Restoring it after the engine has cleared it is what would leave a permanent trail.
     /// </summary>
-    public const nint CrossFadeSlot0Alpha = 0xF006C6;
+    public const nint CrossFadeSlot0Alpha = 0xF0070E;
 
     /// <summary>uint. Target framerate is 60 / this. The engine uses 1 in menus and 2 elsewhere.</summary>
     public const nint SFlipVSyncInterval = 0x830E88;
@@ -633,17 +655,17 @@ public static class EngineAddresses
     ///     gParticleDoNotRender and gFrameSkipDoNotRender set, so they simulate without drawing.
     ///     During a syncdata catch-up it is instead incremented once per recorded PS2 frame consumed.
     /// </summary>
-    public const nint ElapsedFrameCountFrameSkip = 0xEFB7C0;
+    public const nint ElapsedFrameCountFrameSkip = 0xEFB808;
 
     /// <summary>
     ///     uint. Vertical blank counter. Sg_MainCalcRate derives the animation rate from its delta:
     ///     sg_rate = (sg_vcount - previous) * 0x80, and sg_ratef = sg_rate / 256, so a delta of 2 is
     ///     the 1.0 that means "one full 30 Hz step".
     /// </summary>
-    public const nint SgVCount = 0xEFB7A8;
+    public const nint SgVCount = 0xEFB7F0;
 
     /// <summary>uint. Second vertical blank counter, advanced in lockstep with the first.</summary>
-    public const nint SgVCount2 = 0xEFB7AC;
+    public const nint SgVCount2 = 0xEFB7F4;
 
     /// <summary>int. Animation rate in 1/256 units; 0x100 is full speed.</summary>
     public const nint SgRate = 0x1FCBBEC;
@@ -664,13 +686,13 @@ public static class EngineAddresses
     ///     int. The global particle time step, in the same fixed-point units as each manager's
     ///     accumulator. Zero in the image and written at runtime; observed as 0x1000.
     /// </summary>
-    public const nint PpvPartTimeStep = 0x94B7DC;
+    public const nint PpvPartTimeStep = 0x94B7EC;
 
     /// <summary>int. Number of active particle managers.</summary>
-    public const nint PpvPartManagerCount = 0x94B4B8;
+    public const nint PpvPartManagerCount = 0x94B4C8;
 
     /// <summary>Particle manager array. Stride 0x80; the time step is at +0x10 of each entry.</summary>
-    public const nint PpvPartManagers = 0x94E380;
+    public const nint PpvPartManagers = 0x94E390;
 
     /// <summary>
     ///     int. Absolute pointer to the field particle group table, zero until field data is loaded.
@@ -681,14 +703,14 @@ public static class EngineAddresses
     ///     directly and relies on g_FpLoopFlag, which pppSetFpPdt sets in the same call that fills
     ///     this in. Its neighbours, which have no such outer gate, all test it.
     /// </summary>
-    public const nint PpvFpGroupTable = 0x92C248;
+    public const nint PpvFpGroupTable = 0x92C258;
 
     /// <summary>
     ///     Field particle manager array, one 0x80-byte entry per group in <see cref="PpvFpGroupTable"/>.
     ///     +0x00 is the restart countdown, 0xFFFFF000 while the group is dead; +0x10 the time step;
     ///     +0x1C and +0x1D the two flags _pppRunPartFp reads to decide how the group ends.
     /// </summary>
-    public const nint PpvFpManagers = 0x92C250;
+    public const nint PpvFpManagers = 0x92C260;
 
     /// <summary>
     ///     The <c>test byte ptr [sg_count], 1</c> in __TODrawWaitBtlWinPrepare (0x008A6810) that
@@ -697,7 +719,7 @@ public static class EngineAddresses
     ///     Patched, not hooked: the function also stamps the window's elapsed time and draws the
     ///     command window.
     /// </summary>
-    public const nint BattleCursorBlinkGate = 0x4A688B;
+    public const nint BattleCursorBlinkGate = 0x4A68EB;
 
     /// <summary>
     ///     The <c>cmp ax, 3</c> in graphicDrawDream (0x0063E120) that decides how often the overlay's
@@ -705,7 +727,9 @@ public static class EngineAddresses
     ///     Verified in the shipped image as 66 83 F8 03, preceded by the inc and the store of the
     ///     counter at 0x00CCB46C and followed by the branch that skips the reset.
     /// </summary>
-    public const nint DreamStarCounterCompare = 0x23E483;
+    public const nint DreamStarCounterCompare = 0x23E2D3;
+
+    public const nint DreamStarCounter = 0x8CB46C;
 
     /// <summary>uint. Non-zero while an FMV is playing.</summary>
     public const nint GMoviePlay = 0xD2A008;
@@ -714,22 +738,22 @@ public static class EngineAddresses
     public const nint MenuWaterFrame = 0x8CBA09;
 
     /// <summary>double in .rdata. Hardcoded 29.97 target framerate of the video update loop's time step.</summary>
-    public const nint TextureVideoTargetFramerate = 0x74A180;
+    public const nint TextureVideoTargetFramerate = 0x74A178;
 
     /// <summary>uint. Limit timer mode; the timer only runs when this equals 2.</summary>
-    public const nint LimitTimerMode = 0xF3F73C;
+    public const nint LimitTimerMode = 0xF3F77C;
 
     /// <summary>float. Accumulated limit timer frames.</summary>
-    public const nint LimitTimerFrames = 0xF3F748;
+    public const nint LimitTimerFrames = 0xF3F788;
 
     /// <summary>float. Limit timer base duration in seconds.</summary>
-    public const nint LimitTimerBase = 0xF3F74C;
+    public const nint LimitTimerBase = 0xF3F78C;
 
     /// <summary>float. Raw remaining limit time.</summary>
-    public const nint LimitTimerRaw = 0xF3F750;
+    public const nint LimitTimerRaw = 0xF3F790;
 
     /// <summary>float. Displayed limit time, deliberately jittered in its last digit.</summary>
-    public const nint LimitTimerRounded = 0xF3F754;
+    public const nint LimitTimerRounded = 0xF3F794;
 
     /// <summary>
     ///     uint. EnableGameTextureAnimation. The image ships it as 1; FUN_00836790 is the only
@@ -742,7 +766,7 @@ public static class EngineAddresses
     ///     uint. g_isNeedSync. While it is 1, Sg_MainCalcRate takes sg_rate from the syncdata table
     ///     instead of from the vertical blank delta, which discards this module's correction.
     /// </summary>
-    public const nint IsNeedSync = 0xEFB858;
+    public const nint IsNeedSync = 0xEFB8A0;
 
     /// <summary>
     ///     uint. force_wait_blur_frame_count. Set to 0x5a by the eternal effect VM's opcode 0x0c
@@ -755,21 +779,21 @@ public static class EngineAddresses
     ///     The eternal effect VM's transition blur, opcode 0x0c of the object opcode table. It is
     ///     what writes the 90-frame battle entry hold.
     /// </summary>
-    public const nint EternalBlurTransition = 0x3F91A0;
+    public const nint EternalBlurTransition = 0x3F9280;
 
     // --- Texture animation candidates, survey only ---
 
     /// <summary>chr_texanim_draw. Dispatches to the old or new per-character texture animation draw.</summary>
-    public const nint ChrTexAnimDraw = 0x37C920;
+    public const nint ChrTexAnimDraw = 0x37C830;
 
     /// <summary>screenTextureAnimationDraw.</summary>
     public const nint ScreenTextureAnimationDraw = 0x50BDB0;
 
     /// <summary>setMaterialUVScroll. Scrolling UVs rather than a frame sequence.</summary>
-    public const nint SetMaterialUVScroll = 0x2AC9C0;
+    public const nint SetMaterialUVScroll = 0x2AC870;
 
     /// <summary>Ch_TextureAnimSetEnable.</summary>
-    public const nint ChTextureAnimSetEnable = 0x430D90;
+    public const nint ChTextureAnimSetEnable = 0x430D10;
 
     /// <summary>
     ///     Ch_TextureSetAnimTimer(chr, timer). Cdecl, measured: the function ends in a plain c3 and
@@ -785,7 +809,7 @@ public static class EngineAddresses
     ///
     ///     The module hooks it as a pass-through, so the value reaches the engine unchanged. The hook
     ///     is kept because it is the only place the writes are visible; the correction the byte can
-    ///     express is the per-slot hold in <see cref="FpsUnlockConfig.TextureAnimationStep"/>.
+    ///     express is the per-slot hold in <see cref="VrrConfig.TextureAnimationStep"/>.
     /// </summary>
     public const nint ChTextureSetAnimTimer = 0x43D070;
 
@@ -812,11 +836,15 @@ public static class EngineAddresses
     ///     only two readers: the increment that feeds the call, and the compare against 0x130 that
     ///     sets IsEternalCalmOver to 2 once the card has been up for 304 frames.
     /// </summary>
-    public const nint EternalCalmCardFrames = 0xEFB780;
+    public const nint EternalCalmCardFrames = 0xEFB7C0;
 
     /// <summary>
     ///     int. The Eternal Calm card's alpha, 0 to 0x80. ToDrawEternalCalmCopyRight is the only
     ///     function that reads or writes it, and it is the only state the call leaves behind.
     /// </summary>
-    public const nint EternalCalmCardAlpha = 0x1471664;
+    public const nint EternalCalmCardAlpha = 0x14716A4;
+    /// <summary>Initializes per-level ATEL movement and rotation defaults.</summary>
+    public const nint AtelInitMotionRecords = 0x46D050;
+    public const nint FmvInitialize = 0x2D9C80;
+    public const nint FmvGetVideoName = 0x2D93E0;
 }

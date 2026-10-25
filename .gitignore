@@ -25,3 +25,5 @@ TestResults/
 # Video assets are never committed. They live on the NAS and are staged by
 # tools/stage-efl.ps1 into this tree only at packaging time.
 efl/
+
+/artifacts/

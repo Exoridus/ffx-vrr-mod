@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+    <PackageReference Include="NUnit" Version="4.3.2" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+  <!--
+    Not a ProjectReference to Fahrenheit.Mods.Vrr.csproj: that project targets win-x86 with unsafe
+    native-interop hook code (RuntimeIdentifier win-x86), which the test host cannot load. Compile
+    RenderInterpolator.cs directly instead - it is deliberately dependency-free plain C#, portable
+    to any CPU, exactly so it can be unit-tested in isolation from the engine-hook code.
+  -->
+  <ItemGroup>
+    <Compile Include="..\src\RenderInterpolator.cs" Link="RenderInterpolator.cs" />
+  </ItemGroup>
+
+</Project>
