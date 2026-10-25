@@ -5,7 +5,7 @@
         <Product>Variable Refresh Rate</Product>
         <Description>Experimental 60 Hz simulation and 60/120 FPS presentation for FFX. Native gameplay and VRR validation are pending.</Description>
         <Authors>Thomas</Authors>
-        <Version>0.0.2</Version>
+        <Version>0.1.0</Version>
         <RepositoryUrl>https://github.com/Exoridus/ffx-vrr-mod</RepositoryUrl>
         <FhManifestFlags>NONE</FhManifestFlags>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
