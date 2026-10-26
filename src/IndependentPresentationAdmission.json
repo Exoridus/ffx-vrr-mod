@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "22de58219ede66e54bbd1b3b6b8cae1bad27d5412e6d9202d9bac74c1b37a505",
+  "canonical_contract_snapshot_sha256": "42cb15f5f53019ac557d3e82c20838eca598a2d6b93de16f7a5546bdc211c870",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -65,6 +65,7 @@
     "open_issue:effects.held_walk_scope:complete_dynamic_producer_generation_and_admission_proof",
     "open_issue:effects.held_walk_scope:downstream_rng_and_resource_lifecycle",
     "open_issue:effects.held_walk_scope:overlay_refusal_before_mutation",
+    "open_issue:effects.held_walk_scope:positive_opcode_gate_does_not_prove_resolved_handler_identity",
     "open_issue:effects.held_walk_scope:same_address_same_pc_reuse_without_native_unit_generation",
     "open_issue:graphics.lifecycle_epoch:foreign_uncovered_lifecycle_and_resource_destruction_exclusion",
     "open_issue:graphics.lifecycle_epoch:native_device_loss_resize_shutdown_acceptance",
@@ -123,8 +124,8 @@
     },
     {
       "path": "src/BattleEffectPauseCode.cs",
-      "sha256": "5991a3c24d2d123276df4a56795d177742dd5cf8911c8ef3357e9cbd01abb6d3",
-      "lf_sha256": "5991a3c24d2d123276df4a56795d177742dd5cf8911c8ef3357e9cbd01abb6d3"
+      "sha256": "1703396944bf5edfdf34a9eee03f4d306ebdd88eb547c372d045907e41423285",
+      "lf_sha256": "1703396944bf5edfdf34a9eee03f4d306ebdd88eb547c372d045907e41423285"
     },
     {
       "path": "src/BattleEffectState.cs",
@@ -725,6 +726,11 @@
       "path": "tests/ParticlePresentation.Tests/LateProducerAdmissionTests.cs",
       "sha256": "bddb4f5b76bdf1e5c206f3ca74052e5624dfcf436c6536aa31363e3efd96c2d5",
       "lf_sha256": "bddb4f5b76bdf1e5c206f3ca74052e5624dfcf436c6536aa31363e3efd96c2d5"
+    },
+    {
+      "path": "tests/ParticlePresentation.Tests/OpuHandlerPolicyTests.cs",
+      "sha256": "c4e3d5f1e517ec1d7775100e91f173807b4896da24980de21834fef0583ce014",
+      "lf_sha256": "c4e3d5f1e517ec1d7775100e91f173807b4896da24980de21834fef0583ce014"
     },
     {
       "path": "tests/ParticlePresentation.Tests/ParticlePresentation.Tests.csproj",

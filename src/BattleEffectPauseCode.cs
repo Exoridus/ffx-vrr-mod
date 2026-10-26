@@ -90,9 +90,10 @@ internal static class BattleEffectPauseCode
     /// <summary>
     ///     The six walker stubs (upstream MAG-025 mode 3 plus FOLLOWGUARD). The hold byte is 0 on every
     ///     walk that may step, 3 on a held presentation walk: WAIT countdowns keep their count, the
-    ///     integration gate reads "paused", denied opcodes yield at their PC with WAIT 0, and a WAIT-0
+    ///     integration gate reads "paused", rejected opcodes yield at their PC with WAIT 0, and a WAIT-0
     ///     stream runs only when the entry callback allows it. Entry and next callbacks run on every
     ///     walk; they are cdecl (scratch, record) and the entry one returns non-zero to skip the stream.
+    ///     Held mode 3 admits only masked opcodes 0x002, 0x009, 0x053 and 0x061 after existing denies.
     /// </summary>
     internal static byte[] OpuStubs(uint origin, OpuSites s, OpuData d, IReadOnlyList<ushort> denied, out OpuOffsets offsets)
     {
@@ -109,6 +110,12 @@ internal static class BattleEffectPauseCode
         e.Raw(0x51, 0x0f, 0xb7, 0x8e, 0x1a, 0x02, 0x00, 0x00, 0x81, 0xe1, 0xff, 0x01, 0x00, 0x00);
         var toDeny = new List<int>();
         foreach (ushort op in denied) { e.Raw(0x81, 0xf9).U32(op); toDeny.Add(e.Forward(Je)); }
+        e.CmpByte(d.Hold, 3);
+        var toAdmit = new List<int> { e.Forward(Jne) };
+        ReadOnlySpan<ushort> candidates = [0x002, 0x009, 0x053, 0x061];
+        foreach (ushort op in candidates) { e.Raw(0x81, 0xf9).U32(op); toAdmit.Add(e.Forward(Je)); }
+        toDeny.Add(e.Forward(Jmp));
+        foreach (int at in toAdmit) e.Bind(at);
         e.Raw(0x59);
         e.Bind(toPass);
         e.Raw(0x57, 0x56, 0xff, 0xd0, 0x83, 0xc4, 0x08).Jump(Jmp, s.HandlerReturn);
