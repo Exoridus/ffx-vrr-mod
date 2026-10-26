@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "9ccce5dc96e57d815afc110e953e57b84d0916f6052c0d0dccf2b80283d0922a",
+  "canonical_contract_snapshot_sha256": "162246238e76d5b1f8b5e3d0b7519ba62403e3a822cf265b86fc8d30708e67f2",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -56,7 +56,6 @@
     "open_issue:clock.pass_scope:native_acceptance_of_admission_to_present_identity",
     "open_issue:clock.pass_scope:native_worker_phase_join_acceptance",
     "open_issue:clock.simulation_step:catch_up_input_tick_assignment",
-    "open_issue:clock.simulation_step:discarded_time_units_with_speed_modifier",
     "open_issue:clock.simulation_step:measured_catch_up_work_budget",
     "open_issue:effects.dispatch_advance:replace_legacy_half_rate_vm_holds_with_full_rate_contracts",
     "open_issue:effects.dispatch_draw:fresh_geometry_and_packet_lifetime_for_each_visible_image",
@@ -123,8 +122,8 @@
     },
     {
       "path": "src/BattleEffectPauseCode.cs",
-      "sha256": "ed252dba85d0a06d10e3dd8a66cb9e3ada34edb31cfec20e098d4830d7f06a10",
-      "lf_sha256": "ed252dba85d0a06d10e3dd8a66cb9e3ada34edb31cfec20e098d4830d7f06a10"
+      "sha256": "97dd82d197be8a0aafa8b2e1fdf3860b2465b03cbb2cbb26b84e4db58d16df9c",
+      "lf_sha256": "97dd82d197be8a0aafa8b2e1fdf3860b2465b03cbb2cbb26b84e4db58d16df9c"
     },
     {
       "path": "src/BattleEffectState.cs",
@@ -173,8 +172,8 @@
     },
     {
       "path": "src/FixedSimulationClock.cs",
-      "sha256": "3e71994b423060960586dc8c225389800f3fee765c69673b978e88b25eae4c3e",
-      "lf_sha256": "3e71994b423060960586dc8c225389800f3fee765c69673b978e88b25eae4c3e"
+      "sha256": "2d9e5a8ea939bafe284c7760f3f8d566019bb081bae61f39cf071776a3404efe",
+      "lf_sha256": "2d9e5a8ea939bafe284c7760f3f8d566019bb081bae61f39cf071776a3404efe"
     },
     {
       "path": "src/FmvPlaybackLab.cs",
@@ -358,8 +357,8 @@
     },
     {
       "path": "src/VrrModule.BattleEffectPause.cs",
-      "sha256": "d5d826e12a4e95135ca74f1de2c753d1c7b6ca0e79024d619a2d45f6478b87ac",
-      "lf_sha256": "a0ed16416de75ddc21422cb758fa683401c648b770f044551328f227edde7f2f"
+      "sha256": "2b1d5f49f4e4b66e24a30f16a86c2814bbc1819fb4e29fcd8e688f8587b291f9",
+      "lf_sha256": "18d09e2eff610f346d0128a628c3f3b54faf723905a213552ca27cce9b494b9d"
     },
     {
       "path": "src/VrrModule.BattlePresentation.cs",
@@ -727,9 +726,14 @@
       "lf_sha256": "bddb4f5b76bdf1e5c206f3ca74052e5624dfcf436c6536aa31363e3efd96c2d5"
     },
     {
+      "path": "tests/ParticlePresentation.Tests/OpuControlCommitTests.cs",
+      "sha256": "3494db5c5c9752eff0d97e7de92c72599c09f8f494e2d6ff56db9c4ddb4bfccb",
+      "lf_sha256": "3494db5c5c9752eff0d97e7de92c72599c09f8f494e2d6ff56db9c4ddb4bfccb"
+    },
+    {
       "path": "tests/ParticlePresentation.Tests/OpuHandlerPolicyTests.cs",
-      "sha256": "3b81f829739f2be654cafb5a6fd761324800f7e1ef25bf4ec25047b6d3a01752",
-      "lf_sha256": "3b81f829739f2be654cafb5a6fd761324800f7e1ef25bf4ec25047b6d3a01752"
+      "sha256": "2a83f1f2a9847f0e6b44a2c9c00f4af736ea8291a761c15a7af103ae9dbf42a2",
+      "lf_sha256": "2a83f1f2a9847f0e6b44a2c9c00f4af736ea8291a761c15a7af103ae9dbf42a2"
     },
     {
       "path": "tests/ParticlePresentation.Tests/ParticlePresentation.Tests.csproj",
@@ -775,6 +779,11 @@
       "path": "tests/RenderTiming.Tests/BattlePresentationTests.cs",
       "sha256": "76323ddf76a1f4512f46641c9fb688cb4739faab05c9a52ce950f3c669ade42c",
       "lf_sha256": "76323ddf76a1f4512f46641c9fb688cb4739faab05c9a52ce950f3c669ade42c"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/FixedSimulationClockTests.cs",
+      "sha256": "8435df34a43f98563b0022f4fec0b5e7f2702a1c55d7281b3bb5c36ad2aa5c70",
+      "lf_sha256": "8435df34a43f98563b0022f4fec0b5e7f2702a1c55d7281b3bb5c36ad2aa5c70"
     },
     {
       "path": "tests/RenderTiming.Tests/IndependentStartupTests.cs",

@@ -32,11 +32,13 @@ public sealed class FixedSimulationClock(int frequency = 60)
 
         // A gap beyond the engine's clamp still covers the clamped time; only the history is invalid.
         bool reset = elapsed > MaximumGapSeconds;
-        int lost = reset ? (int)Math.Floor((elapsed - MaximumGapSeconds) / _stepSeconds) : 0;
-        _accumulator += Math.Min(elapsed, MaximumGapSeconds) * (double.IsFinite(speed) ? Math.Clamp(speed, 0, 8) : 1);
+        speed = double.IsFinite(speed) ? Math.Clamp(speed, 0, 8) : 1;
+        int lost = reset ? (int)Math.Floor((elapsed - MaximumGapSeconds) * speed / _stepSeconds) : 0;
+        _accumulator += Math.Min(elapsed, MaximumGapSeconds) * speed;
         // Floating-point timestamp subtraction must not postpone an exact tick boundary.
-        int due = (int)Math.Floor((_accumulator + 1e-9) / _stepSeconds);
-        _accumulator = Math.Max(0, _accumulator - due * _stepSeconds);
+        int due = Math.Max(0, (int)Math.Floor((_accumulator + 1e-9) / _stepSeconds));
+        // Retain any epsilon-borrowed time so image partitions cannot manufacture ticks.
+        _accumulator -= due * _stepSeconds;
         return new(due, (float)Math.Clamp(_accumulator / _stepSeconds, 0, 1), reset, lost);
     }
 }

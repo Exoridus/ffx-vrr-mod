@@ -14,7 +14,8 @@ public sealed class OpuHandlerPolicyTests
             fixture.Check(3, (ushort)(opcode | operandBits), opcode switch
             {
                 0x053 => Outcome.AdvanceWithoutCall,
-                0x002 or 0x061 => Outcome.Call,
+                0x002 => Outcome.Call,
+                0x061 => Outcome.AdvanceCopyWithoutCall,
                 0x009 when operandBits < 0x0400 => Outcome.Call,
                 _ => Outcome.Yield,
             });
@@ -36,7 +37,7 @@ public sealed class OpuHandlerPolicyTests
         {
             fixture.Check(3, (ushort)(0x053 | operandBits), Outcome.AdvanceWithoutCall);
             fixture.Check(3, 0x009, Outcome.Call);
-            fixture.Check(3, 0x061, Outcome.Call);
+            fixture.Check(3, 0x061, Outcome.AdvanceCopyWithoutCall);
         }
         fixture.Check(3, 0x153, Outcome.Yield, fixture.Target(0x053));
     }
@@ -100,7 +101,7 @@ public sealed class OpuHandlerPolicyTests
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
         fixture.Check(3, 0x002, Outcome.Call);
         fixture.Check(3, 0x003, Outcome.Yield);
-        fixture.Check(3, 0x061, Outcome.Call);
+        fixture.Check(3, 0x061, Outcome.AdvanceCopyWithoutCall);
         fixture.Check(3, 0x161, Outcome.Yield);
     }
 
@@ -142,8 +143,8 @@ public sealed class OpuHandlerPolicyTests
         foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
         {
             Assert.NotEqual(first.Target(opcode), second.Target(opcode));
-            first.Check(3, opcode, opcode == 0x053 ? Outcome.AdvanceWithoutCall : Outcome.Call);
-            second.Check(3, opcode, opcode == 0x053 ? Outcome.AdvanceWithoutCall : Outcome.Call);
+            first.Check(3, opcode, opcode == 0x053 ? Outcome.AdvanceWithoutCall : opcode == 0x061 ? Outcome.AdvanceCopyWithoutCall : Outcome.Call);
+            second.Check(3, opcode, opcode == 0x053 ? Outcome.AdvanceWithoutCall : opcode == 0x061 ? Outcome.AdvanceCopyWithoutCall : Outcome.Call);
             first.Check(3, opcode, Outcome.Yield, second.Target(opcode));
             second.Check(3, opcode, Outcome.Yield, first.Target(opcode));
         }
@@ -176,11 +177,48 @@ public sealed class OpuHandlerPolicyTests
         Assert.False(OpuHandlerTableMatches(table, [(0x002, imageBase + 0x40c500)]));
     }
 
-    private enum Outcome { Call, Yield, AdvanceWithoutCall }
+    [Fact]
+    public void HeldMode3CopyVectorSkipsOnlyNoLanesAndSelfIntegerCopies()
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        foreach (ushort source in new ushort[] { 0, 1, 0x100, 0xff00, 0xffff })
+        foreach (ushort mask in new ushort[] { 0, 0x0010, 0x0fff })
+            fixture.Check(3, 0x061, Outcome.AdvanceCopyWithoutCall, mask: mask, source: source);
+        for (int selector = 0; selector < 8; selector++)
+        for (int laneBits = 1; laneBits < 16; laneBits++)
+        {
+            ushort lanes = (ushort)(laneBits << 12);
+            ushort mask = (ushort)(lanes | selector);
+            fixture.Check(3, 0x061, Outcome.AdvanceCopyWithoutCall, mask: mask, source: 0xff00);
+            fixture.Check(3, 0x061, Outcome.Yield, mask: mask, source: (ushort)(0x100 | selector));
+            fixture.Check(3, 0x061, (lanes & 0x7000) == 0 ? Outcome.AdvanceCopyWithoutCall : Outcome.Yield,
+                mask: (ushort)(mask | 0x10), source: 0xff00);
+        }
+        fixture.Check(3, 0x161, Outcome.Yield, fixture.Target(0x061), mask: 0, source: 0xff00);
+        fixture.Check(3, 0x061, Outcome.Yield, fixture.Target(0x002), mask: 0, source: 0xff00);
+        fixture.Check(3, 0x003, Outcome.Yield);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(255)]
+    public void OtherModesKeepNativeCopyVector(byte hold)
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        foreach (ushort mask in new ushort[] { 0, 0x7010, 0x8010, 0xf000 })
+        foreach (ushort source in new ushort[] { 0xff00, 0x100 })
+            fixture.Check(hold, 0x061, Outcome.Call, mask: mask, source: source);
+    }
+
+    private enum Outcome { Call, Yield, AdvanceWithoutCall, AdvanceCopyWithoutCall }
 
     private unsafe sealed class HandlerFixture : IDisposable
     {
-        private const uint Pc = 0x13572468, NativeResult = 0x24681357;
+        private const uint NativeResult = 0x24681357;
+        private uint Pc => (uint)_data + 0x800;
         private const uint Carrier = 0x12345678, ReturnedCarrier = 0x76543210;
         private const uint Bx = 0x11223344, Bp = 0x55667788;
         private readonly nint _data, _code;
@@ -205,7 +243,7 @@ public sealed class OpuHandlerPolicyTests
                     .Raw(0xb9).U32(Carrier).Raw(0xa1).U32(data + 52)
                     .Raw(0x89, 0x25).U32(data + 24);
                 byte[] generated = OpuStubs(stubs,
-                    new(continuation, continuation, continuation, continuation, continuation, continuation, 0, 0),
+                    new(continuation, continuation, continuation, continuation, continuation, continuation, 0, 0, continuation),
                     new(data, data + 64, data + 65, data + 68, data + 72, data + 76), denied,
                     [(0x002, Target(0x002)), (0x009, Target(0x009)), (0x053, Target(0x053)), (0x061, Target(0x061))], out var offsets);
                 wrapper.Jump(Jmp, stubs + (uint)offsets.Handler);
@@ -251,19 +289,21 @@ public sealed class OpuHandlerPolicyTests
             _ => 256u,
         });
 
-        internal void Check(byte hold, ushort instruction, Outcome outcome, uint? target = null)
+        internal void Check(byte hold, ushort instruction, Outcome outcome, uint? target = null, ushort mask = 0, ushort source = 0)
         {
             new Span<byte>((void*)_data, 0x1000).Clear();
             State[13] = target ?? Target((ushort)(instruction & 0x1ff));
             *(byte*)_data = hold;
             *(ushort*)(Scratch + 0x21a) = instruction;
+            *(ushort*)(Pc + 2) = mask;
+            *(ushort*)(Pc + 4) = source;
             byte[] expectedScratch = new ReadOnlySpan<byte>(Scratch, 0xc00).ToArray();
             if (outcome == Outcome.Yield) expectedScratch[0x210] = 1;
             _run();
             bool accepted = outcome == Outcome.Call;
             string context = $"hold={hold}, instruction=0x{instruction:x4}";
             Assert.True(State[1] == (accepted ? 1u : 0u), context);
-            Assert.Equal(outcome switch { Outcome.Call => NativeResult, Outcome.AdvanceWithoutCall => Pc + 4, _ => Pc }, State[2]);
+            Assert.Equal(outcome switch { Outcome.Call => NativeResult, Outcome.AdvanceWithoutCall => Pc + 4, Outcome.AdvanceCopyWithoutCall => Pc + 6, _ => Pc }, State[2]);
             Assert.Equal(accepted ? ReturnedCarrier : Carrier, State[3]);
             Assert.Equal((uint)Scratch, State[4]);
             Assert.Equal(Pc, State[5]);

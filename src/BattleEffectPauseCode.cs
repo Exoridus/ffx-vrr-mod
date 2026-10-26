@@ -83,9 +83,9 @@ internal static class BattleEffectPauseCode
     // ---- MAG-025: OPU unit bytecode walker (OpuMain_UnitBytecodeWalk) mid-function stubs ----
 
     internal readonly record struct OpuSites(uint Next, uint SentryReturn, uint HandlerReturn, uint NextReturn,
-        uint GateReturn, uint FollowReturn, uint FollowTable, uint FollowAttach);
+        uint GateReturn, uint FollowReturn, uint FollowTable, uint FollowAttach, uint FreshWaitReturn);
     internal readonly record struct OpuData(uint Hold, uint Skip, uint FollowSkip, uint EntryCell, uint NextCell, uint FollowCell);
-    internal readonly record struct OpuOffsets(int Sentry, int Handler, int Dec, int Next, int Gate, int Follow);
+    internal readonly record struct OpuOffsets(int Sentry, int Handler, int Dec, int Next, int Gate, int Follow, int PcCommit, int FreshWait);
 
     internal static bool OpuHandlerTableMatches(ReadOnlySpan<byte> table, IReadOnlyList<(ushort Opcode, uint Target)> admitted)
     {
@@ -98,13 +98,15 @@ internal static class BattleEffectPauseCode
     }
 
     /// <summary>
-    ///     The six walker stubs (upstream MAG-025 mode 3 plus FOLLOWGUARD). The hold byte is 0 on every
+    ///     The walker stubs (upstream MAG-025 mode 3 plus FOLLOWGUARD). The hold byte is 0 on every
     ///     walk that may step, 3 on a held presentation walk: WAIT countdowns keep their count, the
     ///     integration gate reads "paused", rejected opcodes yield at their PC with WAIT 0, and a WAIT-0
     ///     stream runs only when the entry callback allows it. Entry and next callbacks run on every
     ///     walk; they are cdecl (scratch, record) and the entry one returns non-zero to skip the stream.
     ///     Held mode 3 admits only supplied masked opcode and expected handler-entry pairs after existing denies.
-    ///     WAIT operands above one yield; history append advances four bytes without calling its handler.
+    ///     WAIT operands above one yield; history append advances four bytes without its handler.
+    ///     Vector copy advances six bytes only for no lanes or self copies without world XYZ.
+    ///     Held mode 3 suppresses the shared PC and fresh WAIT commits before native continuations.
     /// </summary>
     internal static byte[] OpuStubs(uint origin, OpuSites s, OpuData d, IReadOnlyList<ushort> denied, IReadOnlyList<(ushort Opcode, uint Target)> admitted, out OpuOffsets offsets)
     {
@@ -135,7 +137,22 @@ internal static class BattleEffectPauseCode
                 e.Raw(0x66, 0x81, 0xbe, 0x1a, 0x02, 0x00, 0x00, 0x00, 0x04);
                 toDeny.Add(e.Forward(Jae));
             }
-            if (op == 0x053)
+            if (op == 0x061)
+            {
+                // World XYZ self-copies use x87 and can change NaN payloads and FP status.
+                e.Raw(0x66, 0xf7, 0x47, 0x02, 0x00, 0xf0);
+                int noLanes = e.Forward(Je);
+                e.Raw(0x66, 0x81, 0x7f, 0x04, 0x00, 0xff);
+                toDeny.Add(e.Forward(Jne));
+                e.Raw(0xf6, 0x47, 0x02, 0x10);
+                int integerCopy = e.Forward(Je);
+                e.Raw(0x66, 0xf7, 0x47, 0x02, 0x00, 0x70);
+                toDeny.Add(e.Forward(Jne));
+                e.Bind(noLanes);
+                e.Bind(integerCopy);
+                e.Raw(0x59, 0x8d, 0x47, 0x06).Jump(Jmp, s.HandlerReturn);
+            }
+            else if (op == 0x053)
             {
                 // This handler only appends history; its other paths also continue at PC + 4.
                 e.Raw(0x59, 0x8d, 0x47, 0x04).Jump(Jmp, s.HandlerReturn);
@@ -154,6 +171,14 @@ internal static class BattleEffectPauseCode
         int dec = e.Count;                                       // replaces dec al; mov [ecx+ebx+0x10], al
         e.CmpByte(d.Hold, 2).Jump(Jae, s.Next)
             .Raw(0xfe, 0xc8, 0x88, 0x44, 0x19, 0x10).Jump(Jmp, s.Next);
+
+        int pcCommit = e.Count;
+        e.CmpByte(d.Hold, 3).Jump(Je, s.Next)
+            .Raw(0x89, 0x04, 0x8b).Jump(Jmp, s.Next);
+
+        int freshWait = e.Count;
+        e.CmpByte(d.Hold, 3).Jump(Je, s.FreshWaitReturn)
+            .Raw(0xfe, 0xc8, 0x00, 0x44, 0x19, 0x10).Jump(Jmp, s.FreshWaitReturn);
 
         int next = e.Count;                                      // replaces inc word [esi+0x216]
         e.Raw(0x60, 0x53, 0x56).CallCell(d.NextCell).Raw(0x83, 0xc4, 0x08, 0x61)
@@ -175,7 +200,7 @@ internal static class BattleEffectPauseCode
         e.Raw(0x0f, 0xb6, 0xc0, 0x57, 0x8b, 0x04, 0x85).U32(s.FollowTable).Raw(0x56, 0xff, 0xd0, 0x83, 0xc4, 0x08)
             .Jump(Jmp, s.FollowReturn);
 
-        offsets = new(sentry, handler, dec, next, gate, follow);
+        offsets = new(sentry, handler, dec, next, gate, follow, pcCommit, freshWait);
         return e.ToArray();
     }
 

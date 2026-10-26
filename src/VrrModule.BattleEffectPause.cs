@@ -16,7 +16,8 @@ public unsafe sealed partial class VrrModule
     private const nint BxMagicFunctions = 0x864ce8, BxPppPauseCompare = 0x31228a, BxPppSpawnCall = 0x31226d;
     private const nint BxUnitProgramSite = 0x4008fe, BxPauseSetter = 0x32a750;
     private const nint BxStreamHead = 0x40d4b0, BxSentry = 0x40d528, BxHandler = 0x40d586, BxDec = 0x40d5f4,
-        BxNext = 0x40d5fa, BxGate = 0x40d69e, BxFollowSite = 0x40d986, BxFollowCall = 0x40d994, BxFollowReturn = 0x40d9a5;
+        BxPcCommit = 0x40d5ef, BxFreshWait = 0x40d5b8, BxNext = 0x40d5fa,
+        BxGate = 0x40d69e, BxFollowSite = 0x40d986, BxFollowCall = 0x40d994, BxFollowReturn = 0x40d9a5;
     private const nint BxFollowAttach = 0x415670, BxFindUnit = 0x401060, BxFollowTable = 0x8492c8;
     private const nint BxRunAfterWalk = 0x4006b1, BxRunBeforeWalk = 0x400644, BxPassTwoWalk = 0x400a54;
     private const nint BxOppDispatch = 0x40c3c5, BxOppTable = 0x848e78;
@@ -36,6 +37,8 @@ public unsafe sealed partial class VrrModule
     private const string BxHeadPattern = "80 BE 1F 02 00 00 00 74 0D 80 BE 1D 02 00 00 00 0F 84 56 01 00 00 0F BF";
     private const string BxSentryPattern = "0F BF 8E 16 02 00 00 8A 44 19 10";
     private const string BxHandlerPattern = "57 56 FF D0 83 C4 08 80 BE 10 02 00 00 00 8B F8";
+    private const string BxPcCommitPattern = "89 04 8B EB 06";
+    private const string BxFreshWaitPattern = "FE C8 00 44 19 10";
     private const string BxDecPattern = "FE C8 88 44 19 10";
     private const string BxNextPattern = "66 FF 86 16 02 00 00 66 83 BE 16 02 00 00 04 0F 8C A1 FE FF FF 80 BE 1D 02 00 00 00 0F 85";
     private const string BxGatePattern = "0F BF 8E 12 02 00 00 89 0D";
@@ -98,6 +101,7 @@ public unsafe sealed partial class VrrModule
             return "MAG-028 particle pause setter changed";
         if (!fx_code_matches(BxStreamHead, BxHeadPattern) || !fx_code_matches(BxSentry, BxSentryPattern)
             || !fx_code_matches(BxHandler, BxHandlerPattern) || !fx_code_matches(BxDec, BxDecPattern)
+            || !fx_code_matches(BxPcCommit, BxPcCommitPattern) || !fx_code_matches(BxFreshWait, BxFreshWaitPattern)
             || !fx_code_matches(BxNext, BxNextPattern) || !fx_code_matches(BxGate, BxGatePattern))
             return "MAG-025 walker stream loop changed";
         Span<byte> opuTable = stackalloc byte[(0x061 + 1) * 4];
@@ -169,7 +173,7 @@ public unsafe sealed partial class VrrModule
         uint Va(nint rva) => (uint)bx_va(rva);
         uint d = (uint)(nint)data;
         var sites = new OpuSites(Va(BxNext), Va(BxSentry + 7), Va(BxHandler + 7), Va(BxNext + 7), Va(BxGate + 7),
-            Va(BxFollowReturn), *(uint*)FhUtil.ptr_at<byte>(BxFollowSite + 0x15), Va(BxFollowAttach));
+            Va(BxFollowReturn), *(uint*)FhUtil.ptr_at<byte>(BxFollowSite + 0x15), Va(BxFollowAttach), Va(BxFreshWait + 6));
         byte[] opu = OpuStubs((uint)code, sites, new OpuData(d + 1, d + 2, d + 3, d + 4, d + 8, d + 0xc), BxDeniedOpcodes, bx_opu_handlers(), out var at);
         int shader = (opu.Length + 15) & ~15;
         byte[] guard = ShaderSetupStub((uint)code + (uint)shader, Va(BxShaderSetup),
@@ -199,6 +203,8 @@ public unsafe sealed partial class VrrModule
             Jump(BxSentry, at.Sentry, 7);
             Jump(BxHandler, at.Handler, 7);
             Jump(BxDec, at.Dec, 6);
+            Jump(BxPcCommit, at.PcCommit, 5);
+            Jump(BxFreshWait, at.FreshWait, 6);
             Jump(BxNext, at.Next, 7);
             Jump(BxGate, at.Gate, 7);
             Jump(BxFollowCall, at.Follow, (int)(BxFollowReturn - BxFollowCall));
