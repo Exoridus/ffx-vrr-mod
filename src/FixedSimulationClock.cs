@@ -14,7 +14,10 @@ public sealed class FixedSimulationClock(int frequency = 60)
     private double _previous = double.NaN;
     private double _accumulator;
     private double _previousSpeed = double.NaN;
-    private double _deadlineFirst, _deadlineSpacing;
+    private const long MaximumExactSteps = 1L << 53;
+    private double _mappingOrigin = double.NaN;
+    private long _mappingSteps, _deadlineFirstStep;
+    private double _deadlineSpacing;
     private int _deadlineCount;
     /// <summary>Whether the latest interval has a stable model time mapping, including zero-step images.</summary>
     public bool HasMappedInterval { get; private set; }
@@ -24,6 +27,7 @@ public sealed class FixedSimulationClock(int frequency = 60)
         _previous = double.NaN;
         _accumulator = 0;
         _previousSpeed = double.NaN;
+        _mappingOrigin = double.NaN;
         _deadlineCount = 0;
         HasMappedInterval = false;
     }
@@ -37,9 +41,12 @@ public sealed class FixedSimulationClock(int frequency = 60)
     {
         deadline = double.NaN;
         if (stepIndex < 0 || stepIndex >= _deadlineCount) return false;
-        deadline = _deadlineFirst + stepIndex * _deadlineSpacing;
+        deadline = StepDeadline(stepIndex);
         return true;
     }
+
+    private double StepDeadline(int stepIndex)
+        => _mappingOrigin + (_deadlineFirstStep + stepIndex) * _deadlineSpacing;
 
     public SimulationFramePlan Plan(double now, double speed = 1)
     {
@@ -55,6 +62,7 @@ public sealed class FixedSimulationClock(int frequency = 60)
         if (!double.IsFinite(elapsed) || elapsed < 0)
         {
             _accumulator = 0;
+            _mappingOrigin = double.NaN;
             return new(1, 0, true, 0);
         }
 
@@ -68,18 +76,27 @@ public sealed class FixedSimulationClock(int frequency = 60)
         _accumulator -= due * _stepSeconds;
         if (!reset && stableSpeed && speed > 0 && previous >= 0 && now >= 0)
         {
-            _deadlineFirst = previous + (_stepSeconds - accumulatorBefore) / speed;
-            _deadlineSpacing = _stepSeconds / speed;
-            double last = previous;
-            for (int i = 0; i < due; i++)
+            if (double.IsNaN(_mappingOrigin))
             {
-                double deadline = _deadlineFirst + i * _deadlineSpacing;
+                _mappingOrigin = previous - accumulatorBefore / speed;
+                _mappingSteps = 0;
+            }
+            _deadlineSpacing = _stepSeconds / speed;
+            _deadlineFirstStep = _mappingSteps + 1;
+            double last = previous;
+            // Keep one expression and ordinal across images so rounding cannot move observations between ticks.
+            for (int i = 0; i < due && _mappingSteps <= MaximumExactSteps - due; i++)
+            {
+                double deadline = StepDeadline(i);
                 if (!double.IsFinite(deadline) || deadline <= last) break;
                 last = deadline;
                 if (i == due - 1) _deadlineCount = due;
             }
             HasMappedInterval = due == 0 || _deadlineCount == due;
+            if (HasMappedInterval) _mappingSteps += due;
+            else _mappingOrigin = double.NaN;
         }
+        else _mappingOrigin = double.NaN;
         return new(due, (float)Math.Clamp(_accumulator / _stepSeconds, 0, 1), reset, lost);
     }
 }

@@ -169,6 +169,53 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
         }
         finally { NativeClock.LoopAction = null; }
     }
+    [Fact]
+    public void Linked_scheduler_preserves_exact_candidates_and_deadlines_across_image_partitions()
+    {
+        var grouped = RunPartitionedImages([10.25]);
+        var split = RunPartitionedImages([10.001, 10.017, 10.25]);
+        Assert.Equal(grouped, split);
+        Assert.Equal("[]", grouped[5].Observations);
+        Assert.Contains("\"PollSequence\":1", grouped[6].Observations);
+        Assert.Contains("\"PollSequence\":2", grouped[6].Observations);
+        Assert.All(_records, b => Assert.Equal(0, b));
+    }
+
+    private static List<(double Deadline, string Observations, string Latest)> RunPartitionedImages(double[] images)
+    {
+        var module = Prime();
+        for (int port = 0; port < 2; port++)
+        {
+            module.SeedPadCandidate(1, port, 10.0999999, 10.1, 1);
+            module.SeedPadCandidate(2, port, 10.1, 10.1000001, 0);
+        }
+        List<(double, string, string)> result = [];
+        foreach (double now in images)
+        {
+            module.DeadlineImage(now);
+            JsonElement pass;
+            do
+            {
+                module.DeadlineClockAndExit();
+                pass = LastPass(module);
+                var deadline = pass.GetProperty("tick_deadline_seconds");
+                if (deadline.ValueKind == JsonValueKind.Null)
+                {
+                    Assert.False(pass.GetProperty("simulation").GetBoolean());
+                    Assert.Equal(JsonValueKind.Null, pass.GetProperty("pad_tick_correlation").ValueKind);
+                    continue;
+                }
+                var correlation = Correlation(module);
+                Assert.Equal("candidate_only", correlation.GetProperty("status").GetString());
+                Assert.False(correlation.GetProperty("native_input_applied").GetBoolean());
+                Assert.False(correlation.GetProperty("native_continuity_proven").GetBoolean());
+                result.Add((deadline.GetDouble(), correlation.GetProperty("observations").GetRawText(),
+                    correlation.GetProperty("latest").GetRawText()));
+            } while (pass.GetProperty("remaining").GetInt32() > 0);
+        }
+        Assert.Equal(15, result.Count);
+        return result;
+    }
     private static VrrModule Prime()
     {
         var module = new VrrModule();

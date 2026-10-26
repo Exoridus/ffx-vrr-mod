@@ -52,7 +52,7 @@ public sealed class SimulationTickDeadlineTests
         for (int i = 0; i < together.Steps; i++)
         {
             Assert.Equal((i + 1) * interval, deadlines[i], 12);
-            Assert.Equal(deadlines[i], ReadDeadline(grouped, i), 12);
+            Assert.Equal(deadlines[i], ReadDeadline(grouped, i));
         }
     }
 
@@ -83,6 +83,33 @@ public sealed class SimulationTickDeadlineTests
         AssertDeadline(clock, 0, 0.019166666666666667);
     }
 
+    [Theory]
+    [InlineData(0.5)]
+    [InlineData(2)]
+    [InlineData(8)]
+    public void Stable_mapping_after_speed_change_keeps_exact_deadlines_across_partitions(double speed)
+    {
+        var grouped = new FixedSimulationClock();
+        var split = new FixedSimulationClock();
+        foreach (var clock in new[] { grouped, split })
+        {
+            clock.Plan(10);
+            clock.Plan(10.005);
+            clock.Plan(10.015, speed);
+            Assert.False(clock.HasMappedInterval);
+        }
+        List<double> splitDeadlines = [];
+        foreach (double now in new[] { 10.016, 10.017, 10.1 })
+        {
+            var plan = split.Plan(now, speed);
+            Assert.True(split.HasMappedInterval);
+            for (int i = 0; i < plan.Steps; i++) splitDeadlines.Add(ReadDeadline(split, i));
+        }
+        var together = grouped.Plan(10.1, speed);
+        Assert.True(grouped.HasMappedInterval);
+        Assert.Equal(together.Steps, splitDeadlines.Count);
+        Assert.Equal(splitDeadlines, Enumerable.Range(0, together.Steps).Select(i => ReadDeadline(grouped, i)));
+    }
     [Theory]
     [InlineData(double.NaN, 1)]
     [InlineData(double.PositiveInfinity, 1)]
