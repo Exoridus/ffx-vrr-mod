@@ -85,7 +85,7 @@ public unsafe sealed partial class VrrModule
         if (!_filter_presentation_hold)
             _logger.Error("[Vrr] Sg_DrawFilter operands differ from build 25501027; screen fades keep the native clock.");
 
-        _cross_fade_hold_active = hook_or_log("Sg_DrawFilter", EngineAddresses.SgDrawFilter,
+        _cross_fade_hold_active = hook_or_log(HookSiteId.CrossFadeSgDrawFilter, "Sg_DrawFilter", EngineAddresses.SgDrawFilter,
             () => new FhCallHandle<d_draw_filter>(new FhCallLocation(EngineAddresses.SgDrawFilter, 0))
                 .hook(this, h_draw_filter));
         _filter_presentation_hold &= _cross_fade_hold_active;

@@ -30,7 +30,7 @@ public unsafe sealed partial class VrrModule
     internal void Refuse(string reason) => refuse_independent_presentation(reason);
     internal void Disable() => _config.VrrEnabled = false;
     internal void Presenter(bool active) => _presenter_active = active;
-    private bool hook_or_log(string name, nint rva, Func<bool> install) => install();
+    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install) => HookSites.Install(site, install);
     private void refuse_independent_presentation(string reason, Exception? error = null)
         => _presentationAdmission.Refuse(reason);
     internal object ActorGate => _renderActorLock;

@@ -91,5 +91,22 @@ public sealed class IndependentAdmissionBuildValidationTests : IDisposable
     public void Missing_resource_is_rejected()
         => Assert.Throws<InvalidDataException>(() => IndependentAdmissionBuildValidation.Validate(_root));
 
+    [Fact]
+    public void Unreviewed_runtime_source_is_rejected()
+    {
+        WriteResource();
+        Directory.CreateDirectory(Path.Combine(_root, "src", "Nested"));
+        File.WriteAllText(Path.Combine(_root, "src", "Nested", "Unreviewed.cs"), "unreviewed");
+        Assert.Contains("runtime source set", Assert.Throws<InvalidDataException>(() => IndependentAdmissionBuildValidation.Validate(_root)).Message);
+    }
+
+    [Fact]
+    public void Complete_runtime_source_set_is_accepted()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "src", "Nested"));
+        File.WriteAllText(Path.Combine(_root, "src", "Nested", "Reviewed.cs"), "reviewed source");
+        WriteResource(["src/Owner.cs", "src/Nested/Reviewed.cs"]);
+        IndependentAdmissionBuildValidation.Validate(_root);
+    }
     public void Dispose() => Directory.Delete(_root, true);
 }

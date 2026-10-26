@@ -75,7 +75,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.NeckTracking) return true;
 
-        return hook_or_log("Ch neck tracking", EngineAddresses.ChNeckCalc,
+        return hook_or_log(HookSiteId.NeckTrackingChNeckTracking, "Ch neck tracking", EngineAddresses.ChNeckCalc,
             () => new FhCallHandle<d_neck_calc>(new FhCallLocation(EngineAddresses.ChNeckCalc, 0))
                 .hook(this, h_neck_calc));
     }

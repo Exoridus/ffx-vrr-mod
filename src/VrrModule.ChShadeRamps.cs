@@ -50,7 +50,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.ChShadeRamps) return true;
 
-        return hook_or_log("Ch_SetRampTarget", EngineAddresses.ChSetRampTarget,
+        return hook_or_log(HookSiteId.ChShadeRampsChSetRampTarget, "Ch_SetRampTarget", EngineAddresses.ChSetRampTarget,
             () => new FhCallHandle<d_ch_set_ramp>(new FhCallLocation(EngineAddresses.ChSetRampTarget, 0))
                 .hook(this, h_ch_set_ramp));
     }

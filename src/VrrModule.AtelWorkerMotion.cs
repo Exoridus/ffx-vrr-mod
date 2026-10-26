@@ -202,7 +202,7 @@ public unsafe sealed partial class VrrModule
 
         if (_config.AtelWorkerMotion)
         {
-            ok &= hook_or_log("ATEL motion record defaults", EngineAddresses.AtelInitMotionRecords,
+            ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELMotionRecordDefaults, "ATEL motion record defaults", EngineAddresses.AtelInitMotionRecords,
                 () => new FhCallHandle<d_atel_init_records>(new FhCallLocation(EngineAddresses.AtelInitMotionRecords, 0))
                     .hook(this, h_atel_init_records));
             foreach ((string name, nint rva) in AtelRateSettersAllLevels)
@@ -220,7 +220,7 @@ public unsafe sealed partial class VrrModule
                 _atel_setter_hooks.Add(self);
 
                 d_atel_rate_all hook = self;
-                ok &= hook_or_log(name, rva,
+                ok &= hook_or_log(HookSiteId.AtelRateSettersAllLevelsTemplate, name, rva,
                     () => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(rva, 0)).hook(this, hook));
             }
 
@@ -239,7 +239,7 @@ public unsafe sealed partial class VrrModule
                 _atel_setter_hooks.Add(self);
 
                 d_atel_rate_level hook = self;
-                ok &= hook_or_log(name, rva,
+                ok &= hook_or_log(HookSiteId.AtelRateSettersOneLevelTemplate, name, rva,
                     () => new FhCallHandle<d_atel_rate_level>(new FhCallLocation(rva, 0)).hook(this, hook));
             }
 
@@ -258,7 +258,7 @@ public unsafe sealed partial class VrrModule
                 _atel_setter_hooks.Add(self);
 
                 d_atel_deadline_all hook = self;
-                ok &= hook_or_log(name, rva,
+                ok &= hook_or_log(HookSiteId.AtelDeadlineSettersAllLevelsTemplate, name, rva,
                     () => new FhCallHandle<d_atel_deadline_all>(new FhCallLocation(rva, 0)).hook(this, hook));
             }
 
@@ -277,15 +277,15 @@ public unsafe sealed partial class VrrModule
                 _atel_setter_hooks.Add(self);
 
                 d_atel_deadline_level hook = self;
-                ok &= hook_or_log(name, rva,
+                ok &= hook_or_log(HookSiteId.AtelDeadlineSettersOneLevelTemplate, name, rva,
                     () => new FhCallHandle<d_atel_deadline_level>(new FhCallLocation(rva, 0)).hook(this, hook));
             }
 
-            ok &= hook_or_log("ATEL move record reader", EngineAddresses.AtelMoveRecordRead,
+            ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELMoveRecordReader, "ATEL move record reader", EngineAddresses.AtelMoveRecordRead,
                 () => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelMoveRecordRead, 0))
                     .hook(this, h_atel_move_read));
 
-            ok &= hook_or_log("ATEL rotation record reader", EngineAddresses.AtelRotRecordRead,
+            ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELRotationRecordReader, "ATEL rotation record reader", EngineAddresses.AtelRotRecordRead,
                 () => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelRotRecordRead, 0))
                     .hook(this, h_atel_rot_read));
         }
@@ -308,13 +308,13 @@ public unsafe sealed partial class VrrModule
             _atel_setter_hooks.Add(grav_self);
 
             d_atel_rate_all grav_hook = grav_self;
-            ok &= hook_or_log("setGravity [0094h]", grav_rva,
+            ok &= hook_or_log(HookSiteId.AtelWorkerMotionSetGravity0094h, "setGravity [0094h]", grav_rva,
                 () => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(grav_rva, 0)).hook(this, grav_hook));
         }
 
         if (_config.AtelWorkerTranslation)
         {
-            ok &= hook_or_log("ATEL worker position integrator", EngineAddresses.AtelWorkerIntegratePos,
+            ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELWorkerPositionIntegrator, "ATEL worker position integrator", EngineAddresses.AtelWorkerIntegratePos,
                 () => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelWorkerIntegratePos, 0))
                     .hook(this, h_atel_integrate_position));
         }

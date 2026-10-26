@@ -33,11 +33,11 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.MotionSequenceCounters) return true;
 
-        bool ok = hook_or_log("Ch_SeqFrame", EngineAddresses.ChSeqFrame,
+        bool ok = hook_or_log(HookSiteId.MotionSequenceChSeqFrame, "Ch_SeqFrame", EngineAddresses.ChSeqFrame,
             () => new FhCallHandle<d_seq_frame>(new FhCallLocation(EngineAddresses.ChSeqFrame, 0))
                 .hook(this, h_seq_frame));
 
-        ok &= hook_or_log("motion cross-fade", EngineAddresses.ChMotionInterpolate,
+        ok &= hook_or_log(HookSiteId.MotionSequenceMotionCrossFade, "motion cross-fade", EngineAddresses.ChMotionInterpolate,
             () => new FhCallHandle<d_motion_interpolate>(new FhCallLocation(EngineAddresses.ChMotionInterpolate, 0))
                 .hook(this, h_motion_interpolate));
 

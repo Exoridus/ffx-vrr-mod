@@ -294,7 +294,7 @@ public unsafe sealed partial class VrrModule
     private const nint TexAnimWorkBase = 0x60000;
     private const int TexAnimSlotCount = 64, TexAnimSlotStride = 0x30, TexAnimFormatOffset = 0x0d, TexAnimTimerOffset = 0x0e;
     private bool advance_this_frame() => false;
-    private bool hook_or_log(string name, nint address, Func<bool> hook) => true;
+    private bool hook_or_log(HookSiteId site, string name, nint address, Func<bool> hook) => HookSites.IsDeclared(site);
     private static int scale_deadline(int frames, float scale) => Math.Clamp((int)MathF.Round(frames * scale), short.MinValue, short.MaxValue);
     private static int live_objects(byte* manager) => *(int*)(manager + 0x18);
 }

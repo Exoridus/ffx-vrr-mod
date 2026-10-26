@@ -57,7 +57,7 @@ public unsafe sealed partial class VrrModule
         if (previous.HasValue) FhUtil.set_at(EngineAddresses.PpvUserStopPartF, previous.Value);
     }
     private bool timeline_has_live_objects() => LiveManagers;
-    private bool hook_or_log(string name, nint address, Func<bool> install) => install();
+    private bool hook_or_log(HookSiteId site, string name, nint address, Func<bool> install) => HookSites.Install(site, install);
     internal bool InitializeSpriteClock() => init_particle_sprite_clock();
     internal bool InitializePilot() => init_particle_presentation();
     internal bool QualifyPilot() => particle_presentation_is_qualified();

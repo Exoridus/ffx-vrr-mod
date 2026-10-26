@@ -195,7 +195,7 @@ public unsafe sealed partial class VrrModule
         // did not also ask to count.
         if (!_config.MotionSurvey && !_config.MotionAdvanceLendFlag && !_config.MotionHoldOptedOut) return true;
 
-        return hook_or_log("motion advance", EngineAddresses.MotionAdvance,
+        return hook_or_log(HookSiteId.MotionSurveyMotionAdvance, "motion advance", EngineAddresses.MotionAdvance,
             () => new FhCallHandle<d_motion_advance>(new FhCallLocation(EngineAddresses.MotionAdvance, 0))
                 .hook(this, h_motion_advance));
     }

@@ -31,7 +31,7 @@ public unsafe sealed partial class VrrModule
         if (!_config.TextureFrameInterpolation) return true;
         if (!NativeBuild.TryValidate(out _) || !texture_binding_prefix(TextureProbeResolve,
             [0x55, 0x8b, 0xec, 0x8b, 0x55, 0x08, 0x53, 0x56, 0x57, 0x85, 0xd2])) return false;
-        _textureFrameBound = hook_or_log("texture frame interpolation", TextureProbeResolve,
+        _textureFrameBound = hook_or_log(HookSiteId.TextureFrameInterpolationTextureFrameInterpolation, "texture frame interpolation", TextureProbeResolve,
             () => new FhCallHandle<d_texture_frame_resolve>(new FhCallLocation(TextureProbeResolve, 0)).hook(this, h_texture_frame_resolve));
         if (_textureFrameBound) AppDomain.CurrentDomain.ProcessExit += (_, _) => invalidate_texture_frame_gpu();
         return _textureFrameBound;

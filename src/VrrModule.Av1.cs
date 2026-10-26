@@ -16,7 +16,7 @@ public unsafe sealed partial class VrrModule
     [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
     private delegate nint d_av1_queue_reserve(nint queue, uint bytes);
 
-    private bool init_av1_worker() => hook_or_log("AV1 movie decoding worker", 0x6279b0,
+    private bool init_av1_worker() => hook_or_log(HookSiteId.Av1AV1MovieDecodingWorker, "AV1 movie decoding worker", 0x6279b0,
         () => new FhCallHandle<d_av1_worker>(new FhCallLocation(0x6279b0, 0)).hook(this, h_av1_worker));
 
     private void prepare_av1_worker(nint manager)

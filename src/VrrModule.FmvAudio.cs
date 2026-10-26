@@ -17,9 +17,9 @@ public unsafe sealed partial class VrrModule
     {
         _fmvAudioHooksReady = fmv_audio_guard(FmvTrackGetType, [0x8b, 0x41, 0x20, 0xc3, 0xcc])
             && fmv_audio_guard(FmvNativeStop, [0x55, 0x8b, 0xec, 0x51, 0x57, 0x8b, 0xf9])
-            && hook_or_log("movie audio track type", FmvTrackGetType,
+            && hook_or_log(HookSiteId.FmvAudioMovieAudioTrackType, "movie audio track type", FmvTrackGetType,
                 () => new FhCallHandle<d_fmv_track_type>(new FhCallLocation(FmvTrackGetType, 0)).hook(this, h_fmv_track_type))
-            && hook_or_log("movie audio scope stop", FmvNativeStop,
+            && hook_or_log(HookSiteId.FmvAudioMovieAudioScopeStop, "movie audio scope stop", FmvNativeStop,
                 () => new FhCallHandle<d_fmv_native_stop>(new FhCallLocation(FmvNativeStop, 0)).hook(this, h_fmv_native_stop));
         return _fmvAudioHooksReady;
     }

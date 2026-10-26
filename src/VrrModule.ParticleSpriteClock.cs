@@ -56,13 +56,13 @@ public unsafe sealed partial class VrrModule
         if (_particle_lifecycle_result is { } result) return result;
         _particle_lifecycle_result = false;
         if (!particle_lifecycle_bindings_match()) return false;
-        bool ok = hook_or_log("particle object creation", 0x316770,
+        bool ok = hook_or_log(HookSiteId.ParticleSpriteClockParticleObjectCreation, "particle object creation", 0x316770,
             () => new FhCallHandle<d_pilot_create>(new FhCallLocation(0x316770, 0)).hook(this, h_particle_pilot_create));
-        ok &= hook_or_log("particle object deletion", 0x3168f0,
+        ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleObjectDeletion, "particle object deletion", 0x3168f0,
             () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x3168f0, 0)).hook(this, h_particle_pilot_delete));
-        ok &= hook_or_log("particle object loop reset", 0x312d20,
+        ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleObjectLoopReset, "particle object loop reset", 0x312d20,
             () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x312d20, 0)).hook(this, h_particle_pilot_reset));
-        ok &= hook_or_log("particle manager free", 0x311f20,
+        ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleManagerFree, "particle manager free", 0x311f20,
             () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x311f20, 0)).hook(this, h_particle_pilot_free));
         _particle_lifecycle_result = ok;
         return ok;
@@ -72,9 +72,9 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.ParticleSpriteClock) return true;
         if (!preflight_particle_sprite_clock() || !init_particle_lifecycle()) return false;
-        bool ok = hook_or_log("particle Shape sprite clock", ParticleShape,
+        bool ok = hook_or_log(HookSiteId.ParticleSpriteClockParticleShapeSpriteClock, "particle Shape sprite clock", ParticleShape,
             () => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShape, 0)).hook(this, h_particle_shape));
-        ok &= hook_or_log("particle ShapeX sprite clock", ParticleShapeX,
+        ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleShapeXSpriteClock, "particle ShapeX sprite clock", ParticleShapeX,
             () => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShapeX, 0)).hook(this, h_particle_shape_x));
         _particle_sprite_installed = ok;
         return ok;

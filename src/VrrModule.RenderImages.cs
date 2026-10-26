@@ -80,13 +80,13 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] Image submission binding refused: frame/flip/slot/action contract mismatch.");
             return false;
         }
-        bool ok = hook_or_log("PApplication frame", RenderImageFrame,
+        bool ok = hook_or_log(HookSiteId.RenderImagesPApplicationFrame, "PApplication frame", RenderImageFrame,
             () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFrame, 0)).hook(this, h_render_image_frame));
-        ok &= hook_or_log("renderer flip identity", RenderImageFlip,
+        ok &= hook_or_log(HookSiteId.RenderImagesRendererFlipIdentity, "renderer flip identity", RenderImageFlip,
             () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFlip, 0)).hook(this, h_render_image_flip));
-        ok &= hook_or_log("render flip slot", RenderImageSlot,
+        ok &= hook_or_log(HookSiteId.RenderImagesRenderFlipSlot, "render flip slot", RenderImageSlot,
             () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageSlot, 0)).hook(this, h_render_image_slot));
-        ok &= hook_or_log("render flip action", RenderImageAction,
+        ok &= hook_or_log(HookSiteId.RenderImagesRenderFlipAction, "render flip action", RenderImageAction,
             () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageAction, 0)).hook(this, h_render_image_action));
         ok &= init_graphics_lifetime_hooks();
         _renderImagesInstalled = ok;

@@ -36,7 +36,7 @@ public unsafe sealed partial class VrrModule
 
         // The patched operand retains this storage until image rollback at process teardown.
         _texture_step_shadow = (byte*)NativeMemory.AllocZeroed(TextureSlotCount * TextureSlotStride);
-        if (!hook_or_log("new-format character texture advance", NewTextureAdvance,
+        if (!hook_or_log(HookSiteId.TextureAnimationNewFormatCharacterTextureAdvance, "new-format character texture advance", NewTextureAdvance,
             () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(NewTextureAdvance, 0)).hook(this, h_new_texture_advance)))
             return false;
         _patches.Write(NewTextureStepRead + 3, BitConverter.GetBytes((uint)(nuint)(_texture_step_shadow + 0xe)));

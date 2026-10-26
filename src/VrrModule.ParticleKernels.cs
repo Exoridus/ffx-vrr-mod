@@ -260,7 +260,7 @@ public unsafe sealed partial class VrrModule
             _kernel_hooks.Add(self);
 
             d_ke_update hook = self;
-            ok &= hook_or_log(name, rva,
+            ok &= hook_or_log(HookSiteId.ParticleStepKernelTemplate, name, rva,
                 () => new FhCallHandle<d_ke_update>(new FhCallLocation(rva, 0)).hook(this, hook));
 
             _logger.Info(hold

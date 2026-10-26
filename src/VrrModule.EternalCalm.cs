@@ -27,7 +27,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.EternalCalmCard) return true;
 
-        return hook_or_log("ToDrawEternalCalmCopyRight", EngineAddresses.ToDrawEternalCalmCopyRight,
+        return hook_or_log(HookSiteId.EternalCalmToDrawEternalCalmCopyRight, "ToDrawEternalCalmCopyRight", EngineAddresses.ToDrawEternalCalmCopyRight,
             () => new FhCallHandle<d_eternal_calm_card>(new FhCallLocation(EngineAddresses.ToDrawEternalCalmCopyRight, 0))
                 .hook(this, h_eternal_calm_card));
     }

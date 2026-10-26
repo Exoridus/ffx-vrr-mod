@@ -48,13 +48,13 @@ public unsafe sealed partial class VrrModule
 
     private bool init_graphics_lifetime_hooks()
     {
-        bool ok = hook_or_log("ordinary render completion", RenderImageOrdinary,
+        bool ok = hook_or_log(HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion, "ordinary render completion", RenderImageOrdinary,
             () => new FhCallHandle<d_graphics_result>(new FhCallLocation(RenderImageOrdinary, 0)).hook(this, h_render_image_ordinary));
-        ok &= hook_or_log("graphics initialize observation", GraphicsInitialize,
+        ok &= hook_or_log(HookSiteId.GraphicsLifetimeGraphicsInitializeObservation, "graphics initialize observation", GraphicsInitialize,
             () => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsInitialize, 0)).hook(this, h_graphics_initialize));
-        ok &= hook_or_log("graphics finalize observation", GraphicsFinalize,
+        ok &= hook_or_log(HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation, "graphics finalize observation", GraphicsFinalize,
             () => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0)).hook(this, h_graphics_finalize));
-        ok &= hook_or_log("graphics reset observation", GraphicsReset,
+        ok &= hook_or_log(HookSiteId.GraphicsLifetimeGraphicsResetObservation, "graphics reset observation", GraphicsReset,
             () => new FhCallHandle<d_graphics_reset>(new FhCallLocation(GraphicsReset, 0)).hook(this, h_graphics_reset));
         return ok;
     }

@@ -75,11 +75,11 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] Actor renderer binding refused: world submission/palette layout/stack cleanup contract mismatch.");
             return false;
         }
-        bool ok = hook_or_log("actor world group", RenderActorWorldGroup,
+        bool ok = hook_or_log(HookSiteId.RenderActorsActorWorldGroup, "actor world group", RenderActorWorldGroup,
             () => new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0)).hook(this, h_render_actor_group));
-        ok &= hook_or_log("actor model world group", RenderActorWorldModel,
+        ok &= hook_or_log(HookSiteId.RenderActorsActorModelWorldGroup, "actor model world group", RenderActorWorldModel,
             () => new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0)).hook(this, h_render_actor_model));
-        ok &= hook_or_log("actor renderer world instance", RenderActorWorldInstance,
+        ok &= hook_or_log(HookSiteId.RenderActorsActorRendererWorldInstance, "actor renderer world instance", RenderActorWorldInstance,
             () => new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0)).hook(this, h_render_actor_instance));
         _renderActorsBound = ok;
         return ok;

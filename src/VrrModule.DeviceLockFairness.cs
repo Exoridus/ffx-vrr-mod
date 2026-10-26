@@ -40,9 +40,9 @@ public unsafe sealed partial class VrrModule
             return true;
         }
         _device_lock_verified = true;
-        return hook_or_log("Phyre device lock telemetry", DeviceLockEnter,
+        return hook_or_log(HookSiteId.DeviceLockFairnessPhyreDeviceLockTelemetry, "Phyre device lock telemetry", DeviceLockEnter,
                 () => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockEnter, 0)).hook(this, h_device_lock_enter))
-            && hook_or_log("Phyre device lock release", DeviceLockLeave,
+            && hook_or_log(HookSiteId.DeviceLockFairnessPhyreDeviceLockRelease, "Phyre device lock release", DeviceLockLeave,
                 () => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockLeave, 0)).hook(this, h_device_lock_leave));
     }
 

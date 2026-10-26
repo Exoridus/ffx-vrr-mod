@@ -203,7 +203,7 @@ public unsafe sealed partial class VrrModule
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void d_diag_loop(float delta);
     private void h_diag_loop(float delta) { }
     internal string? RejectedHook;
-    private bool hook_or_log(string name, nint rva, Func<bool> hook) => hook() && name != RejectedHook;
+    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> hook) => HookSites.Install(site, hook) && name != RejectedHook;
     private void diagnostic_event(string kind, object data) { }
     private bool init_render_camera() => true;
     private bool init_render_actors() => true;

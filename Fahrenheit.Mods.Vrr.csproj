@@ -8,12 +8,13 @@
         <Version>0.1.0</Version>
         <RepositoryUrl>https://github.com/Exoridus/ffx-vrr-mod</RepositoryUrl>
         <FhManifestFlags>NONE</FhManifestFlags>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
         <PublishDir>$(MSBuildProjectDirectory)/artifacts/deploy/$(Configuration)/mods/$(AssemblyName)/</PublishDir>
     </PropertyGroup>
     <ItemGroup>
         <EmbeddedResource Include="src/IndependentPresentationAdmission.json" Condition="Exists('src/IndependentPresentationAdmission.json')" LogicalName="Fahrenheit.Mods.Vrr.IndependentPresentationAdmission.json" />
         <PackageReference Include="TerraFX.Interop.Windows" Version="10.0.26100.6" />
-        <Compile Remove="build/**;.workspace/**;tests/**;obj/**;bin/**" />
+        <Compile Include="src/**/*.cs" />
     </ItemGroup>
 </Project>

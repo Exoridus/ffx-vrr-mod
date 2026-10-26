@@ -48,11 +48,11 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.Diagnostics || !_config.EffectProbe) return;
         _gameoverProbeEnabled = true;
-        diagnostic_hook("gameover_vfx_update", GameOverVfxUpdate,
+        diagnostic_hook(HookSiteId.GameOverGameoverVfxUpdate, "gameover_vfx_update", GameOverVfxUpdate,
             [0x55, 0x8b, 0xec],
             () => new FhCallHandle<d_gameover_vfx_update>(new FhCallLocation(GameOverVfxUpdate, 0))
                 .hook(this, h_gameover_vfx_update));
-        diagnostic_hook("gameover_vfx_data_update", GameOverVfxDataUpdate,
+        diagnostic_hook(HookSiteId.GameOverGameoverVfxDataUpdate, "gameover_vfx_data_update", GameOverVfxDataUpdate,
             [0x55, 0x8b, 0xec, 0x81, 0xec, 0xfc, 0x00, 0x00, 0x00],
             () => new FhCallHandle<d_gameover_vfx_data>(new FhCallLocation(GameOverVfxDataUpdate, 0))
                 .hook(this, h_gameover_vfx_data));

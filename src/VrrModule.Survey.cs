@@ -43,23 +43,32 @@ public unsafe sealed partial class VrrModule
         // never installed, and one of them was exactly that. The install outcome is logged per
         // probe, and a chain that does not resolve leaves fnptr null, so a counting probe can never
         // be the thing that ends the process.
-        probe("chr_texanim_draw", EngineAddresses.ChrTexAnimDraw,
+        probe(HookSiteId.SurveyChrTexanimDraw, "chr_texanim_draw", EngineAddresses.ChrTexAnimDraw,
             () => new FhCallHandle<d_texanim_draw>(new FhCallLocation(EngineAddresses.ChrTexAnimDraw, 0)).hook(this, h_texanim_draw));
-        probe("screenTextureAnimationDraw", EngineAddresses.ScreenTextureAnimationDraw,
+        probe(HookSiteId.SurveyScreenTextureAnimationDraw, "screenTextureAnimationDraw", EngineAddresses.ScreenTextureAnimationDraw,
             () => new FhCallHandle<d_screen_texanim_draw>(new FhCallLocation(EngineAddresses.ScreenTextureAnimationDraw, 0)).hook(this, h_screen_texanim_draw));
-        probe("setMaterialUVScroll", EngineAddresses.SetMaterialUVScroll,
+        probe(HookSiteId.SurveySetMaterialUVScroll, "setMaterialUVScroll", EngineAddresses.SetMaterialUVScroll,
             () => new FhCallHandle<d_uv_scroll>(new FhCallLocation(EngineAddresses.SetMaterialUVScroll, 0)).hook(this, h_uv_scroll));
-        probe("Ch_TextureAnimSetEnable", EngineAddresses.ChTextureAnimSetEnable,
+        probe(HookSiteId.SurveyChTextureAnimSetEnable, "Ch_TextureAnimSetEnable", EngineAddresses.ChTextureAnimSetEnable,
             () => new FhCallHandle<d_texanim_set_enable>(new FhCallLocation(EngineAddresses.ChTextureAnimSetEnable, 0)).hook(this, h_texanim_set_enable));
 
         _logger.Info("[Vrr] Texture animation survey armed; counts appear in the telemetry line.");
         return true;
     }
 
-    private void probe(string name, nint rva, Func<bool> install)
-        => _logger.Info(install()
+    private bool probe(HookSiteId site, string name, nint rva, Func<bool> install)
+    {
+        if (!HookSites.IsDeclared(site))
+        {
+            _logger.Error($"[Vrr] Unknown hook site {site}; probe {name} was not installed.");
+            return false;
+        }
+        bool installed = install();
+        _logger.Info(installed
             ? $"[Vrr] Probe attached: {name} at RVA 0x{rva:X}."
             : $"[Vrr] Probe did NOT attach: {name} at RVA 0x{rva:X}; its count stays 0 for that reason.");
+        return installed;
+    }
 
     private string survey_counts()
         => $"texanim_draw={_texanim_draw} screen_texanim={_screen_texanim_draw} " +

@@ -41,16 +41,16 @@ public unsafe sealed partial class VrrModule
             _logger.Warning($"[Vrr] Farplane diagnostic hooks unavailable: {error}");
             return;
         }
-        diagnostic_hook("farplane_begin_scene", FarplaneBeginScene,
+        diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneBeginScene, "farplane_begin_scene", FarplaneBeginScene,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x56, 0x8b, 0xf1, 0x8b, 0x46, 0x04, 0xa8, 0x01],
             () => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneBeginScene, 0)).hook(this, h_farplane_begin_scene));
-        diagnostic_hook("farplane_end_scene", FarplaneEndScene,
+        diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneEndScene, "farplane_end_scene", FarplaneEndScene,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x56, 0x8b, 0xf1, 0x8b, 0x4e, 0x04, 0x8b, 0xc1, 0xf7, 0xd0, 0xa8, 0x01],
             () => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneEndScene, 0)).hook(this, h_farplane_end_scene));
-        diagnostic_hook("farplane_fmv_draw", FarplaneFmvDraw,
+        diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneFmvDraw, "farplane_fmv_draw", FarplaneFmvDraw,
             [0x55, 0x8b, 0xec, 0x53, 0x8b, 0xd9, 0x80, 0xbb, 0xd2, 0x06, 0x00, 0x00, 0x00],
             () => new FhCallHandle<d_farplane_fmv_draw>(new FhCallLocation(FarplaneFmvDraw, 0)).hook(this, h_farplane_fmv_draw));
-        diagnostic_hook("farplane_clear_color", FarplaneClearColor,
+        diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneClearColor, "farplane_clear_color", FarplaneClearColor,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x53, 0x56, 0x57, 0x8b, 0xf1],
             () => new FhCallHandle<d_farplane_clear_color>(new FhCallLocation(FarplaneClearColor, 0)).hook(this, h_farplane_clear_color));
     }

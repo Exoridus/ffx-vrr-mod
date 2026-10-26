@@ -37,19 +37,19 @@ public unsafe sealed partial class VrrModule
 
         if (fx_code_matches(MinimapDraw, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC 68 03 00 00 A1 ?? ?? ?? ?? 33 C5")
             && fx_code_matches(MinimapDraw + 0x1206, "FF 46 74"))
-            ok &= hook_or_log("UI-014 minimap draw", MinimapDraw,
+            ok &= hook_or_log(HookSiteId.UpstreamUiUI014MinimapDraw, "UI-014 minimap draw", MinimapDraw,
                 () => new FhCallHandle<d_minimap_draw>(new FhCallLocation(MinimapDraw, 0)).hook(this, h_minimap_draw));
         else ok &= refuse_ui_row("UI-014 minimap draw");
 
         if (fx_code_matches(SaveListInput, "E8 ?? ?? ?? ?? 68 00 10 00 00 A3 ?? ?? ?? ?? E8 ?? ?? ?? ?? D9 05 ?? ?? ?? ?? 83 C4 04 85 C0 75 1B A1 ?? ?? ?? ?? D8 58 04 DF E0 F6 C4 41 74 0E C7 05")
             && fx_operand_is(SaveListInput + 0x0B, SaveListCounters + 0x20)
             && fx_operand_is(SaveListInput + 0x32, SaveListCounters))
-            ok &= hook_or_log("UI-020 save/load list input", SaveListInput,
+            ok &= hook_or_log(HookSiteId.UpstreamUiUI020SaveLoadListInput, "UI-020 save/load list input", SaveListInput,
                 () => new FhCallHandle<d_ui_int>(new FhCallLocation(SaveListInput, 0)).hook(this, h_save_list_input));
         else ok &= refuse_ui_row("UI-020 save/load list input");
 
         if (fx_code_matches(SphereGridUpdate, "55 8B EC 83 EC 18 A1 ?? ?? ?? ?? 33 C5 89 45 FC 8B 0D ?? ?? ?? ?? C7 05 ?? ?? ?? ?? 01 00 00 00 80 B9 B8 15 01 00"))
-            ok &= hook_or_log("UI-SPH-001 sphere grid update", SphereGridUpdate,
+            ok &= hook_or_log(HookSiteId.UpstreamUiUISPH001SphereGridUpdate, "UI-SPH-001 sphere grid update", SphereGridUpdate,
                 () => new FhCallHandle<d_render_void>(new FhCallLocation(SphereGridUpdate, 0)).hook(this, h_sphere_grid_update));
         else ok &= refuse_ui_row("UI-SPH-001 sphere grid update");
 
@@ -57,7 +57,7 @@ public unsafe sealed partial class VrrModule
             && fx_call_is(0x49C9FA, ActionEdge)
             && fx_code_matches(ActionEdge, "55 8B EC FF 75 08 E8 ?? ?? ?? ?? 8B C8 E8")
             && fx_code_matches(0x231300, "B8 ?? ?? ?? ?? C3") && fx_operand_is(0x231301, ActionLatch))
-            ok &= hook_or_log("UI-BTLL1 party swap edge", ActionEdge,
+            ok &= hook_or_log(HookSiteId.UpstreamUiUIBTLL1PartySwapEdge, "UI-BTLL1 party swap edge", ActionEdge,
                 () => new FhCallHandle<d_action_edge>(new FhCallLocation(ActionEdge, 0)).hook(this, h_action_edge));
         else ok &= refuse_ui_row("UI-BTLL1 party swap edge");
 

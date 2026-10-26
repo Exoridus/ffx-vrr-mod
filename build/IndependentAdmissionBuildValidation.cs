@@ -35,6 +35,13 @@ internal static class IndependentAdmissionBuildValidation
                 && !LfHash(bytes).Equals(source.GetProperty("lf_sha256").GetString(), StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"Stale qualification source hash: {relative}. Regenerate the reviewed projection before building.");
         }
+        var runtimePaths = Directory.EnumerateFiles(Path.Combine(context, "src"), "*.cs", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(context, path).Replace(Path.DirectorySeparatorChar, '/'))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var reviewedRuntimePaths = paths.Where(path => path.StartsWith("src/", StringComparison.OrdinalIgnoreCase)
+            && path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase));
+        if (!runtimePaths.SetEquals(reviewedRuntimePaths))
+            throw new InvalidDataException("Qualification runtime source set differs from compiled src/**/*.cs. Regenerate the reviewed projection before building.");
     }
 
     private static string LfHash(ReadOnlySpan<byte> bytes)

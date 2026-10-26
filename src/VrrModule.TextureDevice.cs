@@ -21,7 +21,7 @@ public unsafe sealed partial class VrrModule
         if (_textureDeviceObserverInstalled) return true;
         if (!NativeBuild.TryValidate(out _) || !texture_binding_prefix(TextureDeviceCreate,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x40])) return false;
-        _textureDeviceObserverInstalled = hook_or_log("texture engine device observer", TextureDeviceCreate,
+        _textureDeviceObserverInstalled = hook_or_log(HookSiteId.TextureDeviceTextureEngineDeviceObserver, "texture engine device observer", TextureDeviceCreate,
             () => new FhCallHandle<d_texture_device_create>(new FhCallLocation(TextureDeviceCreate, 0))
                 .hook(this, h_texture_device_create));
         if (_textureDeviceObserverInstalled)

@@ -71,8 +71,9 @@ Requires Git and the .NET 10 SDK pinned in [global.json](global.json).
 ```
 
 The build checks the generated `src/IndependentPresentationAdmission.json` against the copied source inputs.
-After changing reviewed inputs, regenerate it with `build.cmd build-vrr-core-contracts` in the sibling
-knowledge-base repository. This input can explain a veto; it cannot authorize independent presentation.
+After changing runtime source, review its hook IDs, bindings and source pins in the sibling knowledge base's
+`inputs/mappings/vrr_hook_installations.json`. Run `build.cmd build-vrr-hook-source-inventory` and then
+`build.cmd build-vrr-core-contracts`; both reject unreviewed declaration drift. This input can explain a veto; it cannot authorize independent presentation.
 
 `--sdk local` builds Fahrenheit from the pinned commit; a not yet upstreamed startup fix is applied
 from the hash-checked bundle in `build/`. Add `--full true` to `mod-pack` for the full package

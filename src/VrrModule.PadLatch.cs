@@ -46,7 +46,7 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] TkScanControler or pad record bytes differ from build 25501027; pad input keeps latching on every pass.");
             return true;
         }
-        _pad_latch_installed = hook_or_log("pad latch", PadLatch,
+        _pad_latch_installed = hook_or_log(HookSiteId.PadLatchPadLatch, "pad latch", PadLatch,
             () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, h_pad_latch));
         return _pad_latch_installed;
     }

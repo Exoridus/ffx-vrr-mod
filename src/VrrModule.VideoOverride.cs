@@ -43,11 +43,11 @@ public unsafe sealed partial class VrrModule
         }
         if (_overrides.Count == 0 && _fmv_lab is null && !Directory.Exists(_fmv_video_directory)) return true;
 
-        bool play = hook_or_log("PhyFMVPlayerManager play start", EngineAddresses.FmvPlayStart,
+        bool play = hook_or_log(HookSiteId.VideoOverridePhyFMVPlayerManagerPlayStart, "PhyFMVPlayerManager play start", EngineAddresses.FmvPlayStart,
             () => new FhCallHandle<d_fmv_play_start>(new FhCallLocation(EngineAddresses.FmvPlayStart, 0))
                 .hook(this, h_fmv_play_start));
         if (!play) return false;
-        return init_av1_worker() && init_fmv_audio_hooks() && hook_or_log("PhyFMVPlayerManager initialize", EngineAddresses.FmvInitialize,
+        return init_av1_worker() && init_fmv_audio_hooks() && hook_or_log(HookSiteId.VideoOverridePhyFMVPlayerManagerInitialize, "PhyFMVPlayerManager initialize", EngineAddresses.FmvInitialize,
             () => new FhCallHandle<d_fmv_initialize>(new FhCallLocation(EngineAddresses.FmvInitialize, 0))
                 .hook(this, h_fmv_initialize));
     }

@@ -26,7 +26,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.EffectHold && !_config.EffectProbe && !IndependentPresentationEnabled) return true;
 
-        bool ok = hook_or_log("MsEffectProcess", EngineAddresses.MsEffectProcess,
+        bool ok = hook_or_log(HookSiteId.EffectsMsEffectProcess, "MsEffectProcess", EngineAddresses.MsEffectProcess,
             () => new FhCallHandle<d_effect_process>(new FhCallLocation(EngineAddresses.MsEffectProcess, 0))
                 .hook(this, h_effect_process));
         init_gameover_probe();
@@ -36,7 +36,7 @@ public unsafe sealed partial class VrrModule
         // three times.
         if (IndependentPresentationEnabled || (_config.EffectHold && _config.EternalEffectHold))
         {
-            ok &= hook_or_log("eternal effect run_after", EngineAddresses.EternalEffectRunAfter,
+            ok &= hook_or_log(HookSiteId.EffectsEternalEffectRunAfter, "eternal effect run_after", EngineAddresses.EternalEffectRunAfter,
                 () => new FhCallHandle<d_eternal_run>(new FhCallLocation(EngineAddresses.EternalEffectRunAfter, 0))
                     .hook(this, h_eternal_run_after));
         }

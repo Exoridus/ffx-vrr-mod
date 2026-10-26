@@ -26,13 +26,13 @@ public unsafe sealed partial class VrrModule
             return false;
         }
         bool ok = true;
-        if (IndependentPresentationEnabled) ok = hook_or_log("texture UV output", TextureUvOutput,
+        if (IndependentPresentationEnabled) ok = hook_or_log(HookSiteId.TexturePresentationTextureUVOutput, "texture UV output", TextureUvOutput,
             () => new FhCallHandle<d_texture_uv_output>(new FhCallLocation(TextureUvOutput, 0)).hook(this, h_texture_uv_output));
-        ok &= hook_or_log("texture final image", TextureFinalDraw,
+        ok &= hook_or_log(HookSiteId.TexturePresentationTextureFinalImage, "texture final image", TextureFinalDraw,
             () => new FhCallHandle<d_texture_final_draw>(new FhCallLocation(TextureFinalDraw, 0)).hook(this, h_texture_final_draw));
-        ok &= hook_or_log("texture work lifetime", TextureWorkCreate,
+        ok &= hook_or_log(HookSiteId.TexturePresentationTextureWorkLifetime, "texture work lifetime", TextureWorkCreate,
             () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(TextureWorkCreate, 0)).hook(this, h_texture_work_create));
-        ok &= hook_or_log("texture slot lifetime", TextureSlotDelete,
+        ok &= hook_or_log(HookSiteId.TexturePresentationTextureSlotLifetime, "texture slot lifetime", TextureSlotDelete,
             () => new FhCallHandle<d_texture_delete>(new FhCallLocation(TextureSlotDelete, 0)).hook(this, h_texture_slot_delete));
         _texturePresentationBound = ok && IndependentPresentationEnabled;
         _textureFramePhaseBound = ok && _config.TextureFrameInterpolation;

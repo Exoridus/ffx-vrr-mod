@@ -26,7 +26,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.LensSpriteClock) return true;
 
-        return hook_or_log("KeLnsShp_Update", EngineAddresses.KeLnsShpUpdate,
+        return hook_or_log(HookSiteId.LensSpriteKeLnsShpUpdate, "KeLnsShp_Update", EngineAddresses.KeLnsShpUpdate,
             () => new FhCallHandle<d_lens_shape_update>(new FhCallLocation(EngineAddresses.KeLnsShpUpdate, 0))
                 .hook(this, h_lens_shape_update));
     }

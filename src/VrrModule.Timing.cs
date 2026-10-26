@@ -59,19 +59,19 @@ public unsafe sealed partial class VrrModule
         // mistimed for a reason of its own.
         if (_config.VBlankRate)
         {
-            ok &= hook_or_log("vertical blank counters", EngineAddresses.AdvanceVBlankCounters,
+            ok &= hook_or_log(HookSiteId.TimingVerticalBlankCounters, "vertical blank counters", EngineAddresses.AdvanceVBlankCounters,
                 () => new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0)).hook(this, h_advance_vblank));
         }
 
         if (_config.EventClockOnVblank)
         {
-            ok &= hook_or_log("yiAnimInfo_init", EngineAddresses.YiAnimInfoInit,
+            ok &= hook_or_log(HookSiteId.TimingYiAnimInfoInit, "yiAnimInfo_init", EngineAddresses.YiAnimInfoInit,
                 () => new FhCallHandle<d_yi_anim_info_init>(new FhCallLocation(EngineAddresses.YiAnimInfoInit, 0)).hook(this, h_yi_anim_info_init));
         }
 
         if (_config.SyncDataDisable)
         {
-            ok &= hook_or_log("iSyncGetData", EngineAddresses.ISyncGetData,
+            ok &= hook_or_log(HookSiteId.TimingISyncGetData, "iSyncGetData", EngineAddresses.ISyncGetData,
                 () => new FhCallHandle<d_isync_get_data>(new FhCallLocation(EngineAddresses.ISyncGetData, 0)).hook(this, h_isync_get_data));
 
             _logger.Info("[Vrr] Recorded cutscene pacing refused: the three syncdata scenes will run at the " +
@@ -83,17 +83,17 @@ public unsafe sealed partial class VrrModule
         // Capture must remain available when both corrections are disabled for a baseline run.
         if (_config.CharacterDelta || _config.Buoyancy || _binaryDiagnostics is not null)
         {
-            ok &= hook_or_log("Ch_CalcMain", EngineAddresses.ChCalcMain,
+            ok &= hook_or_log(HookSiteId.TimingChCalcMain, "Ch_CalcMain", EngineAddresses.ChCalcMain,
                 () => new FhCallHandle<d_ch_calc_main>(new FhCallLocation(EngineAddresses.ChCalcMain, 0)).hook(this, h_ch_calc_main));
         }
 
         if (_config.AtelWaits)
         {
-            bool waitInit = hook_or_log("ATEL wait init", EngineAddresses.AtelWaitInit,
+            bool waitInit = hook_or_log(HookSiteId.TimingATELWaitInit, "ATEL wait init", EngineAddresses.AtelWaitInit,
                 () => new FhCallHandle<d_atel_wait_init>(new FhCallLocation(EngineAddresses.AtelWaitInit, 0)).hook(this, h_atel_wait_init));
-            bool waitExec = hook_or_log("ATEL wait exec", EngineAddresses.AtelWaitExec,
+            bool waitExec = hook_or_log(HookSiteId.TimingATELWaitExec, "ATEL wait exec", EngineAddresses.AtelWaitExec,
                 () => new FhCallHandle<d_atel_wait_exec>(new FhCallLocation(EngineAddresses.AtelWaitExec, 0)).hook(this, h_atel_wait_exec));
-            bool movieDelta = hook_or_log("movie frame delta", EngineAddresses.MovieFrameDelta,
+            bool movieDelta = hook_or_log(HookSiteId.TimingMovieFrameDelta, "movie frame delta", EngineAddresses.MovieFrameDelta,
                 () => new FhCallHandle<d_movie_frame_delta>(new FhCallLocation(EngineAddresses.MovieFrameDelta, 0)).hook(this, h_movie_frame_delta));
             _atel_wait_hooks_ready = waitInit && waitExec && movieDelta;
             ok &= _atel_wait_hooks_ready;
@@ -101,19 +101,19 @@ public unsafe sealed partial class VrrModule
 
         if (_config.Camera)
         {
-            ok &= hook_or_log("MsCameraMoveFrame", EngineAddresses.MsCameraMoveFrame,
+            ok &= hook_or_log(HookSiteId.TimingMsCameraMoveFrame, "MsCameraMoveFrame", EngineAddresses.MsCameraMoveFrame,
                 () => new FhCallHandle<d_camera_move_frame>(new FhCallLocation(EngineAddresses.MsCameraMoveFrame, 0)).hook(this, h_camera_move_frame));
-            ok &= hook_or_log("MsCameraMoveAcc", EngineAddresses.MsCameraMoveAcc,
+            ok &= hook_or_log(HookSiteId.TimingMsCameraMoveAcc, "MsCameraMoveAcc", EngineAddresses.MsCameraMoveAcc,
                 () => new FhCallHandle<d_camera_move_acc>(new FhCallLocation(EngineAddresses.MsCameraMoveAcc, 0)).hook(this, h_camera_move_acc));
         }
 
         if (_config.Fades)
         {
-            ok &= hook_or_log("Sg_Fade_Common", EngineAddresses.SgFadeCommon,
+            ok &= hook_or_log(HookSiteId.TimingSgFadeCommon, "Sg_Fade_Common", EngineAddresses.SgFadeCommon,
                 () => new FhCallHandle<d_fade_common>(new FhCallLocation(EngineAddresses.SgFadeCommon, 0)).hook(this, h_fade_common));
-            ok &= hook_or_log("Sg_Flash", EngineAddresses.SgFlash,
+            ok &= hook_or_log(HookSiteId.TimingSgFlash, "Sg_Flash", EngineAddresses.SgFlash,
                 () => new FhCallHandle<d_sg_flash>(new FhCallLocation(EngineAddresses.SgFlash, 0)).hook(this, h_sg_flash));
-            ok &= hook_or_log("TkSetFadeOut", EngineAddresses.TkSetFadeOut,
+            ok &= hook_or_log(HookSiteId.TimingTkSetFadeOut, "TkSetFadeOut", EngineAddresses.TkSetFadeOut,
                 () => new FhCallHandle<d_tk_set_fade_out>(new FhCallLocation(EngineAddresses.TkSetFadeOut, 0)).hook(this, h_tk_set_fade_out));
         }
 
@@ -123,20 +123,20 @@ public unsafe sealed partial class VrrModule
         // reads the result rather than assuming the install took.
         if (_config.Fades || _config.CrossFadeHold)
         {
-            _acc_set_alpha_hooked = hook_or_log("Sg_AccSetAlpha", EngineAddresses.SgAccSetAlpha,
+            _acc_set_alpha_hooked = hook_or_log(HookSiteId.TimingSgAccSetAlpha, "Sg_AccSetAlpha", EngineAddresses.SgAccSetAlpha,
                 () => new FhCallHandle<d_acc_set_alpha>(new FhCallLocation(EngineAddresses.SgAccSetAlpha, 0)).hook(this, h_acc_set_alpha));
             ok &= _acc_set_alpha_hooked;
         }
 
         if (_config.Motion)
         {
-            ok &= hook_or_log("Ch_SetMotionSpeed", EngineAddresses.ChSetMotionSpeed,
+            ok &= hook_or_log(HookSiteId.TimingChSetMotionSpeed, "Ch_SetMotionSpeed", EngineAddresses.ChSetMotionSpeed,
                 () => new FhCallHandle<d_set_motion_speed>(new FhCallLocation(EngineAddresses.ChSetMotionSpeed, 0)).hook(this, h_set_motion_speed));
-            ok &= hook_or_log("MsEffectSetSpeed", EngineAddresses.MsEffectSetSpeed,
+            ok &= hook_or_log(HookSiteId.TimingMsEffectSetSpeed, "MsEffectSetSpeed", EngineAddresses.MsEffectSetSpeed,
                 () => new FhCallHandle<d_effect_set_speed>(new FhCallLocation(EngineAddresses.MsEffectSetSpeed, 0)).hook(this, h_effect_set_speed));
-            ok &= hook_or_log("MsSetChrMotionParamF", EngineAddresses.SetMotionParamFloat,
+            ok &= hook_or_log(HookSiteId.TimingMsSetChrMotionParamF, "MsSetChrMotionParamF", EngineAddresses.SetMotionParamFloat,
                 () => new FhCallHandle<d_set_motion_param>(new FhCallLocation(EngineAddresses.SetMotionParamFloat, 0)).hook(this, h_set_motion_param));
-            ok &= hook_or_log("Ch_TextureSetAnimTimer", EngineAddresses.ChTextureSetAnimTimer,
+            ok &= hook_or_log(HookSiteId.TimingChTextureSetAnimTimer, "Ch_TextureSetAnimTimer", EngineAddresses.ChTextureSetAnimTimer,
                 () => new FhCallHandle<d_set_tex_anim_timer>(new FhCallLocation(EngineAddresses.ChTextureSetAnimTimer, 0)).hook(this, h_set_tex_anim_timer));
             _logger.Info("[Vrr] MsSetChrStatInfo observation disabled: the current executable target is unresolved.");
         }

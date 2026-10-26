@@ -10,7 +10,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.BattleTimers) return true;
 
-        return hook_or_log("TOBtlCtrlLimitTimer", EngineAddresses.TOBtlCtrlLimitTimer,
+        return hook_or_log(HookSiteId.BattleTOBtlCtrlLimitTimer, "TOBtlCtrlLimitTimer", EngineAddresses.TOBtlCtrlLimitTimer,
             () => new FhCallHandle<d_limit_timer>(new FhCallLocation(EngineAddresses.TOBtlCtrlLimitTimer, 0)).hook(this, h_limit_timer));
     }
 

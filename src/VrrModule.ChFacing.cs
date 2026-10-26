@@ -210,7 +210,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.ChPitchTurnRate) return true;
 
-        return hook_or_log("Ch_SetPitchTarget", EngineAddresses.ChSetPitchTarget,
+        return hook_or_log(HookSiteId.ChFacingChSetPitchTarget, "Ch_SetPitchTarget", EngineAddresses.ChSetPitchTarget,
             () => new FhCallHandle<d_ch_set_pitch>(new FhCallLocation(EngineAddresses.ChSetPitchTarget, 0))
                 .hook(this, h_ch_set_pitch));
     }

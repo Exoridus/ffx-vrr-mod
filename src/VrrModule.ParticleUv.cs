@@ -22,9 +22,9 @@ public unsafe sealed partial class VrrModule
             return false;
         }
 
-        bool ok = hook_or_log("pppDrawMdlTs2 UV clock", ParticleUvTs2,
+        bool ok = hook_or_log(HookSiteId.ParticleUvPppDrawMdlTs2UVClock, "pppDrawMdlTs2 UV clock", ParticleUvTs2,
             () => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs2, 0)).hook(this, h_particle_uv_ts2));
-        ok &= hook_or_log("pppDrawMdlTs3 UV clock", ParticleUvTs3,
+        ok &= hook_or_log(HookSiteId.ParticleUvPppDrawMdlTs3UVClock, "pppDrawMdlTs3 UV clock", ParticleUvTs3,
             () => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs3, 0)).hook(this, h_particle_uv_ts3));
         return ok;
     }

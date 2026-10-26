@@ -99,7 +99,7 @@ public unsafe sealed partial class VrrModule
     private delegate void d_buoyancy_barrier();
 
     private bool init_buoyancy_hook()
-        => _buoyancy_restore_ready = hook_or_log("character job barrier", EngineAddresses.CharacterJobBarrier,
+        => _buoyancy_restore_ready = hook_or_log(HookSiteId.BuoyancyCharacterJobBarrier, "character job barrier", EngineAddresses.CharacterJobBarrier,
             () => new FhCallHandle<d_buoyancy_barrier>(new FhCallLocation(EngineAddresses.CharacterJobBarrier, 0))
                 .hook(this, h_buoyancy_barrier));
 

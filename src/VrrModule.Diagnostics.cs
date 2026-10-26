@@ -115,17 +115,22 @@ public unsafe sealed partial class VrrModule
                 init_diagnostic_bindings();
                 init_farplane_diagnostics();
                 init_menu_water_diagnostics();
-                diagnostic_hook("viewport_finalize", DiagnosticFinalize, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x20, 0xc7, 0x05],
+                diagnostic_hook(HookSiteId.DiagnosticsViewportFinalize, "viewport_finalize", DiagnosticFinalize, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x20, 0xc7, 0x05],
                     () => new FhCallHandle<d_diag_finalize>(new FhCallLocation(DiagnosticFinalize, 0)).hook(this, h_diag_finalize));
-                diagnostic_hook("view_commit", DiagnosticViewCommit, [0x55, 0x8b, 0xec, 0x81, 0xec, 0xc0, 0x00, 0x00, 0x00],
+                diagnostic_hook(HookSiteId.DiagnosticsViewCommit, "view_commit", DiagnosticViewCommit, [0x55, 0x8b, 0xec, 0x81, 0xec, 0xc0, 0x00, 0x00, 0x00],
                     () => new FhCallHandle<d_diag_commit>(new FhCallLocation(DiagnosticViewCommit, 0)).hook(this, h_diag_commit));
             }
         }
         catch (Exception e) { _logger.Error($"[Vrr] Diagnostics unavailable: {e.GetType().Name}: {e.Message}"); }
     }
 
-    private void diagnostic_hook(string name, nint rva, byte[] expected, Func<bool> install)
+    private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install)
     {
+        if (!HookSites.IsDeclared(site))
+        {
+            _logger.Error($"[Vrr] Unknown hook site {site}; diagnostic {name} was not installed.");
+            return false;
+        }
         bool matches = MemoryProbe.IsReadable((nint)FhUtil.ptr_at<byte>(rva), expected.Length)
             && new ReadOnlySpan<byte>(FhUtil.ptr_at<byte>(rva), expected.Length).SequenceEqual(expected);
         bool installed = false;
@@ -134,6 +139,7 @@ public unsafe sealed partial class VrrModule
         catch (Exception e) { failure = $"{e.GetType().Name}: {e.Message}"; }
         diagnostic_event("probe_hook", new { name, rva = (long)rva, entry_matches = matches, installed, failure });
         if (!installed) _logger.Warning($"[Vrr] Diagnostic hook {name} not installed; entry mismatch or hook refused. Capture coverage is incomplete.");
+        return installed;
     }
 
     private void diagnostic_event(string kind, object? data = null)

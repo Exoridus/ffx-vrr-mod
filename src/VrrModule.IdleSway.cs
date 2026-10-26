@@ -57,7 +57,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!_config.IdleSway) return true;
 
-        return hook_or_log("Ch idle sway", EngineAddresses.ChIdleSway,
+        return hook_or_log(HookSiteId.IdleSwayChIdleSway, "Ch idle sway", EngineAddresses.ChIdleSway,
             () => new FhCallHandle<d_idle_sway>(new FhCallLocation(EngineAddresses.ChIdleSway, 0))
                 .hook(this, h_idle_sway));
     }

@@ -127,13 +127,13 @@ public unsafe sealed partial class VrrModule : FhModule
 
             if (_config.Present)
             {
-                ok &= hook_or_log("FFXApplication::animate", EngineAddresses.FFXApplicationAnimate,
+                ok &= hook_or_log(HookSiteId.ModuleFFXApplicationAnimate, "FFXApplication::animate", EngineAddresses.FFXApplicationAnimate,
                     () => new FhCallHandle<d_frame>(new FhCallLocation(EngineAddresses.FFXApplicationAnimate, 0)).hook(this, h_frame));
             }
 
             if (_config.KeepVsyncInterval)
             {
-                ok &= hook_or_log("SetFlipVSyncInterval", EngineAddresses.SetFlipVSyncInterval,
+                ok &= hook_or_log(HookSiteId.ModuleSetFlipVSyncInterval, "SetFlipVSyncInterval", EngineAddresses.SetFlipVSyncInterval,
                     () => new FhCallHandle<d_set_vsync>(new FhCallLocation(EngineAddresses.SetFlipVSyncInterval, 0)).hook(this, h_set_vsync));
             }
 
@@ -244,8 +244,13 @@ public unsafe sealed partial class VrrModule : FhModule
     ///     Installs one hook and reports the failure with its address rather than only a false return,
     ///     so a bad RVA is distinguishable from a refused hook.
     /// </summary>
-    private bool hook_or_log(string name, nint rva, Func<bool> install)
+    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install)
     {
+        if (!HookSites.IsDeclared(site))
+        {
+            _logger.Error($"[Vrr] Unknown hook site {site}; {name} was not installed.");
+            return false;
+        }
         bool ok = install();
         diagnostic_event("timing_hook", new { name, rva = (long)rva, installed = ok });
         if (!ok) _logger.Error($"[Vrr] Could not hook {name} at RVA 0x{rva:X}." );

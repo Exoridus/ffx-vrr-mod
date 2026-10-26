@@ -47,16 +47,16 @@ public unsafe sealed partial class VrrModule
         if (!_config.ParticleTimeline && !IndependentPresentationEnabled && !_config.ParticleSpriteClock) return true;
         if (!init_particle_sprite_clock()) return false;
 
-        bool ok = hook_or_log("_pppStartPart", EngineAddresses.PppStartPart,
+        bool ok = hook_or_log(HookSiteId.ParticlesPppStartPart, "_pppStartPart", EngineAddresses.PppStartPart,
             () => new FhCallHandle<d_ppp_start_part>(new FhCallLocation(EngineAddresses.PppStartPart, 0)).hook(this, h_ppp_start_part));
         if (_config.ParticleTimeline)
         {
-            ok &= hook_or_log("pppPartLoop", EngineAddresses.PppPartLoop,
+            ok &= hook_or_log(HookSiteId.ParticlesPppPartLoop, "pppPartLoop", EngineAddresses.PppPartLoop,
                 () => new FhCallHandle<d_ppp_part_loop>(new FhCallLocation(EngineAddresses.PppPartLoop, 0)).hook(this, h_ppp_part_loop));
-            ok &= hook_or_log("_pppRunPartFp", EngineAddresses.PppRunPartFp,
+            ok &= hook_or_log(HookSiteId.ParticlesPppRunPartFp, "_pppRunPartFp", EngineAddresses.PppRunPartFp,
                 () => new FhCallHandle<d_ppp_run_part_fp>(new FhCallLocation(EngineAddresses.PppRunPartFp, 0)).hook(this, h_ppp_run_part_fp));
         }
-        ok &= hook_or_log("_pppRunPart", EngineAddresses.PppRunPart,
+        ok &= hook_or_log(HookSiteId.ParticlesPppRunPart, "_pppRunPart", EngineAddresses.PppRunPart,
             () => new FhCallHandle<d_ppp_run_part>(new FhCallLocation(EngineAddresses.PppRunPart, 0)).hook(this, h_ppp_run_part));
         return ok;
     }

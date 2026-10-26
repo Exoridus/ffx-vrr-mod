@@ -33,31 +33,31 @@ public unsafe sealed partial class VrrModule
 
         if (_config.MenuWater)
         {
-            ok &= hook_or_log("graphicDrawMainMenuWaterEffect", EngineAddresses.GraphicDrawMainMenuWaterEffect,
+            ok &= hook_or_log(HookSiteId.FrameSequencesGraphicDrawMainMenuWaterEffect, "graphicDrawMainMenuWaterEffect", EngineAddresses.GraphicDrawMainMenuWaterEffect,
                 () => new FhCallHandle<d_menu_water>(new FhCallLocation(EngineAddresses.GraphicDrawMainMenuWaterEffect, 0)).hook(this, h_menu_water));
         }
 
         if (_config.Fmv)
         {
-            ok &= hook_or_log("graphicVideoUpdate", EngineAddresses.GraphicVideoUpdate,
+            ok &= hook_or_log(HookSiteId.FrameSequencesGraphicVideoUpdate, "graphicVideoUpdate", EngineAddresses.GraphicVideoUpdate,
                 () => new FhCallHandle<d_video_update>(new FhCallLocation(EngineAddresses.GraphicVideoUpdate, 0)).hook(this, h_video_update));
         }
 
         if (_config.TextureVideo)
         {
-            ok &= hook_or_log("graphicTextureVideoUpdate", EngineAddresses.GraphicTextureVideoUpdate,
+            ok &= hook_or_log(HookSiteId.FrameSequencesGraphicTextureVideoUpdate, "graphicTextureVideoUpdate", EngineAddresses.GraphicTextureVideoUpdate,
                 () => new FhCallHandle<d_texture_video_update>(new FhCallLocation(EngineAddresses.GraphicTextureVideoUpdate, 0)).hook(this, h_texture_video_update));
         }
 
         if (_config.BattleIntroBlur)
         {
-            ok &= hook_or_log("battle entry blur", EngineAddresses.EternalBlurTransition,
+            ok &= hook_or_log(HookSiteId.FrameSequencesBattleEntryBlur, "battle entry blur", EngineAddresses.EternalBlurTransition,
                 () => new FhCallHandle<d_eternal_blur>(new FhCallLocation(EngineAddresses.EternalBlurTransition, 0)).hook(this, h_eternal_blur));
         }
 
         if (_config.TextureAnimation)
         {
-            ok &= hook_or_log("old-format texture animation advance", EngineAddresses.ChrTexAnimAdvanceOld,
+            ok &= hook_or_log(HookSiteId.FrameSequencesOldFormatTextureAnimationAdvance, "old-format texture animation advance", EngineAddresses.ChrTexAnimAdvanceOld,
                 () => new FhCallHandle<d_texanim_advance_old>(new FhCallLocation(EngineAddresses.ChrTexAnimAdvanceOld, 0)).hook(this, h_texanim_advance_old));
         }
 

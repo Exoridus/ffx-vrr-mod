@@ -53,14 +53,14 @@ public unsafe sealed partial class VrrModule
         {
             Installed = kind switch
             {
-                0 => new FhCallHandle<d_present>(new FhCallLocation(_target)).hook(_owner, Present),
-                1 => new FhCallHandle<d_resize>(new FhCallLocation(_target)).hook(_owner, Resize),
-                2 => new FhCallHandle<d_fullscreen>(new FhCallLocation(_target)).hook(_owner, Fullscreen),
-                3 => new FhCallHandle<d_release>(new FhCallLocation(_target)).hook(_owner, Release),
-                4 => new FhCallHandle<d_set_targets>(new FhCallLocation(_target)).hook(_owner, SetTargets),
-                5 => new FhCallHandle<d_clear_state>(new FhCallLocation(_target)).hook(_owner, ClearState),
-                6 => new FhCallHandle<d_draw_indexed>(new FhCallLocation(_target)).hook(_owner, DrawIndexed),
-                7 => new FhCallHandle<d_draw>(new FhCallLocation(_target)).hook(_owner, Draw),
+                0 => HookSites.Install(HookSiteId.DxgiPresent, () => new FhCallHandle<d_present>(new FhCallLocation(_target)).hook(_owner, Present)),
+                1 => HookSites.Install(HookSiteId.DxgiResize, () => new FhCallHandle<d_resize>(new FhCallLocation(_target)).hook(_owner, Resize)),
+                2 => HookSites.Install(HookSiteId.DxgiFullscreen, () => new FhCallHandle<d_fullscreen>(new FhCallLocation(_target)).hook(_owner, Fullscreen)),
+                3 => HookSites.Install(HookSiteId.DxgiRelease, () => new FhCallHandle<d_release>(new FhCallLocation(_target)).hook(_owner, Release)),
+                4 => HookSites.Install(HookSiteId.DxgiSetTargets, () => new FhCallHandle<d_set_targets>(new FhCallLocation(_target)).hook(_owner, SetTargets)),
+                5 => HookSites.Install(HookSiteId.DxgiClearState, () => new FhCallHandle<d_clear_state>(new FhCallLocation(_target)).hook(_owner, ClearState)),
+                6 => HookSites.Install(HookSiteId.DxgiDrawIndexed, () => new FhCallHandle<d_draw_indexed>(new FhCallLocation(_target)).hook(_owner, DrawIndexed)),
+                7 => HookSites.Install(HookSiteId.DxgiDraw, () => new FhCallHandle<d_draw>(new FhCallLocation(_target)).hook(_owner, Draw)),
                 _ => false
             };
             return Installed;

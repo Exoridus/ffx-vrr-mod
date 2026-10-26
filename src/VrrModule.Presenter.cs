@@ -33,7 +33,7 @@ public unsafe sealed partial class VrrModule
     // chain below replaces it. It was once disabled for a per-pass slowdown that turned out to be uncached
     // VirtualQuery calls, which hit the native chain just the same.
     private bool install_vrr_swapchain_hook()
-        => hook_or_log("D3D11CreateDeviceAndSwapChain", 0,
+        => hook_or_log(HookSiteId.PresenterD3D11CreateDeviceAndSwapChain, "D3D11CreateDeviceAndSwapChain", 0,
             () => new FhCallHandle<d_create_swapchain>(new FhCallLocation("d3d11.dll", "D3D11CreateDeviceAndSwapChain"))
                 .hook(this, h_create_swapchain));
 

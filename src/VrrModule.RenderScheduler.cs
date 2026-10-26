@@ -54,13 +54,13 @@ public unsafe sealed partial class VrrModule
         init_field_particle_pause();
         // A refusal is logged there and keeps battle and magic overlays on the native clock.
         init_battle_effect_pause();
-        bool ok = hook_or_log("render main loop", DiagnosticMainLoop,
+        bool ok = hook_or_log(HookSiteId.RenderSchedulerRenderMainLoop, "render main loop", DiagnosticMainLoop,
             () => new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).hook(this, h_diag_loop));
-        ok &= hook_or_log("render exec count", RenderGetExec,
+        ok &= hook_or_log(HookSiteId.RenderSchedulerRenderExecCount, "render exec count", RenderGetExec,
             () => new FhCallHandle<d_render_exec>(new FhCallLocation(RenderGetExec, 0)).hook(this, h_render_exec));
-        ok &= hook_or_log("render calculation rate", RenderCalcRate,
+        ok &= hook_or_log(HookSiteId.RenderSchedulerRenderCalculationRate, "render calculation rate", RenderCalcRate,
             () => new FhCallHandle<d_render_void>(new FhCallLocation(RenderCalcRate, 0)).hook(this, h_render_calc_rate));
-        ok &= hook_or_log("render particle emission", RenderParticleEmit,
+        ok &= hook_or_log(HookSiteId.RenderSchedulerRenderParticleEmission, "render particle emission", RenderParticleEmit,
             () => new FhCallHandle<d_render_emit>(new FhCallLocation(RenderParticleEmit, 0)).hook(this, h_render_particle_emit));
         ok &= init_render_camera();
         ok &= init_render_actors();

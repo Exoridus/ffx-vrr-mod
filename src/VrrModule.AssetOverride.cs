@@ -164,11 +164,11 @@ public unsafe sealed partial class VrrModule
         foreach ((string key, string file) in _overrides.OrderBy(e => e.Key))
             _logger.Info($"[Vrr] Asset override: {key} -> {file} ({new FileInfo(file).Length:N0} bytes)");
 
-        bool ok = hook_or_log("BigFileStream::checkExists", EngineAddresses.BigFileCheckExists,
+        bool ok = hook_or_log(HookSiteId.AssetOverrideBigFileStreamCheckExists, "BigFileStream::checkExists", EngineAddresses.BigFileCheckExists,
             () => new FhCallHandle<d_big_file_check_exists>(new FhCallLocation(EngineAddresses.BigFileCheckExists, 0))
                 .hook(this, h_big_file_check_exists));
 
-        ok &= hook_or_log("BigFileStream::openFile", EngineAddresses.BigFileOpenFile,
+        ok &= hook_or_log(HookSiteId.AssetOverrideBigFileStreamOpenFile, "BigFileStream::openFile", EngineAddresses.BigFileOpenFile,
             () => new FhCallHandle<d_big_file_open_file>(new FhCallLocation(EngineAddresses.BigFileOpenFile, 0))
                 .hook(this, h_big_file_open_file));
 

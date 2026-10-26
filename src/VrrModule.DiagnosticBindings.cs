@@ -12,7 +12,7 @@ public unsafe sealed partial class VrrModule
     private void init_diagnostic_bindings()
     {
         if (!IndependentPresentationEnabled)
-            diagnostic_hook("main_loop", DiagnosticMainLoop, [0x55, 0x8b, 0xec, 0x81, 0xec, 0xa4, 0, 0, 0],
+            diagnostic_hook(HookSiteId.DiagnosticBindingsMainLoop, "main_loop", DiagnosticMainLoop, [0x55, 0x8b, 0xec, 0x81, 0xec, 0xa4, 0, 0, 0],
                 () => new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).hook(this, h_diag_loop));
         byte* exec = FhUtil.ptr_at<byte>(DiagnosticGetExec);
         _diagnosticExecAvailable = MemoryProbe.IsReadable((nint)exec, 15)

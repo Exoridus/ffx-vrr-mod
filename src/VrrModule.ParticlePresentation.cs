@@ -53,9 +53,9 @@ public unsafe sealed partial class VrrModule
             }
         }
         if (!preflight_field_particle_presentation()) return false;
-        bool ok = hook_or_log("particle presentation worker", PilotWorker,
+        bool ok = hook_or_log(HookSiteId.ParticlePresentationParticlePresentationWorker, "particle presentation worker", PilotWorker,
             () => new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).hook(this, h_particle_pilot_worker));
-        ok &= hook_or_log("particle presentation DD", PilotDd,
+        ok &= hook_or_log(HookSiteId.ParticlePresentationParticlePresentationDD, "particle presentation DD", PilotDd,
             () => new FhCallHandle<d_pilot_dd>(new FhCallLocation(PilotDd, 0)).hook(this, h_particle_pilot_dd));
         ok &= init_particle_lifecycle();
         foreach (ParticlePresentationKernel kernel in Enum.GetValues<ParticlePresentationKernel>())
@@ -75,7 +75,7 @@ public unsafe sealed partial class VrrModule
                     .chain_from(self!).fnptr!(obj, data, descriptor);
             };
             _particle_pilot_kernels.Add(kernel, self);
-            ok &= hook_or_log($"particle presentation {kernel}", rva,
+            ok &= hook_or_log(HookSiteId.ParticlePresentationKernelTemplate, $"particle presentation {kernel}", rva,
                 () => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(rva, 0)).hook(this, self));
         }
         if (ok) ok = init_field_particle_presentation();

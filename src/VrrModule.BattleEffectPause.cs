@@ -147,7 +147,7 @@ public unsafe sealed partial class VrrModule
             _logger.Error($"[Vrr] Battle effect pause refused, battle and magic overlays keep the native clock: {error}.");
             return false;
         }
-        if (!hook_or_log("MAG-028 particle pause setter", BxPauseSetter,
+        if (!hook_or_log(HookSiteId.BattleEffectPauseMAG028ParticlePauseSetter, "MAG-028 particle pause setter", BxPauseSetter,
                 () => new FhCallHandle<d_bx_setter>(new FhCallLocation(BxPauseSetter, 0)).hook(this, h_bx_pause_setter)))
         {
             _logger.Error("[Vrr] Battle effect pause refused: the pause setter hook could not be installed; no code was patched.");

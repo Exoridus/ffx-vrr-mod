@@ -60,7 +60,7 @@ public unsafe sealed partial class VrrModule
         _fieldGeometry = new(() => new FhCallHandle<d_field_geometry>(new FhCallLocation(0x341b90, 0)).fnptr!);
         _fieldBackend = new(() => new FhCallHandle<d_field_backend>(new FhCallLocation(0x2453d0, 0)).fnptr!);
         _fieldLevel = new(() => new FhCallHandle<d_field_level>(new FhCallLocation(0x241da0, 0)).fnptr!);
-        _fieldPresentationInstalled = hook_or_log("field particle producer dispatcher", 0x317010,
+        _fieldPresentationInstalled = hook_or_log(HookSiteId.FieldParticlePresentationFieldParticleProducerDispatcher, "field particle producer dispatcher", 0x317010,
             () => new FhCallHandle<d_field_dispatch>(new FhCallLocation(0x317010, 0)).hook(this, h_field_particle_dispatch));
         return _fieldPresentationInstalled;
     }

@@ -59,7 +59,7 @@ public unsafe sealed partial class VrrModule
             || !MemoryProbe.IsReadable(_renderCameraCurrent, 4) || !MemoryProbe.IsReadable(_renderCameraBlocks, 3 * 0x1c0))
             return render_camera_binding_failed();
 
-        _renderCameraBound = hook_or_log("render camera finalize", RenderCameraFinalize,
+        _renderCameraBound = hook_or_log(HookSiteId.RenderCameraRenderCameraFinalize, "render camera finalize", RenderCameraFinalize,
             () => new FhCallHandle<d_render_camera_finalize>(new FhCallLocation(RenderCameraFinalize, 0)).hook(this, h_render_camera_finalize));
         return _renderCameraBound;
     }

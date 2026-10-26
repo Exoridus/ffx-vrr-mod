@@ -85,15 +85,15 @@ public unsafe sealed partial class VrrModule
             return false;
         }
         bool ok = true;
-        ok &= hook_or_log("FX-010 camera shape spawn", 0x347090,
+        ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeSpawn, "FX-010 camera shape spawn", 0x347090,
             () => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x347090, 0)).hook(this, h_fx_shape_spawn_a));
-        ok &= hook_or_log("FX-010 camera shape integrate", 0x3472b0,
+        ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeIntegrate, "FX-010 camera shape integrate", 0x3472b0,
             () => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x3472b0, 0)).hook(this, h_fx_shape_integrate_a));
-        ok &= hook_or_log("FX-010 camera shape DisPos spawn", 0x3482e0,
+        ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeDisPosSpawn, "FX-010 camera shape DisPos spawn", 0x3482e0,
             () => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x3482e0, 0)).hook(this, h_fx_shape_spawn_b));
-        ok &= hook_or_log("FX-010 camera shape DisPos integrate", 0x348500,
+        ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeDisPosIntegrate, "FX-010 camera shape DisPos integrate", 0x348500,
             () => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x348500, 0)).hook(this, h_fx_shape_integrate_b));
-        ok &= hook_or_log("FX-010 keyed draw op", KeyedAddDrawOp,
+        ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010KeyedDrawOp, "FX-010 keyed draw op", KeyedAddDrawOp,
             () => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(KeyedAddDrawOp, 0)).hook(this, h_fx_keyed_add));
         if (!ok)
         {

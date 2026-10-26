@@ -21,7 +21,7 @@ namespace Fahrenheit.Mods.Vrr
         }
         internal bool InitObserver(bool probe = true, bool blend = true)
         { _config.TextureBlendProbe = probe; _config.TextureFrameInterpolation = blend; return init_texture_device_observer(); }
-        private bool hook_or_log(string label, nint address, Func<bool> install) => install();
+        private bool hook_or_log(HookSiteId site, string label, nint address, Func<bool> install) => HookSites.Install(site, install);
         private static bool texture_binding_prefix(nint address, ReadOnlySpan<byte> expected)
             => address == 0x195800 && expected.SequenceEqual(TestTextureMemory.Entry);
         private void texture_blend_probe_device(ID3D11DeviceContext* context) { ProbeDevices++; }

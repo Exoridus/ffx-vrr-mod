@@ -21,8 +21,8 @@ public unsafe sealed partial class VrrModule
             diagnostic_event("texture_blend_probe_refused", new { reason = "frame resolver entry mismatch" });
             return;
         }
-        _textureProbeReady = new FhCallHandle<d_texture_probe_resolve>(new FhCallLocation(TextureProbeResolve, 0))
-            .hook(this, h_texture_probe_resolve);
+        _textureProbeReady = HookSites.Install(HookSiteId.TextureBlendProbeResolve, () => new FhCallHandle<d_texture_probe_resolve>(new FhCallLocation(TextureProbeResolve, 0))
+            .hook(this, h_texture_probe_resolve));
         if (_textureProbeReady) AppDomain.CurrentDomain.ProcessExit += (_, _) => release_texture_blend_probe_resources();
         diagnostic_event("texture_blend_probe_ready", new { installed = _textureProbeReady,
             resource_limit = 32, binding_limit = 64, draw_limit = 4096,
