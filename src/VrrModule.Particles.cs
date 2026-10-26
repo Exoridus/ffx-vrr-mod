@@ -122,6 +122,18 @@ public unsafe sealed partial class VrrModule
         var orig = new FhCallHandle<d_ppp_run_part>(new FhCallLocation(EngineAddresses.PppRunPart, 0))
             .chain_from(h_ppp_run_part).fnptr;
 
+        if (IsOwnedBattleEffectHold)
+        {
+            int previous = FhUtil.get_at<int>(EngineAddresses.PpvUserStopPartF);
+            FhUtil.set_at(EngineAddresses.PpvUserStopPartF, 1);
+            try { return orig is null ? 0 : orig(manager, mode); }
+            finally
+            {
+                if (FhUtil.get_at<int>(EngineAddresses.PpvUserStopPartF) == 1)
+                    FhUtil.set_at(EngineAddresses.PpvUserStopPartF, previous);
+            }
+        }
+
         int? paused = render_pause_particles();
         try
         {

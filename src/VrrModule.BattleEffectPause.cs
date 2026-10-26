@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Threading;
 using static Fahrenheit.Mods.Vrr.BattleEffectPauseCode;
 
@@ -54,18 +53,16 @@ public unsafe sealed partial class VrrModule
     private const string BxRecordStepSitePattern = "A1 ?? ?? ?? ?? 6A 30 57 FF 30 E8 ?? ?? ?? ?? 83 C4 2C 85 C0 0F 85";
     private const string BxRecordStepPattern = "55 8B EC FF 75 10 A1 ?? ?? ?? ?? 8B 4D 08 FF 75 0C 89 08 E8 ?? ?? ?? ?? 83 C4 08 5D C3";
 
-    private bool _battleEffectPauseInstalled, _bxPresented;
-    private nint _bxPool, _bxAdapter, _bxNodeWalkOriginal, _bxFindUnitFn;
+    private bool _battleEffectPauseInstalled;
+    private nint _bxPool, _bxAdapter, _bxFindUnitFn;
     private int _bxPoolUsed;
     private const int BxPoolSize = 0x100000;
-    private readonly nint[] _bxOppOriginal = new nint[20];
-    private readonly byte[] _bxOppBuffer = new byte[0x10000];
     private int _bxWantedPause;
     private (nint Init, int MagicId) _bxOverlayKey;
     private BxOverlay? _bxOverlay;
     private readonly Dictionary<(nint Base, string Name), BxOverlay> _bxOverlays = [];
     private readonly List<(nint HeadOperand, nint Trampoline)> _bxDrivers = [];
-    private long _bxHeldWalks, _bxOppRestored, _bxOppEnded, _bxNodeDraws, _bxDriverHolds, _bxPauseResets, _bxFollowSkips;
+    private long _bxDriverHolds, _bxPauseResets, _bxFollowSkips;
     private int _bxTrackFailures;
 
     private sealed class BxOverlay(nint image, string name)
@@ -241,27 +238,11 @@ public unsafe sealed partial class VrrModule
             _bxOverlay = null;
             if (++_bxTrackFailures <= 4) _logger.Error($"[Vrr] Battle effect pause could not inspect the magic overlay: {error.Message}");
         }
-        _bx[0] = presentation ? (byte)1 : (byte)0;
+        battle_effects_set_pass(presentation);
         if (presentation) { _bxPresented = true; return; }
         if (!_bxPresented) return;
         _bxPresented = false;
         bx_reset_stale_pause();
-    }
-
-    // Holds the walks as on a presentation pass, inside a simulation pass that does not advance.
-    private byte battle_effects_hold_begin()
-    {
-        byte previous = _bx[0];
-        _bx[0] = 1;
-        _bxPresented = true;
-        return previous;
-    }
-
-    private void battle_effects_hold_end(byte previous) => _bx[0] = previous;
-
-    private void battle_effects_end_pass()
-    {
-        if (_bx != null) _bx[0] = 0;
     }
 
     private string battle_effect_counts()
@@ -269,15 +250,6 @@ public unsafe sealed partial class VrrModule
             : $"bx_walks={_bxHeldWalks} bx_streams={_bxRepeat.Ran}/{_bxRepeat.Blocked} bx_opp={_bxOppRestored}/{_bxOppEnded} " +
               $"bx_nodes={_bxNodeDraws} bx_drivers={_bxDriverHolds} bx_resets={_bxPauseResets} bx_follow={_bxFollowSkips} " +
               $"bx_overlay={_bxOverlay?.Name ?? "-"}";
-
-    private void opu_held_walk(d_pilot_worker original, ushort family, byte mode)
-    {
-        byte previous = _bx[1];
-        _bx[1] = 3;
-        _bxHeldWalks++;
-        try { original(family, mode); }
-        finally { _bx[1] = previous; }
-    }
 
     // A presentation draw writes (exec == 0) into an overlay's pause cache and the particle pause flag;
     // a native logic pass never sees either, so its update would stall behind them.
@@ -323,95 +295,6 @@ public unsafe sealed partial class VrrModule
             return 1;
         }
         catch (Exception) { return 0; }
-    }
-
-    // ---- MAG-030: OPP record ops ----
-
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])] private static void bx_on_opp_1(nint scratch, nint ctx) => bx_opp(1, scratch, ctx);
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])] private static void bx_on_opp_9(nint scratch, nint ctx) => bx_opp(9, scratch, ctx);
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])] private static void bx_on_opp_10(nint scratch, nint ctx) => bx_opp(10, scratch, ctx);
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])] private static void bx_on_opp_17(nint scratch, nint ctx) => bx_opp(17, scratch, ctx);
-
-    private static void bx_opp(int op, nint scratch, nint ctx)
-    {
-        var module = s_battle_effects!;
-        var original = (delegate* unmanaged[Cdecl]<nint, nint, void>)module._bxOppOriginal[op];
-        nint record = 0;
-        byte* saved = stackalloc byte[0x100];
-        nint buffer = 0;
-        int length = 0;
-        try
-        {
-            if (RenderPassContext.IsPresentation && Environment.CurrentManagedThreadId == module._particle_pilot_thread)
-            {
-                record = (nint)(*(uint*)(scratch + 0x220));
-                if (!MemoryProbe.TryCopy(record, new Span<byte>(saved, 0x100))) record = 0;
-                if (record != 0 && op is 9 or 17)
-                {
-                    buffer = (nint)(*(uint*)(record + (op == 9 ? 0xa8 : 0xbc)));
-                    if (MemoryProbe.IsReadable(buffer + (op == 9 ? 0 : 4), 2))
-                        length = OppBufferLength(op, *(ushort*)(buffer + (op == 9 ? 0 : 4)));
-                    if (length > module._bxOppBuffer.Length || !MemoryProbe.TryCopy(buffer, module._bxOppBuffer.AsSpan(0, length)))
-                        length = 0;
-                }
-            }
-        }
-        catch (Exception) { record = 0; length = 0; }
-        original(scratch, ctx);
-        if (record == 0) return;
-        ushort flags = *(ushort*)(record + 0xb0), before = *(ushort*)(saved + 0xb0);
-        if (((flags & 0x8000) != 0 && (before & 0x8000) == 0) || *(byte*)(record + 0xbb) != saved[0xbb])
-        {
-            module._bxOppEnded++;
-            return;
-        }
-        new ReadOnlySpan<byte>(saved, 0x100).CopyTo(new Span<byte>((void*)record, 0x100));
-        if (length > 0) module._bxOppBuffer.AsSpan(0, length).CopyTo(new Span<byte>((void*)buffer, length));
-        module._bxOppRestored++;
-    }
-
-    // ---- MAG-020/026: family-X node walk ----
-
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static void bx_on_node_walk(nint head)
-    {
-        var module = s_battle_effects!;
-        if (!RenderPassContext.IsPresentation)
-        {
-            ((delegate* unmanaged[Cdecl]<nint, void>)module._bxNodeWalkOriginal)(head);
-            return;
-        }
-        try { module.bx_draw_nodes(head); }
-        catch (Exception) { }
-    }
-
-    // Draws each node without its state handler; a record's other fields are put back after its draw,
-    // the particle program block at +0x280 is left to the particle pause.
-    private void bx_draw_nodes(nint head)
-    {
-        byte[] saved = ArrayPool<byte>.Shared.Rent(0x490);
-        try
-        {
-            int guard = 0;
-            for (nint node = head; node != 0 && guard < 4096 && MemoryProbe.IsReadable(node, 0xb4); guard++)
-            {
-                uint callback = *(uint*)(node + 0xb0);
-                if (callback != 0 && (*(uint*)node & 4) == 0)
-                {
-                    var draw = (delegate* unmanaged[Cdecl]<nint, void>)(nint)callback;
-                    bool record = node != head && node != head + 0xbc && MemoryProbe.TryCopy(node, saved.AsSpan(0, 0x490));
-                    draw(node);
-                    if (record)
-                    {
-                        saved.AsSpan(0xc, 0x280 - 0xc).CopyTo(new Span<byte>((void*)(node + 0xc), 0x280 - 0xc));
-                        saved.AsSpan(0x330, 0x490 - 0x330).CopyTo(new Span<byte>((void*)(node + 0x330), 0x490 - 0x330));
-                    }
-                    _bxNodeDraws++;
-                }
-                node = (nint)(*(uint*)(node + 8));
-            }
-        }
-        finally { ArrayPool<byte>.Shared.Return(saved); }
     }
 
     // ---- MAG-016: PPP record driver of the current overlay ----

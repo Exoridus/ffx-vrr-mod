@@ -77,6 +77,7 @@ internal static class NativeActorPool
 
 internal static class MemoryProbe
 {
+    internal static bool IsReadable(nint address, int length) => address != 0 && length > 0;
     internal static bool TryCopy(nint address, Span<byte> target)
     {
         NativeActorPool.CopyCount++;

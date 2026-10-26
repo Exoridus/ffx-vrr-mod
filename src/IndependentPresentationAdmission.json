@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "5e4f87db6e033e40d37659bfaef2e555efddf8971d502cf1f624a08214388586",
+  "canonical_contract_snapshot_sha256": "22de58219ede66e54bbd1b3b6b8cae1bad27d5412e6d9202d9bac74c1b37a505",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -347,9 +347,19 @@
       "lf_sha256": "00b3203ed35b28f6e83dca59aaec14916ec01a7dcb894b574c7a52df7aa00f3c"
     },
     {
+      "path": "src/VrrModule.BattleEffectDraw.cs",
+      "sha256": "d28c3fe4eff08a7eb47261bc4e75bdda76a3c6d224fec84a5bbdc71aa2c31240",
+      "lf_sha256": "d28c3fe4eff08a7eb47261bc4e75bdda76a3c6d224fec84a5bbdc71aa2c31240"
+    },
+    {
+      "path": "src/VrrModule.BattleEffectHold.cs",
+      "sha256": "de922c2ec9129c5c2af3f4f7ae4d17f140ac759c7d55ace3836b9e078c5535b4",
+      "lf_sha256": "de922c2ec9129c5c2af3f4f7ae4d17f140ac759c7d55ace3836b9e078c5535b4"
+    },
+    {
       "path": "src/VrrModule.BattleEffectPause.cs",
-      "sha256": "740f8467eb5126ad68057236364c8fa5fb42fd2c43022a1a997c55aaecbec74d",
-      "lf_sha256": "740f8467eb5126ad68057236364c8fa5fb42fd2c43022a1a997c55aaecbec74d"
+      "sha256": "139a7d6a26067350569fc1261ea3821d919047fdac8a2f7afb2fc2d1a6828caa",
+      "lf_sha256": "0af860cd38fd35d8a667308430254b11d973ba0f4660cb5e6a7d5f6f41fc771d"
     },
     {
       "path": "src/VrrModule.BattlePresentation.cs",
@@ -398,8 +408,8 @@
     },
     {
       "path": "src/VrrModule.Effects.cs",
-      "sha256": "b8df32a971c3735510618a90b55c078318baeea4a3bd44311b1cbef4d684ddea",
-      "lf_sha256": "0a922bff525179eb1a4714731a5dc5549b981f7ba72afb074f7890aecdbc4a3c"
+      "sha256": "6ae6e2c5e6b3d598bf44286f5ae6736f306ff7920c1e8f9447c92004bf4ddc65",
+      "lf_sha256": "4ade736dd9b4dea6473dd27c12d15f7f73a6ceb53880d2fef736676a1638a0d9"
     },
     {
       "path": "src/VrrModule.EngineState.cs",
@@ -548,8 +558,8 @@
     },
     {
       "path": "src/VrrModule.ParticlePresentation.cs",
-      "sha256": "00e89f3301233675d73079dcda970ede3128446a9de92b3d8256bf8ec4a7d600",
-      "lf_sha256": "00e89f3301233675d73079dcda970ede3128446a9de92b3d8256bf8ec4a7d600"
+      "sha256": "d25623c1af7cf2d7bc67f70586d6d7c9e89adea35c467492910b8776c3ed6d0f",
+      "lf_sha256": "fee8929371f8c5905ac6e1f8b21df6a45ac993dd98ab95b361e73083ed2da09c"
     },
     {
       "path": "src/VrrModule.ParticleSpriteClock.cs",
@@ -568,8 +578,8 @@
     },
     {
       "path": "src/VrrModule.Particles.cs",
-      "sha256": "6d4609c5d6f008c94395fcb47b4ad69f44c835bd5d9529387efd9d495ac8b50c",
-      "lf_sha256": "6d4609c5d6f008c94395fcb47b4ad69f44c835bd5d9529387efd9d495ac8b50c"
+      "sha256": "bcca59a5ae7208229141c2f894e353cbfdfe61a5f5fb9be97c64d30eed8c58fa",
+      "lf_sha256": "37410f64c10151532f6d3cf7603da2cbbb400606bb471e1f6d980bea99e16fe7"
     },
     {
       "path": "src/VrrModule.Presenter.cs",
@@ -702,6 +712,11 @@
       "lf_sha256": "93bc24df510fd187a1a486933a624716ed48ad370bddd2e64292bfd0f3d85113"
     },
     {
+      "path": "tests/ParticlePresentation.Tests/BattleEffectHoldTests.cs",
+      "sha256": "bcfa808d547e3c556df29184e5c7e62834dd6247a7457ce176c8177a30854b0f",
+      "lf_sha256": "bcfa808d547e3c556df29184e5c7e62834dd6247a7457ce176c8177a30854b0f"
+    },
+    {
       "path": "tests/ParticlePresentation.Tests/InstalledPauseQualificationTests.cs",
       "sha256": "b10f73fad1774ec6c78b70d43aefce486b865b6bed860e6655c8a9164472ca30",
       "lf_sha256": "b10f73fad1774ec6c78b70d43aefce486b865b6bed860e6655c8a9164472ca30"
@@ -710,6 +725,16 @@
       "path": "tests/ParticlePresentation.Tests/LateProducerAdmissionTests.cs",
       "sha256": "bddb4f5b76bdf1e5c206f3ca74052e5624dfcf436c6536aa31363e3efd96c2d5",
       "lf_sha256": "bddb4f5b76bdf1e5c206f3ca74052e5624dfcf436c6536aa31363e3efd96c2d5"
+    },
+    {
+      "path": "tests/ParticlePresentation.Tests/ParticlePresentation.Tests.csproj",
+      "sha256": "a86a5bc721fdcd9b3dc0e3b55f6f9c34552e3d81aea21f3a1c9e6e604478f471",
+      "lf_sha256": "a455111a599912c21bd7424e65df456fbf422606df253c50599a3eb5aa6cdbef"
+    },
+    {
+      "path": "tests/ParticlePresentation.Tests/PilotFixture.cs",
+      "sha256": "cdb9cc528135fb38ef3f0c3758b622d3581f1a22add6fafce3a149ba99e371d9",
+      "lf_sha256": "ea1f0de8b0327fde1c7e69a328e209421cebd341929374e3fc7114c5fbbba9c2"
     },
     {
       "path": "tests/RenderImage.Tests/ActorCompletionTests.cs",
@@ -742,14 +767,19 @@
       "lf_sha256": "4dad2efa8d498fd71ed19bc5b258056226c7ef163758514c7f9522472ad54bd2"
     },
     {
+      "path": "tests/RenderTiming.Tests/BattlePresentationTests.cs",
+      "sha256": "76323ddf76a1f4512f46641c9fb688cb4739faab05c9a52ce950f3c669ade42c",
+      "lf_sha256": "76323ddf76a1f4512f46641c9fb688cb4739faab05c9a52ce950f3c669ade42c"
+    },
+    {
       "path": "tests/RenderTiming.Tests/IndependentStartupTests.cs",
       "sha256": "1195d55b5cec4f225b8729c28b2d9879d4b3c1f43522a0a6932c1b43605b50a6",
       "lf_sha256": "1195d55b5cec4f225b8729c28b2d9879d4b3c1f43522a0a6932c1b43605b50a6"
     },
     {
       "path": "tests/RenderTiming.Tests/OpuRepeatBridgeTests.cs",
-      "sha256": "79f7931143d715da205bddb5e9a0c49a4044d9218bb5418a59d11bf184c3cb8e",
-      "lf_sha256": "79f7931143d715da205bddb5e9a0c49a4044d9218bb5418a59d11bf184c3cb8e"
+      "sha256": "3ca0fe048731d40df0e39d31ec762ff2cacff2d8e92016b486f9a2510a149906",
+      "lf_sha256": "3ca0fe048731d40df0e39d31ec762ff2cacff2d8e92016b486f9a2510a149906"
     },
     {
       "path": "tests/RenderTiming.Tests/OpuRepeatTrackerTests.cs",
@@ -763,8 +793,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderActivationTests.cs",
-      "sha256": "5090eb1befa3976528ecbd30de051fd4f54c38315d3df5186e230593a9f5734d",
-      "lf_sha256": "5090eb1befa3976528ecbd30de051fd4f54c38315d3df5186e230593a9f5734d"
+      "sha256": "a8a81b424e2406e1c986858e9b95aaa9f5ff06287085824045e970e61964412f",
+      "lf_sha256": "a8a81b424e2406e1c986858e9b95aaa9f5ff06287085824045e970e61964412f"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderImageIdentityTests.cs",
@@ -777,9 +807,14 @@
       "lf_sha256": "f907d8c33e3095d7f6e253bdbb88b3ace0167128b375c16afb8dd4efb4346d53"
     },
     {
+      "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
+      "sha256": "851c4cbc36716e93964a7aa961982d9a201a20e6ba1ee3795b20b1bf27dd993a",
+      "lf_sha256": "eff80294c30a6775ffada75c8674cd7a386bd2a6f729b6fcebb7327a905ad316"
+    },
+    {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",
-      "sha256": "cadeaddf0276deae5198d2cb862dd75bc066d07bdcd7a9ce3d188ddfb8099188",
-      "lf_sha256": "c5de0e2dfc103db25c9df5535c72a307f570e5a020e01c4a7e88e1469951169f"
+      "sha256": "a0e65fb8f36da7341c3153efd41d91048f767fb4e62bab556cdc065f3e6e7dae",
+      "lf_sha256": "ef7706fec71d0ba712196fd899b8f97eb56bce924add9fda1380f87cb56e3c88"
     }
   ],
   "generator_inputs": [

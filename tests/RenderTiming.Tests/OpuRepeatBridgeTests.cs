@@ -188,6 +188,7 @@ public unsafe sealed class OpuRepeatBridgeTests
 public unsafe sealed partial class VrrModule
 {
     private int _particle_pilot_thread;
+    internal void ForgetBattleOwner() => _particle_pilot_thread = 0;
     internal void AttachOpuOwner(byte* data) { _bx = data; _particle_pilot_thread = Environment.CurrentManagedThreadId; s_battle_effects = this; }
     internal static void ReleaseOpuOwner() => s_battle_effects = null;
     internal void ClearOpuRepeat() => _bxRepeat.Clear();

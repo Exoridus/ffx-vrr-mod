@@ -22,7 +22,6 @@ public unsafe sealed partial class VrrModule
     private bool advance_this_frame() => true;
     private bool battle_effect_presentation_is_qualified() => FhUtil.get_at<nint>(EngineAddresses.PlayerChrs) == 0;
     private bool _battleEffectPauseInstalled;
-    private void opu_held_walk(d_pilot_worker original, ushort family, byte mode) => original(family, mode);
     private const int VanillaAgeStep = 0x1000;
     private readonly Dictionary<nint, (int Original, int Applied)> _timeline_manager_steps = [];
     private int _timeline_step = 0x800;
@@ -61,7 +60,7 @@ public unsafe sealed partial class VrrModule
     internal bool InitializeSpriteClock() => init_particle_sprite_clock();
     internal bool InitializePilot() => init_particle_presentation();
     internal bool QualifyPilot() => particle_presentation_is_qualified();
-    internal void EnableBattlePause() => _battleEffectPauseInstalled = true;
+    internal void EnableBattlePause() { _battleEffectPauseInstalled = true; _bx = (byte*)FhUtil.ptr_at<byte>(0x123456); s_battle_effects = this; }
     internal string QualificationRefusal => _qualificationRefusal;
     private readonly PresentationAdmission _presentationAdmission = new();
     internal string? PresentationFailure => _presentationAdmission.Failure;
@@ -158,6 +157,8 @@ internal static class PilotNative
     internal static readonly List<int> KernelOrder = [];
     internal static Action<nint>? OnDraw;
     internal static Action? OnDd;
+    internal static Action? OnWorker;
+    internal static Action? OnRun;
     internal static nint CreatedObject, FailHook;
     internal static Action<string, nint>? OnLifecycle;
     internal static Action<nint, nint, nint>? OnSprite;
@@ -174,14 +175,14 @@ internal static class PilotNative
     public static void FieldGeometry(nint obj, nint data, nint descriptor, nint work) { PacketPublications++; OnDraw?.Invoke(obj); }
     public static nint Backend(int index, nint obj) => 1;
     public static int Level() => 0;
-    public static void Worker(ushort family, byte mode) => Workers++;
-    public static uint Run(nint manager, byte mode) { Runs++; return 77; }
+    public static void Worker(ushort family, byte mode) { Workers++; OnWorker?.Invoke(); }
+    public static uint Run(nint manager, byte mode) { Runs++; OnRun?.Invoke(); return 77; }
     public static void Start(nint manager, int step, nint data, int flags) { Starts++; LastStartManager = manager; LastStartStep = step; LastStartData = data; LastStartFlags = flags; }
     public static nint Dd(nint scratch, nint pc) { OnDd?.Invoke(); PacketPublications++; return pc + 4; }
     public static nint Decode(uint pointer) => (nint)(nuint)pointer;
     public static void Matrix(nint obj, nint data, nint descriptor) { KernelOrder.Add(0); OnDraw?.Invoke(obj); }
     public static void Draw(nint obj, nint data, nint descriptor) { KernelOrder.Add(1); OnDraw?.Invoke(obj); }
-    internal static void Reset() { Initializing = false; Resolutions.Clear(); Hooks = Workers = Runs = Starts = LastStartStep = LastStartFlags = PacketPublications = 0; LastStartManager = LastStartData = 0; OnDraw = null; OnDd = null; OnDispatch = null; OnFieldLoop = null; CreatedObject = FailHook = 0; OnLifecycle = null; OnSprite = null; VrrModule.TargetFramerate = 60; KernelOrder.Clear(); HookTargets.Clear(); FhUtil.Reset(); RenderPassContext.IsPresentation = false; RenderPassContext.IsActive = false; }
+    internal static void Reset() { Initializing = false; Resolutions.Clear(); Hooks = Workers = Runs = Starts = LastStartStep = LastStartFlags = PacketPublications = 0; LastStartManager = LastStartData = 0; OnDraw = null; OnDd = null; OnWorker = null; OnRun = null; OnDispatch = null; OnFieldLoop = null; CreatedObject = FailHook = 0; OnLifecycle = null; OnSprite = null; VrrModule.TargetFramerate = 60; KernelOrder.Clear(); HookTargets.Clear(); FhUtil.Reset(); RenderPassContext.IsPresentation = false; RenderPassContext.IsActive = false; }
 }
 internal unsafe static class FhUtil
 {

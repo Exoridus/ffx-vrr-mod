@@ -104,9 +104,13 @@ public unsafe sealed partial class VrrModule
         if (held && !presentation && _battleEffectPauseInstalled)
         {
             _eternal_held++;
-            byte previous = battle_effects_hold_begin();
+            if (!battle_effects_hold_begin(out var hold))
+            {
+                refuse_independent_presentation("battle_effect_hold_owner");
+                return;
+            }
             try { original.fnptr?.Invoke(); }
-            finally { battle_effects_hold_end(previous); }
+            finally { battle_effects_hold_end(hold); }
             return;
         }
         if (held) { _eternal_held++; return; }

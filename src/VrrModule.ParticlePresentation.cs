@@ -294,7 +294,8 @@ public unsafe sealed partial class VrrModule
     {
         var original = new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).chain_from(h_particle_pilot_worker).fnptr!;
         int thread = Environment.CurrentManagedThreadId;
-        if (!RenderPassContext.IsPresentation && family <= 1 && mode <= 1
+        bool localHold = IsOwnedBattleEffectHold;
+        if (!localHold && !RenderPassContext.IsPresentation && family <= 1 && mode <= 1
             && Interlocked.CompareExchange(ref _particle_pilot_thread, thread, 0) == 0)
             reset_particle_presentation();
         if (thread != Volatile.Read(ref _particle_pilot_thread))
@@ -302,6 +303,17 @@ public unsafe sealed partial class VrrModule
             if (RenderPassContext.IsPresentation) refuse_independent_presentation("worker_thread_changed");
             reset_particle_presentation();
             if (!RenderPassContext.IsPresentation) original(family, mode);
+            return;
+        }
+        if (localHold)
+        {
+            if (family != 0 || mode != 1 || !_battleEffectPauseInstalled
+                || _particle_pilot_worker || !particle_presentation_is_qualified())
+            {
+                refuse_independent_presentation("unexpected_held_worker_scope");
+                return;
+            }
+            opu_held_walk(original, family, mode);
             return;
         }
         if (RenderPassContext.IsPresentation && (family > 1 || mode > 1 || !particle_presentation_is_qualified()))

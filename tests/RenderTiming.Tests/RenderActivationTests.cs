@@ -158,6 +158,21 @@ public sealed class RenderActivationTests : IDisposable
         else module.RunEternal(true, true, false);
         Assert.Equal(1, draws);
         Assert.Equal(previous, module.BattleHold);
+        Assert.True(module.BattlePauseNeedsCleanup);
+    }
+
+    [Fact]
+    public void Installed_held_walk_refuses_unlearned_owner_before_outer_original()
+    {
+        var module = new VrrModule();
+        module.SetHookScope(true, true, true, false);
+        module.SetBattlePause(7);
+        module.ForgetBattleOwner();
+        NativeClock.EternalCalls = 0;
+        module.RunEternal(true, true, false);
+        Assert.Equal(0, NativeClock.EternalCalls);
+        Assert.Equal(7, module.BattleHold);
+        Assert.False(module.BattlePauseNeedsCleanup);
     }
 
     [Fact]

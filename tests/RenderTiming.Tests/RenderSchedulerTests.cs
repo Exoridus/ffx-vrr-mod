@@ -153,12 +153,10 @@ public unsafe sealed partial class VrrModule
     private bool render_image_admission_begin() { if (!CommitImage) return false; AdmittedImages++; return true; }
     private bool _fieldPauseInstalled => ProducerQualified;
     private bool _battleEffectPauseInstalled;
-    internal byte BattleHold;
-    private byte battle_effects_hold_begin() { byte previous = BattleHold; BattleHold = 1; return previous; }
-    private void battle_effects_hold_end(byte previous) { BattleHold = previous; }
+    internal byte BattleHold => _bx[0];
+    internal bool BattlePauseNeedsCleanup => _bxPresented;
     private bool init_battle_effect_pause() => true;
     private void battle_effects_begin_pass(bool presentation) { }
-    private void battle_effects_end_pass() { }
     private string _qualificationRefusal = "";
     private bool _filter_presentation_hold = true;
     private void viewport_snapshot() { }
@@ -182,7 +180,9 @@ public unsafe sealed partial class VrrModule
         RenderPassContext.IsActive = frame;
         RenderPassContext.IsPresentation = presentation;
     }
-    internal void SetBattlePause(byte previous) { _battleEffectPauseInstalled = true; BattleHold = previous; }
+    private readonly byte[] _testBattleData = GC.AllocateArray<byte>(0x20, pinned: true);
+    internal void SetBattlePause(byte previous) { _battleEffectPauseInstalled = true; fixed (byte* data = _testBattleData) _bx = data; _bx[0] = previous; s_battle_effects = this; _particle_pilot_thread = Environment.CurrentManagedThreadId; }
+    private void refuse_independent_presentation(string reason) => _presentationAdmission.Refuse(reason);
     internal uint ReadExec() => h_render_exec();
     internal void CalculateRate() => h_render_calc_rate();
     internal void Emit() => h_render_particle_emit(123);
