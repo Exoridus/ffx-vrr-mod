@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "7725e839c9f2f6a2090de630fd5c5206f936722a1d812abad951d67822e15eed",
+  "canonical_contract_snapshot_sha256": "5e4f87db6e033e40d37659bfaef2e555efddf8971d502cf1f624a08214388586",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -65,6 +65,7 @@
     "open_issue:effects.held_walk_scope:complete_dynamic_producer_generation_and_admission_proof",
     "open_issue:effects.held_walk_scope:downstream_rng_and_resource_lifecycle",
     "open_issue:effects.held_walk_scope:overlay_refusal_before_mutation",
+    "open_issue:effects.held_walk_scope:same_address_same_pc_reuse_without_native_unit_generation",
     "open_issue:graphics.lifecycle_epoch:foreign_uncovered_lifecycle_and_resource_destruction_exclusion",
     "open_issue:graphics.lifecycle_epoch:native_device_loss_resize_shutdown_acceptance",
     "open_issue:graphics.lifecycle_epoch:native_startup_and_observer_ordering_acceptance",
@@ -122,8 +123,8 @@
     },
     {
       "path": "src/BattleEffectPauseCode.cs",
-      "sha256": "70bc5c968c2a3d59fc2be542ce11ad339a70ad323f4c6fe62b570d49219e00ea",
-      "lf_sha256": "70bc5c968c2a3d59fc2be542ce11ad339a70ad323f4c6fe62b570d49219e00ea"
+      "sha256": "5991a3c24d2d123276df4a56795d177742dd5cf8911c8ef3357e9cbd01abb6d3",
+      "lf_sha256": "5991a3c24d2d123276df4a56795d177742dd5cf8911c8ef3357e9cbd01abb6d3"
     },
     {
       "path": "src/BattleEffectState.cs",
@@ -347,8 +348,8 @@
     },
     {
       "path": "src/VrrModule.BattleEffectPause.cs",
-      "sha256": "03da4e35d2a671376aa13e63b5b7def934aa5f25ac7d20217ff1181cc62ae988",
-      "lf_sha256": "03da4e35d2a671376aa13e63b5b7def934aa5f25ac7d20217ff1181cc62ae988"
+      "sha256": "740f8467eb5126ad68057236364c8fa5fb42fd2c43022a1a997c55aaecbec74d",
+      "lf_sha256": "740f8467eb5126ad68057236364c8fa5fb42fd2c43022a1a997c55aaecbec74d"
     },
     {
       "path": "src/VrrModule.BattlePresentation.cs",
@@ -519,6 +520,11 @@
       "path": "src/VrrModule.NeckTracking.cs",
       "sha256": "f0016f29bd2475a873683fb6b94721f49586d91467455cf80420ea3cfa9fa215",
       "lf_sha256": "f0016f29bd2475a873683fb6b94721f49586d91467455cf80420ea3cfa9fa215"
+    },
+    {
+      "path": "src/VrrModule.OpuRepeat.cs",
+      "sha256": "0576623e5d7b2f9875565386b5fe5c0ea5ef5b231809f7efb204e5dbe93d0d57",
+      "lf_sha256": "0576623e5d7b2f9875565386b5fe5c0ea5ef5b231809f7efb204e5dbe93d0d57"
     },
     {
       "path": "src/VrrModule.Overlay.cs",
@@ -741,6 +747,16 @@
       "lf_sha256": "1195d55b5cec4f225b8729c28b2d9879d4b3c1f43522a0a6932c1b43605b50a6"
     },
     {
+      "path": "tests/RenderTiming.Tests/OpuRepeatBridgeTests.cs",
+      "sha256": "79f7931143d715da205bddb5e9a0c49a4044d9218bb5418a59d11bf184c3cb8e",
+      "lf_sha256": "79f7931143d715da205bddb5e9a0c49a4044d9218bb5418a59d11bf184c3cb8e"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/OpuRepeatTrackerTests.cs",
+      "sha256": "76521ab467d0c526c7224c12aba29b52548d75f8d3c9d43e00b4ecd479290292",
+      "lf_sha256": "76521ab467d0c526c7224c12aba29b52548d75f8d3c9d43e00b4ecd479290292"
+    },
+    {
       "path": "tests/RenderTiming.Tests/PresentationAdmissionTests.cs",
       "sha256": "987cd5a6a7a3c7e51effe8374fc383958e1d18429df3dbaea3d836f6f4e0faf4",
       "lf_sha256": "987cd5a6a7a3c7e51effe8374fc383958e1d18429df3dbaea3d836f6f4e0faf4"
@@ -759,6 +775,11 @@
       "path": "tests/RenderTiming.Tests/RenderImageReadinessTests.cs",
       "sha256": "f907d8c33e3095d7f6e253bdbb88b3ace0167128b375c16afb8dd4efb4346d53",
       "lf_sha256": "f907d8c33e3095d7f6e253bdbb88b3ace0167128b375c16afb8dd4efb4346d53"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",
+      "sha256": "cadeaddf0276deae5198d2cb862dd75bc066d07bdcd7a9ce3d188ddfb8099188",
+      "lf_sha256": "c5de0e2dfc103db25c9df5535c72a307f570e5a020e01c4a7e88e1469951169f"
     }
   ],
   "generator_inputs": [

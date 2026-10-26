@@ -144,52 +144,71 @@ internal static class BattleEffectPauseCode
     }
 
     /// <summary>
-    ///     Mode-3 bookkeeping of the walker (upstream MAG-025): per unit record and stream, whether its
-    ///     last stepping walk ran handlers from WAIT 0 and yielded at the PC it started from. Such a
-    ///     stream is a per-frame draw or poll loop and keeps running on held walks; any other WAIT-0
-    ///     stream is held there.
+    ///     Remembers WAIT-0 same-PC yields for held walks within one observed history epoch.
+    ///     This observation does not establish handler purity or a unit allocation identity.
     /// </summary>
     internal sealed class OpuRepeatTracker
     {
         private const int Limit = 4096;
-        private readonly Dictionary<nint, byte> _masks = [];
+        private readonly Dictionary<nint, uint[]> _pcs = [];
         private nint _record;
         private int _stream;
         private uint _pc;
         private byte _wait;
         private bool _valid;
+        private long _epoch;
         internal long Ran, Blocked;
 
         /// <summary>True when the stream must not run on this held walk.</summary>
-        internal bool Entry(byte hold, nint record, int stream, uint pc, byte wait)
+        internal bool Entry(byte hold, nint record, int stream, uint pc, byte wait, long epoch)
         {
+            ObserveEpoch(epoch);
             _valid = false;
+            bool identityValid = record != 0 && stream is >= 0 and < 4;
             if (hold == 0)
             {
-                (_record, _stream, _pc, _wait, _valid) = (record, stream, pc, wait, true);
+                if (!identityValid) return false;
+                if (_pcs.TryGetValue(record, out var prior)) prior[stream] = 0;
+                if (pc != 0) (_record, _stream, _pc, _wait, _valid) = (record, stream, pc, wait, true);
                 return false;
             }
+            if (identityValid && _pcs.TryGetValue(record, out var pcs) && pcs[stream] != pc) pcs[stream] = 0;
             if (wait != 0 || hold != 3) return false;
-            if (_masks.TryGetValue(record, out byte mask) && ((mask >> stream) & 1) != 0) { Ran++; return false; }
+            // shortcut: same-address/same-PC reuse within an epoch is unqualified; add allocation identity when available.
+            if (identityValid && pc != 0 && _pcs.TryGetValue(record, out var learned) && learned[stream] == pc)
+            {
+                Ran++;
+                return false;
+            }
             Blocked++;
             return true;
         }
 
-        internal void Next(nint record, int stream, uint pc)
+        internal void Next(nint record, int stream, uint pc, long epoch)
         {
+            ObserveEpoch(epoch);
             if (!_valid) return;
             _valid = false;
-            if (_record != record || _stream != stream) return;
-            bool repeat = _wait == 0 && pc == _pc;
-            if (repeat)
+            if (_record != record || _stream != stream || pc == 0) return;
+            if (_wait == 0 && pc == _pc)
             {
-                if (_masks.Count >= Limit && !_masks.ContainsKey(record)) _masks.Clear();
-                _masks[record] = (byte)(_masks.GetValueOrDefault(record) | (1 << stream));
+                if (!_pcs.TryGetValue(record, out var pcs))
+                {
+                    if (_pcs.Count >= Limit) _pcs.Clear();
+                    _pcs[record] = pcs = new uint[4];
+                }
+                pcs[stream] = pc;
             }
-            else if (_masks.TryGetValue(record, out byte mask)) _masks[record] = (byte)(mask & ~(1 << stream));
         }
 
-        internal void Clear() { _masks.Clear(); _valid = false; }
+        private void ObserveEpoch(long epoch)
+        {
+            if (_epoch == epoch) return;
+            Clear();
+            _epoch = epoch;
+        }
+
+        internal void Clear() { _pcs.Clear(); _valid = false; }
     }
 
     // ---- MAG-030: OPP handler buffers ----

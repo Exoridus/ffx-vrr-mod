@@ -54,17 +54,12 @@ public unsafe sealed partial class VrrModule
     private const string BxRecordStepSitePattern = "A1 ?? ?? ?? ?? 6A 30 57 FF 30 E8 ?? ?? ?? ?? 83 C4 2C 85 C0 0F 85";
     private const string BxRecordStepPattern = "55 8B EC FF 75 10 A1 ?? ?? ?? ?? 8B 4D 08 FF 75 0C 89 08 E8 ?? ?? ?? ?? 83 C4 08 5D C3";
 
-    // Native data block: +0 presentation pass, +1 walker hold mode, +2 stream skip, +3 follow skip,
-    // +4 stream entry callback, +8 stream next callback, +0xC follow callback, +0x10 driver callback.
-    private byte* _bx;
     private bool _battleEffectPauseInstalled, _bxPresented;
-    private static VrrModule? s_battle_effects;
     private nint _bxPool, _bxAdapter, _bxNodeWalkOriginal, _bxFindUnitFn;
     private int _bxPoolUsed;
     private const int BxPoolSize = 0x100000;
     private readonly nint[] _bxOppOriginal = new nint[20];
     private readonly byte[] _bxOppBuffer = new byte[0x10000];
-    private readonly OpuRepeatTracker _bxRepeat = new();
     private int _bxWantedPause;
     private (nint Init, int MagicId) _bxOverlayKey;
     private BxOverlay? _bxOverlay;
@@ -242,6 +237,7 @@ public unsafe sealed partial class VrrModule
         try { bx_track_overlay(); }
         catch (Exception error)
         {
+            _bxRepeat.Clear();
             _bxOverlay = null;
             if (++_bxTrackFailures <= 4) _logger.Error($"[Vrr] Battle effect pause could not inspect the magic overlay: {error.Message}");
         }
@@ -309,38 +305,6 @@ public unsafe sealed partial class VrrModule
     {
         Volatile.Write(ref _bxWantedPause, value);
         new FhCallHandle<d_bx_setter>(new FhCallLocation(BxPauseSetter, 0)).chain_from(h_bx_pause_setter).fnptr!(value);
-    }
-
-    // ---- MAG-025 callbacks ----
-
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static int bx_on_stream_entry(nint scratch, nint record)
-    {
-        try { return s_battle_effects?.bx_stream_entry(scratch, record) ?? 0; }
-        catch (Exception) { return 0; }
-    }
-
-    private int bx_stream_entry(nint scratch, nint record)
-    {
-        if (Environment.CurrentManagedThreadId != _particle_pilot_thread) return 0;
-        int stream = *(short*)(scratch + 0x216) & 3;
-        if (!_bxRepeat.Entry(_bx[1], record, stream, *(uint*)(record + stream * 4), *(byte*)(record + 0x10 + stream))) return 0;
-        // Sweep 2 already cleared the stream's latch bit before this point; the skipped stream keeps it.
-        if (*(byte*)(scratch + 0x21d) != 0) *(byte*)(record + 0x1f) |= (byte)(1 << stream);
-        return 1;
-    }
-
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static void bx_on_stream_next(nint scratch, nint record)
-    {
-        try
-        {
-            var module = s_battle_effects;
-            if (module is null || Environment.CurrentManagedThreadId != module._particle_pilot_thread) return;
-            int stream = *(short*)(scratch + 0x216) & 3;
-            module._bxRepeat.Next(record, stream, *(uint*)(record + stream * 4));
-        }
-        catch (Exception) { }
     }
 
     // The attach follow handler reads the target unit's +0xBC without a check; a held DLL walk reaches it before the target exists.
@@ -498,11 +462,12 @@ public unsafe sealed partial class VrrModule
 
     private void bx_track_overlay()
     {
-        if (FhUtil.get_at<int>(BxMagicHandle) == -1) return;
+        if (FhUtil.get_at<int>(BxMagicHandle) == -1) { _bxRepeat.Clear(); return; }
         nint init = (nint)FhUtil.get_at<uint>(BxInitMagicPrx);
-        if (init == 0) return;
+        if (init == 0) { _bxRepeat.Clear(); return; }
         var key = (init, FhUtil.get_at<int>(BxMagicId));
         if (_bxOverlay is { } current && _bxOverlayKey == key && bx_overlay_patched(current)) return;
+        _bxRepeat.Clear();
         _bxOverlayKey = key;
         _bxOverlay = bx_prepare_overlay(init);
     }
