@@ -23,6 +23,8 @@ public unsafe sealed partial class VrrModule
     private double _render_now;
     private float _render_input_delta;
     private bool _render_native_owner_reported;
+    private bool _render_snapshot_warmup, _render_snapshot_ready_at_frame;
+    private double _render_clock_speed = 1;
     private int _render_owner_thread;
     private bool RenderSchedulerReady => _render_mode_ready && _render_scheduler_active;
     private bool IsOwnedRenderLoop => RenderSchedulerReady && _render_inside_loop
@@ -79,6 +81,11 @@ public unsafe sealed partial class VrrModule
     private bool filter_needs_native_clock()
         => !_filter_presentation_hold && FhUtil.get_at<int>(EngineAddresses.FilterActiveMask) != 0;
 
+    private bool render_scheduler_frame_eligible()
+        => _presentationAdmission.Failure is null && render_image_admission_ready()
+            && pad_input_presentation_ready() && !pad_native_input_owner()
+            && field_particle_presentation_ready() && !filter_needs_native_clock();
+
     private void render_scheduler_begin_frame()
     {
         double now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -92,8 +99,17 @@ public unsafe sealed partial class VrrModule
             return;
         }
         // Recorded syncdata and movie playback keep their existing clock owner until adapted.
-        _render_frame_enabled = _presentationAdmission.Failure is null && render_image_admission_ready()
-            && pad_input_presentation_ready() && !pad_native_input_owner() && field_particle_presentation_ready() && !filter_needs_native_clock();
+        bool eligible = render_scheduler_frame_eligible();
+        _render_snapshot_ready_at_frame = pad_snapshot_presentation_ready();
+        _render_snapshot_warmup = eligible && !_render_snapshot_ready_at_frame;
+        _render_frame_enabled = eligible && _render_snapshot_ready_at_frame;
+        if (_render_snapshot_warmup)
+        {
+            _simulationClock.Reset();
+            RenderPassContext.ResetHistory();
+            reset_render_camera();
+            reset_render_actors();
+        }
         if (_render_frame_enabled) _render_frame_enabled = render_image_admission_begin();
         if (!_render_frame_enabled && !_render_native_owner_reported)
             diagnostic_event("native_clock_owner", new { syncdata = EngineSyncPaced, movie = fmv_playing() });
@@ -182,25 +198,29 @@ public unsafe sealed partial class VrrModule
     {
         if (!IsOwnedRenderLoop) return RenderClockAction.Native;
         _render_clock_seen = true;
-        if (_render_frame_enabled && (_presentationAdmission.Failure is not null || !render_image_admission_ready()
-            || !pad_input_presentation_ready() || pad_native_input_owner() || !field_particle_presentation_ready() || filter_needs_native_clock()))
+        double speed = _render_input_delta > 0 && float.IsFinite(nativeDelta) ? nativeDelta / _render_input_delta : 1;
+        _render_clock_speed = double.IsFinite(speed) ? Math.Clamp(speed, 0, 8) : 1;
+        bool snapshotRejected = _render_frame_enabled && _render_snapshot_ready_at_frame && !pad_snapshot_presentation_ready();
+        if (_render_frame_enabled && (snapshotRejected || !render_scheduler_frame_eligible()))
         {
+            _presentationAdmission.Refuse(snapshotRejected ? "pad_snapshot_clock_readiness_lost" : "render_clock_readiness_lost");
             _render_frame_enabled = false;
+            _render_plan_pending = false;
             RenderPassContext.IsActive = false;
             RenderPassContext.SetPass(1, false);
-            _simulationClock.Reset();
-            _render_plan_pending = true;
+            render_camera_set_presentation_alpha(1);
+            RenderPassContext.ResetHistory();
+            reset_render_camera();
+            reset_render_actors();
         }
         if (_render_plan_pending)
         {
-            double speed = _render_input_delta > 0 && float.IsFinite(nativeDelta)
-                ? nativeDelta / _render_input_delta : 1;
             if (!_render_frame_enabled)
             {
                 _simulationClock.Reset();
-                _render_plan = new(1, 1, true, 0);
+                _render_plan = new(1, 1, !_render_snapshot_warmup, 0);
             }
-            else _render_plan = _simulationClock.Plan(_render_now, speed);
+            else _render_plan = _simulationClock.Plan(_render_now, _render_clock_speed);
             _render_plan_pending = false;
             _render_steps_remaining = _render_plan.Steps;
             _simulation_debt_dropped += _render_plan.DroppedSteps;
@@ -211,13 +231,19 @@ public unsafe sealed partial class VrrModule
                 reset_render_actors();
             }
         }
+        if (_render_frame_enabled && _render_steps_remaining == 0 && !pad_snapshot_presentation_ready())
+        {
+            _presentationAdmission.Refuse("pad_snapshot_presentation_without_baseline");
+            _render_frame_enabled = false;
+            RenderPassContext.IsActive = false;
+        }
         _render_simulation_pass = !_render_frame_enabled || _render_steps_remaining > 0;
         RenderPassContext.IsPresentation = !_render_simulation_pass;
         if (RenderPassContext.IsPresentation) viewport_presentation_begin();
         pad_latch_pass_decided(RenderPassContext.IsPresentation);
         battle_effects_begin_pass(RenderPassContext.IsPresentation);
-        RenderPassContext.SetPass((float)_render_plan.Alpha, _render_frame_enabled && (!_render_simulation_pass || _render_steps_remaining <= 1));
-        render_camera_set_presentation_alpha(_render_steps_remaining > 1 ? 1 : _render_plan.Alpha);
+        RenderPassContext.SetPass(_render_frame_enabled ? _render_plan.Alpha : 1, _render_frame_enabled && (!_render_simulation_pass || _render_steps_remaining <= 1));
+        render_camera_set_presentation_alpha(!_render_frame_enabled || _render_steps_remaining > 1 ? 1 : _render_plan.Alpha);
         if (_render_simulation_pass)
         {
             RenderPassContext.BeginSimulation();
@@ -266,8 +292,11 @@ public unsafe sealed partial class VrrModule
     private uint h_render_exec()
     {
         uint native = new FhCallHandle<d_render_exec>(new FhCallLocation(RenderGetExec, 0)).chain_from(h_render_exec).fnptr!();
-        return OwnsRenderPass
+        if (pad_snapshot_exec_must_stay_zero()) return 0;
+        uint effective = OwnsRenderPass
             ? FixedSimulationClock.ResolveExec(native, RenderPassContext.IsPresentation) : native;
+        pad_snapshot_exec_completed(effective);
+        return effective;
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

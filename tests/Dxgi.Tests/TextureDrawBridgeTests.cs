@@ -10,7 +10,7 @@ namespace Fahrenheit.Mods.Vrr
     {
         private bool _textureFrameBound = true;
         internal int Inspections;
-        internal bool Bind(nint context) => texture_draw_device((ID3D11DeviceContext*)context);
+        internal bool Bind(nint context) => ensure_test_hook_registration() && texture_draw_device((ID3D11DeviceContext*)context);
         private bool texture_frame_blend_available() => false;
         private ID3D11ShaderResourceView* texture_frame_prepare_draw(ID3D11DeviceContext* context) { Inspections++; return null; }
         private static void texture_frame_restore_draw(ID3D11DeviceContext* context, ID3D11ShaderResourceView* native) => throw new InvalidOperationException();

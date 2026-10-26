@@ -45,9 +45,9 @@ public unsafe sealed class PadHistoryReaderTests : IDisposable
         NativeClock.HistoryHookAction = () =>
         {
             Assert.False(_module.HistoryReady);
-            Assert.Equal(14, _module.CodeChecks.Count);
+            Assert.Equal(15, _module.CodeChecks.Count);
             Assert.Equal(19, _module.OperandChecks.Count);
-            Assert.Equal(7, _module.CallChecks.Count);
+            Assert.Equal(8, _module.CallChecks.Count);
             for (int kind = 0; kind < 4; kind++) Assert.Equal(0x8000, _module.ReadHistory(kind, 0, 0, -1));
             int before = NativeClock.PadCalls;
             _module.CallPad();
@@ -56,8 +56,8 @@ public unsafe sealed class PadHistoryReaderTests : IDisposable
         };
         Assert.True(_module.InitHistory());
         Assert.True(_module.HistoryReady);
-        Assert.Equal(new nint[] { 0x4893e0, 0x488e80, 0x488ea0, 0x488e50, 0x488e30, 0x4be500, 0x4be4b0, 0x4be470 }, NativeClock.HistoryHookRegistrations.Select(h => h.Rva));
-        Assert.Equal(new[] { "d_render_void", "d_pad_history", "d_pad_history", "d_pad_history", "d_pad_history", "d_render_void", "d_menu_edge", "d_menu_edge" }, NativeClock.Hooks);
+        Assert.Equal(new nint[] { 0x4893e0, 0x488e80, 0x488ea0, 0x488e50, 0x488e30, 0x4be500, 0x4be4b0, 0x4be470, 0x42d070 }, NativeClock.HistoryHookRegistrations.Select(h => h.Rva));
+        Assert.Equal(new[] { "d_render_void", "d_pad_history", "d_pad_history", "d_pad_history", "d_pad_history", "d_render_void", "d_menu_edge", "d_menu_edge", "d_render_void" }, NativeClock.Hooks);
         Assert.Equal(21, (int)HookSiteId.DiagnosticBindingsMainLoop);
         Assert.Equal(Enumerable.Range(140, 4), new[] { (int)HookSiteId.PadLatchPressedHistory, (int)HookSiteId.PadLatchReleasedHistory, (int)HookSiteId.PadLatchRepeatHistory, (int)HookSiteId.PadLatchRepeat2History });
         Assert.All(NativeClock.HistoryHookRegistrations, h => Assert.Equal("Cdecl", h.Callback.GetType().GetCustomAttributes(typeof(UnmanagedFunctionPointerAttribute), false).Cast<UnmanagedFunctionPointerAttribute>().Single().CallingConvention.ToString()));

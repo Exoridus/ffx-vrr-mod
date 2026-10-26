@@ -8,9 +8,10 @@ public unsafe sealed class BattleEffectHoldTests : IDisposable
     public BattleEffectHoldTests() => PilotNative.Reset();
     public void Dispose() { VrrModule.ReleaseBattleHold(); PilotNative.Reset(); }
 
-    private static VrrModule Installed(PilotMemory memory)
+    private static VrrModule Installed(PilotMemory memory, bool sprites = false)
     {
         var module = new VrrModule();
+        if (sprites) module.EnableSpriteClock();
         Assert.True(module.InitializePilot());
         module.EnterParticleLoop();
         module.AttachBattleHold(memory.Address + 0x9000);
@@ -294,8 +295,7 @@ public unsafe sealed class BattleEffectHoldTests : IDisposable
     public void Held_ppp_sprite_does_not_consume_fractional_clock_or_enter_capture()
     {
         using var memory = new PilotMemory();
-        var module = Installed(memory);
-        module.EnableSpriteClock();
+        var module = Installed(memory, sprites: true);
         Assert.True(module.InitializeSpriteClock());
         VrrModule.TargetFramerate = 120;
         nint obj = memory.Address + 0x1000, operand = memory.Address + 0x4000, program = memory.Address + 0x5000;

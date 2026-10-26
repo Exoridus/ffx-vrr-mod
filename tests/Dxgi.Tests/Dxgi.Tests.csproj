@@ -7,7 +7,11 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
+    <Using Include="System.Text.Json" />
     <Compile Include="../../src/HookSites.cs" Link="HookSites.cs" />
+    <Compile Include="../../src/HookRegistration.cs" Link="HookRegistration.cs" />
+    <Compile Include="../../src/VrrModule.HookRegistration.cs" Link="VrrModule.HookRegistration.cs" />
+    <Compile Include="../../src/VrrConfig.cs" Link="VrrConfig.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

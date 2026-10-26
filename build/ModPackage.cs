@@ -37,11 +37,38 @@ internal static class ModPackage
 
     // A familiar DLL name alone must not authorize an unrelated payload.
     private static bool ReviewedRuntimeDependency(string file, string relative, string id)
-        => ReviewedAv1Dependency(file, relative, id) || id == "fhvrr" && relative == "TerraFX.Interop.Windows.dll"
+        => ReviewedAv1Dependency(file, relative, id) || ReviewedPresentationDependency(file, relative, id) || id == "fhvrr" && relative == "TerraFX.Interop.Windows.dll"
             && Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file)))
                 == "BD40445EBECE5AA98EEF4C625C168E434B703041E43BC5D492B7687F92ABE2FC"
             || id == "fhvrr" && relative == "TerraFX.Interop.Windows.LICENSE.txt";
 
+    private static bool ReviewedPresentationDependency(string file, string relative, string id)
+    {
+        if (id != "fhvrr" || relative is not ("fhpresent.dll" or "fhpresent.build.json")) return false;
+        string directory = Path.GetDirectoryName(file)!;
+        string record = Path.Combine(directory, "fhpresent.build.json");
+        string library = Path.Combine(directory, "fhpresent.dll");
+        if (!File.Exists(record) || !File.Exists(library)) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(record));
+            var value = document.RootElement;
+            var inputs = value.GetProperty("input_sha256");
+            return value.GetProperty("workflow").GetString() == "prepare-presentation"
+                && value.GetProperty("architecture").GetString() == "x86" && value.GetProperty("abi").GetInt32() == 1
+                && value.GetProperty("native_caller_test").GetString() == "passed"
+                && value.GetProperty("managed_x86_probe").GetString() == "passed"
+                && inputs.GetProperty("src/native/presentation/fhpresent.c").GetString() == "4D4A32B9BDB9513F839A7ABFEFA8374D880E414ADA1CFAD25C021D49DBA09ED3"
+                && inputs.GetProperty("src/native/presentation/fhpresent.def").GetString() == "4847EAF52A2D0ED6B930DA8D30031E39689E1AA1323BB20BCDD6D86D9832B599"
+                && inputs.GetProperty("src/NativeSnapshotBridge.cs").GetString() == "8B6DA7A180920CDA2E2588551051BAFE809E20E8EA28E162F9BC8E9EA57E2083"
+                && value.GetProperty("output_sha256").GetProperty("fhpresent.dll").GetString()
+                    == Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(library)));
+        }
+        catch (Exception error) when (error is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return false;
+        }
+    }
     private static bool ReviewedAv1Dependency(string file, string relative, string id)
     {
         string[] required = ["fhav1.dll", "avcodec-62.dll", "avutil-60.dll", "dav1d.LICENSE.txt", "ffmpeg.LICENSE.txt", "ffmpeg.SOURCES.txt"];

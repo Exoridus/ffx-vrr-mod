@@ -150,11 +150,13 @@ internal enum HookSiteId
     PadLatchMenuCacheUpdate,
     PadLatchMenuPressed,
     PadLatchMenuRepeat,
+    PadSnapshotProducer,
 }
 
-internal static class HookSites
+internal static partial class HookSites
 {
     internal static bool IsDeclared(HookSiteId site) => site != HookSiteId.Unknown && Enum.IsDefined(site);
 
-    internal static bool Install(HookSiteId site, Func<bool> install) => IsDeclared(site) && install();
+    internal static bool Install(HookSiteId site, HookRegistrationPlan? plan, nint target, long generation, Func<bool> install)
+        => Describe(site) is not null && plan is not null && plan.Install(site, target, generation, install);
 }

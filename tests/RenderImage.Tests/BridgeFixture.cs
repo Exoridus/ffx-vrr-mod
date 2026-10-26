@@ -30,7 +30,19 @@ public unsafe sealed partial class VrrModule
     internal void Refuse(string reason) => refuse_independent_presentation(reason);
     internal void Disable() => _config.VrrEnabled = false;
     internal void Presenter(bool active) => _presenter_active = active;
-    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install) => HookSites.Install(site, install);
+    private bool ensure_test_hook_registration()
+    {
+        if (_hookRegistration is not null) return true;
+        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled };
+        var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null));
+        return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
+            out _hookRegistration, out _);
+    }
+
+    private void diagnostic_event(string kind, object data) { }
+    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install)
+        => ensure_test_hook_registration() && register_hook(site, name, rva, install);
     private void refuse_independent_presentation(string reason, Exception? error = null)
         => _presentationAdmission.Refuse(reason);
     internal object ActorGate => _renderActorLock;
@@ -48,7 +60,7 @@ public unsafe sealed partial class VrrModule
     private void render_camera_set_presentation_alpha(float alpha) => _renderCameraAlpha = alpha;
     private void diagnostic_actor_pose(nint actor, Matrix4x4 root, ReadOnlySpan<Matrix4x4> bones, bool rendered) { }
     internal sealed class TestConfig { internal bool VrrEnabled = true; }
-    internal sealed class TestLogger { internal void Error(string message) { } }
+    internal sealed class TestLogger { internal void Error(string message) { } internal void Warning(string message) { } internal void Info(string message) { } }
 }
 
 internal readonly record struct FhCallLocation(nint Address, int Offset = 0);

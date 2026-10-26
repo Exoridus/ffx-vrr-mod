@@ -57,18 +57,7 @@ public unsafe sealed partial class VrrModule
     }
 
     private bool probe(HookSiteId site, string name, nint rva, Func<bool> install)
-    {
-        if (!HookSites.IsDeclared(site))
-        {
-            _logger.Error($"[Vrr] Unknown hook site {site}; probe {name} was not installed.");
-            return false;
-        }
-        bool installed = install();
-        _logger.Info(installed
-            ? $"[Vrr] Probe attached: {name} at RVA 0x{rva:X}."
-            : $"[Vrr] Probe did NOT attach: {name} at RVA 0x{rva:X}; its count stays 0 for that reason.");
-        return installed;
-    }
+        => register_survey_hook(site, name, rva, install);
 
     private string survey_counts()
         => $"texanim_draw={_texanim_draw} screen_texanim={_screen_texanim_draw} " +

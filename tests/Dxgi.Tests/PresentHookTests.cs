@@ -33,6 +33,7 @@ namespace Fahrenheit.Mods.Vrr
         private void diagnostic_water_draw(ID3D11DeviceContext* context, string kind, uint count, uint start, int vertex) { }
         internal bool BindPresent(nint swapchain, nint context, nint descriptor, nint target, bool resizing)
         {
+            if (!ensure_test_hook_registration(true)) return false;
             var state = new DxgiSwapchainState((IDXGISwapChain*)swapchain, (ID3D11DeviceContext*)context, (DXGI_SWAP_CHAIN_DESC*)descriptor)
                 { Multithreaded = true, Resizing = resizing };
             _presenter_chains.Add(swapchain, state);

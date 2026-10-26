@@ -127,20 +127,11 @@ public unsafe sealed partial class VrrModule
 
     private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install)
     {
-        if (!HookSites.IsDeclared(site))
-        {
-            _logger.Error($"[Vrr] Unknown hook site {site}; diagnostic {name} was not installed.");
-            return false;
-        }
+        if (!hook_registration_selected(site))
+            return register_diagnostic_hook(site, name, rva, false, install);
         bool matches = MemoryProbe.IsReadable((nint)FhUtil.ptr_at<byte>(rva), expected.Length)
             && new ReadOnlySpan<byte>(FhUtil.ptr_at<byte>(rva), expected.Length).SequenceEqual(expected);
-        bool installed = false;
-        string? failure = null;
-        try { installed = matches && install(); }
-        catch (Exception e) { failure = $"{e.GetType().Name}: {e.Message}"; }
-        diagnostic_event("probe_hook", new { name, rva = (long)rva, entry_matches = matches, installed, failure });
-        if (!installed) _logger.Warning($"[Vrr] Diagnostic hook {name} not installed; entry mismatch or hook refused. Capture coverage is incomplete.");
-        return installed;
+        return register_diagnostic_hook(site, name, rva, matches, install);
     }
 
     private void diagnostic_event(string kind, object? data = null)

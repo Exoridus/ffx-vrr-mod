@@ -42,8 +42,8 @@ public unsafe sealed partial class VrrModule
                 (context, isIndexed, count) => owner.texture_blend_probe_draw((ID3D11DeviceContext*)context, isIndexed, count));
         }
         internal bool Install(bool indexed) => indexed
-            ? HookSites.Install(HookSiteId.TextureDrawIndexed, () => new FhCallHandle<d_indexed>(new FhCallLocation(_target)).hook(_owner, Indexed))
-            : HookSites.Install(HookSiteId.TextureDrawPlain, () => new FhCallHandle<d_plain>(new FhCallLocation(_target)).hook(_owner, Plain));
+            ? HookSites.Install(HookSiteId.TextureDrawIndexed, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_indexed>(new FhCallLocation(_target)).hook(_owner, Indexed))
+            : HookSites.Install(HookSiteId.TextureDrawPlain, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_plain>(new FhCallLocation(_target)).hook(_owner, Plain));
         private TextureDrawNext Resolve(bool indexed)
         {
             // Fahrenheit appends later hooks by patching the existing trampoline, retaining its address.

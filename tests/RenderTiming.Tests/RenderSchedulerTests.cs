@@ -126,7 +126,15 @@ public sealed class RenderSchedulerCollection;
 
 public unsafe sealed partial class VrrModule
 {
-    public VrrModule() { _pad_latch_installed = _pad_history_readers_ready = true; }
+    public VrrModule() { _pad_latch_installed = _pad_history_readers_ready = true; SeedSyntheticSnapshotBaseline(); }
+    internal bool SyntheticSnapshotReady = true;
+    private void SeedSyntheticSnapshotBaseline()
+    {
+        _padSnapshotInstalled = _padSnapshotBaseline = true;
+        _padSnapshotBaselineEpoch = RenderPassContext.HistoryEpoch;
+        _render_snapshot_ready_at_frame = true;
+        _render_snapshot_warmup = false;
+    }
     internal VrrModule EnableAdapter() { IndependentPresentationEnabled = true; return this; }
     private static uint _vsync_interval_target;
     internal int SharedTextureObservers, IndependentSwapchainHooks;
@@ -205,8 +213,24 @@ public unsafe sealed partial class VrrModule
     private readonly SchedulerLogger _logger = new();
 
     internal string? RejectedHook;
-    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> hook) => HookSites.Install(site, hook) && name != RejectedHook;
-    private void diagnostic_event(string kind, object data) => DiagnosticEvents.Add((kind, data, _diagnosticLoopId, Environment.CurrentManagedThreadId));
+    private bool ensure_test_hook_registration()
+    {
+        if (_hookRegistration is not null) return true;
+        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, ParticleTimeline = _config.ParticleTimeline, EffectHold = _config.EffectHold };
+        var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null));
+        return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
+            out _hookRegistration, out _);
+    }
+
+    private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> hook)
+        => ensure_test_hook_registration() && register_hook(site, name, rva, hook) && name != RejectedHook;
+    internal Action<string>? DiagnosticEventAction;
+    private void diagnostic_event(string kind, object data)
+    {
+        DiagnosticEventAction?.Invoke(kind);
+        DiagnosticEvents.Add((kind, data, _diagnosticLoopId, Environment.CurrentManagedThreadId));
+    }
     internal int CameraInitCalls, ActorInitCalls;
     private bool init_render_camera() { CameraInitCalls++; return true; }
     private bool init_render_actors() { ActorInitCalls++; return true; }
@@ -224,6 +248,7 @@ public unsafe sealed partial class VrrModule
     private void advance_overlay_spawn_clock() { if (_advance_frame) OverlayTicks++; }
     internal void PreparePass()
     {
+        if (SyntheticSnapshotReady) SeedSyntheticSnapshotBaseline();
         _render_mode_ready = true;
         _render_scheduler_active = _render_frame_enabled = _render_mode_ready;
         _render_inside_loop = true;
@@ -285,7 +310,7 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
                 "d_effect_process" => nameof(NativeClock.Effect),
                 "d_eternal_run" => nameof(NativeClock.Eternal),
                 "d_render_exec" => nameof(NativeClock.Exec),
-                "d_render_void" => location.Rva == 0x4be500 ? nameof(NativeClock.MenuCacheUpdate) : location.Rva == 0x489a80 ? nameof(NativeClock.Poll) : location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
+                "d_render_void" => location.Rva == 0x42d070 ? nameof(NativeClock.Snapshot) : location.Rva == 0x4be500 ? nameof(NativeClock.MenuCacheUpdate) : location.Rva == 0x489a80 ? nameof(NativeClock.Poll) : location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
                 "d_render_emit" => nameof(NativeClock.Emit),
                 "d_diag_exec" => nameof(NativeClock.Exec),
                 "d_diag_loop" => nameof(NativeClock.Loop),
@@ -295,7 +320,12 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
         }
     }
     public bool hook(object owner, T callback) { NativeClock.HistoryHookAction?.Invoke(); NativeClock.HistoryHookRegistrations.Add((location.Rva, callback)); NativeClock.Hooks.Add(typeof(T).Name); return true; }
-    public FhCallHandle<T> chain_from(T callback) => this;
+    public FhCallHandle<T> chain_from(T callback)
+    {
+        if (location.Rva == 0x42d070 && !ReferenceEquals(callback, NativeSnapshotBridge.Entry))
+            throw new InvalidOperationException("Snapshot chain must use the rooted native entry delegate.");
+        return this;
+    }
 }
 internal static partial class NativeClock
 {
@@ -313,6 +343,7 @@ internal static unsafe class FhUtil
     internal static byte Dummy;
     public static T* ptr_at<T>(nint rva) where T : unmanaged
     {
+        if (NativeSnapshotFixture.TryPointer<T>(rva, out nint snapshot)) return (T*)snapshot;
         if (PadRecordPointer == 0 || rva < 0xf30288 || rva >= 0xf30488) throw new InvalidOperationException("Unmapped pad fixture");
         return (T*)(PadRecordPointer + rva - 0xf30288);
     }

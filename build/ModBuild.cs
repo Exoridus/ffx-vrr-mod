@@ -113,7 +113,8 @@ static async Task<int> Run(string[] args)
         if (File.Exists(Path.Combine(root, "build", name))) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name));
     CopyTree(Path.Combine(root, "build", "tests"), Path.Combine(context, "build", "tests"));
     CopyTree(Path.Combine(root, "build", "distribution"), Path.Combine(context, "build", "distribution"));
-    foreach (var name in new[] { "ModPackage.cs", "ModBuild.cs", "IndependentAdmissionBuildValidation.cs" }) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name), true);
+    foreach (var name in new[] { "ModPackage.cs", "ModBuild.cs", "IndependentAdmissionBuildValidation.cs", "PreparePresentation.cs" }) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name), true);
+    CopyTree(Path.Combine(root, "build", "presentation-probe"), Path.Combine(context, "build", "presentation-probe"));
     IndependentAdmissionBuildValidation.Validate(context);
     var sources = new XElement("packageSources", new XElement("clear"), new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", "https://api.nuget.org/v3/index.json")));
     var mapping = new XElement("packageSourceMapping", new XElement("clear"), new XElement("packageSource", new XAttribute("key", "nuget.org"), new XElement("package", new XAttribute("pattern", "*"))));
@@ -145,6 +146,7 @@ static async Task<int> Run(string[] args)
         File.WriteAllText(Path.Combine(payload, id + ".manifest.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
     Execute("dotnet", ["run", "--file", Path.Combine(root, "build", "PrepareAv1.cs"), "--", root, payload], root);
+    Execute("dotnet", ["run", "--file", Path.Combine(root, "build", "PreparePresentation.cs"), "--", root, payload], root);
     foreach (var license in Directory.GetFiles(Path.Combine(root, "build", "licenses")))
         File.Copy(license, Path.Combine(payload, Path.GetFileName(license)), true);
     // Ships empty: players drop optional replacement movies here.
@@ -162,7 +164,7 @@ static async Task<int> Run(string[] args)
         foreach (var folder in new[] { "tests", "build/tests" })
             if (Directory.Exists(Path.Combine(context, folder)))
                 foreach (var test in Directory.GetFiles(Path.Combine(context, folder), "*.csproj", SearchOption.AllDirectories))
-                    Execute("dotnet", Path.GetFileName(test) is "Dxgi.Tests.csproj" or "ParticlePresentation.Tests.csproj" or "RenderImage.Tests.csproj"
+                    Execute("dotnet", Path.GetFileName(test) is "Dxgi.Tests.csproj" or "ParticlePresentation.Tests.csproj" or "RenderImage.Tests.csproj" or "CameraSnapshot.Tests.csproj"
                         ? ["test", test, "-c", configuration, "--arch", "x86", "--verbosity", "minimal"]
                         : ["test", test, "-c", configuration, "--verbosity", "minimal"], context, environment);
     if (command == "mod-pack")

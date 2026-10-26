@@ -21,7 +21,18 @@ namespace Fahrenheit.Mods.Vrr
         }
         internal bool InitObserver(bool probe = true, bool blend = true)
         { _config.TextureBlendProbe = probe; _config.TextureFrameInterpolation = blend; return init_texture_device_observer(); }
-        private bool hook_or_log(HookSiteId site, string label, nint address, Func<bool> install) => HookSites.Install(site, install);
+    private bool ensure_test_hook_registration(bool independent = false)
+    {
+        if (_hookRegistration is not null) return true;
+        VrrConfig config = new VrrConfig { TextureBlendProbe = _config.TextureBlendProbe, TextureFrameInterpolation = _config.TextureFrameInterpolation };
+        var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, independent, true, false, null));
+        return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
+            out _hookRegistration, out _);
+    }
+
+        private bool hook_or_log(HookSiteId site, string label, nint address, Func<bool> install)
+            => ensure_test_hook_registration() && register_hook(site, label, address, install);
         private static bool texture_binding_prefix(nint address, ReadOnlySpan<byte> expected)
             => address == 0x195800 && expected.SequenceEqual(TestTextureMemory.Entry);
         private void texture_blend_probe_device(ID3D11DeviceContext* context) { ProbeDevices++; }
@@ -32,8 +43,8 @@ namespace Fahrenheit.Mods.Vrr
         internal bool TextureDisabled => !_textureFrameBound && !_textureProbeReady && _textureProbeStopped && _textureFrameContext == 0;
         internal void OrdinaryInvalidation() { lock (_textureFrameLock) { _textureFrameBank?.Dispose(); _textureFrameBank = null; } }
     }
-    internal sealed class TestTextureConfig { internal bool TextureBlendProbe, TextureFrameInterpolation; }
-    internal sealed class TestTextureLogger { internal void Warning(string text) { } internal void Error(string text) { } }
+    internal sealed class TestTextureConfig { internal bool TextureBlendProbe = true, TextureFrameInterpolation = true; }
+    internal sealed class TestTextureLogger { internal void Warning(string text) { } internal void Error(string text) { } internal void Info(string text) { } }
     internal static class NativeBuild
     {
         internal static bool Valid = true;

@@ -74,6 +74,7 @@ public unsafe sealed partial class VrrModule
     private bool init_pad_latch_hook()
     {
         _pad_latch_installed = _pad_history_readers_ready = false;
+        _padSnapshotInstalled = false;
         if (!IndependentPresentationEnabled) return true;
         if (!fx_code_matches(PadLatch, PadLatchPattern)
             || !fx_code_matches(PadRecordBaseSite, "55 8B EC 8B 45 08 03 45 0C C1 E0 08 05 ?? ?? ?? ?? 5D C3")
@@ -119,6 +120,7 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] Pad latch, history reader or menu input bytes differ from build 25501027; pad input keeps native behavior.");
             return true;
         }
+        if (!prepare_pad_snapshot_hook()) return false;
         bool ok = hook_or_log(HookSiteId.PadLatchPadLatch, "pad latch", PadLatch,
             () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, h_pad_latch));
         ok &= hook_or_log(HookSiteId.PadLatchPressedHistory, "pad pressed history", PadPressedHistory,
@@ -135,6 +137,7 @@ public unsafe sealed partial class VrrModule
             () => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuPressed, 0)).hook(this, h_pad_menu_pressed));
         ok &= hook_or_log(HookSiteId.PadLatchMenuRepeat, "pad menu repeat", PadMenuRepeat,
             () => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuRepeat, 0)).hook(this, h_pad_menu_repeat));
+        if (ok) ok = init_pad_snapshot_hook();
         _pad_latch_installed = _pad_history_readers_ready = ok;
         return ok;
     }

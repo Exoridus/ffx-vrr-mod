@@ -264,9 +264,9 @@ public sealed class MenuInputCacheTests : IDisposable
         NativeClock.HistoryHookAction = () =>
         {
             Assert.False(_module.HistoryReady);
-            Assert.Equal(14, _module.CodeChecks.Count);
+            Assert.Equal(15, _module.CodeChecks.Count);
             Assert.Equal(19, _module.OperandChecks.Count);
-            Assert.Equal(7, _module.CallChecks.Count);
+            Assert.Equal(8, _module.CallChecks.Count);
             _module.UpdateMenu();
             _module.CallPad();
             for (int kind = 0; kind < 4; kind++) Assert.Equal((ushort)0x91ef, _module.ReadHistory(kind, 0, 0, -1));
@@ -283,7 +283,7 @@ public sealed class MenuInputCacheTests : IDisposable
     {
         Assert.True(_module.InitHistory());
         Assert.Equal(new[] { 144, 145, 146 }, new[] { (int)HookSiteId.PadLatchMenuCacheUpdate, (int)HookSiteId.PadLatchMenuPressed, (int)HookSiteId.PadLatchMenuRepeat });
-        var added = NativeClock.HistoryHookRegistrations.Skip(5).ToArray();
+        var added = NativeClock.HistoryHookRegistrations.Skip(5).Take(3).ToArray();
         Assert.Equal(new nint[] { 0x4be500, 0x4be4b0, 0x4be470 }, added.Select(h => h.Rva));
         Assert.Equal(new[] { "d_render_void", "d_menu_edge", "d_menu_edge" }, added.Select(h => h.Callback.GetType().Name));
         foreach (var hook in added)

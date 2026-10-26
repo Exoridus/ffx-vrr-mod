@@ -193,7 +193,10 @@ internal static partial class NativeClock
 {
     internal static int CalculateCalls, EmitCalls;
     internal static Action? EternalAction;
-    public static uint Exec() => 0xfedcba98u;
+    internal static uint ExecValue = 0xfedcba98u;
+    internal static int ExecCalls;
+    internal static Action? ExecAction;
+    public static uint Exec() { ExecCalls++; ExecAction?.Invoke(); return ExecValue; }
     public static void Calculate() => CalculateCalls++;
     public static void Emit(nint manager) => EmitCalls++;
 }

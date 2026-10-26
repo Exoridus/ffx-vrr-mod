@@ -14,6 +14,8 @@
     <Compile Include="../../src/VrrModule.OpuRepeat.cs" Link="VrrModule.OpuRepeat.cs" />
     <Compile Include="../../src/BattleEffectPauseCode.cs" Link="BattleEffectPauseCode.cs" />
     <Compile Include="../../src/HookSites.cs" Link="HookSites.cs" />
+    <Compile Include="../../src/HookRegistration.cs" Link="HookRegistration.cs" />
+    <Compile Include="../../src/VrrModule.HookRegistration.cs" Link="VrrModule.HookRegistration.cs" />
     <Compile Include="../../src/IndependentPresentationQualification.cs" Link="IndependentPresentationQualification.cs" />
     <Compile Include="../../src/VrrModule.Qualification.cs" Link="VrrModule.Qualification.cs" />
     <Compile Include="../../src/ParticlePresentationCapture.cs" Link="ParticlePresentationCapture.cs" />
@@ -29,6 +31,7 @@
     <Compile Include="../../src/VrrModule.RenderScheduler.cs" Link="VrrModule.RenderScheduler.cs" />
     <Compile Include="../../src/VrrModule.SimulationPass.cs" Link="VrrModule.SimulationPass.cs" />
     <Compile Include="../../src/VrrModule.PadLatch.cs" Link="VrrModule.PadLatch.cs" />
+    <Compile Include="../../src/VrrModule.PadSnapshot.cs" Link="VrrModule.PadSnapshot.cs" />
     <Compile Include="../../src/VrrModule.DiagnosticBindings.cs" Link="VrrModule.DiagnosticBindings.cs" />
     <Compile Include="../../src/VrrModule.PadObservations.cs" Link="VrrModule.PadObservations.cs" />
   </ItemGroup>

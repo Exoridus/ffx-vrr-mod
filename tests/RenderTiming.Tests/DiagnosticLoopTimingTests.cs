@@ -103,7 +103,8 @@ public unsafe sealed partial class VrrModule
     private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install)
     {
         DiagnosticHookChecks.Add((site, name, rva, expected));
-        return HookSites.IsDeclared(site) && (rva != 0x489a80 || expected.AsSpan().SequenceEqual(PadPollEntry)) && install();
+        return ensure_test_hook_registration() && register_diagnostic_hook(site, name, rva,
+            rva != 0x489a80 || expected.AsSpan().SequenceEqual(PadPollEntry), install);
     }
     private void diagnostic_raw(byte channel, float value) { }
     internal void CaptureLoops(bool capturing) => _diagnostics = new() { IsCapturing = capturing };

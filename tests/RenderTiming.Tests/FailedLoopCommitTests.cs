@@ -151,7 +151,7 @@ public sealed class FailedLoopCommitTests : IDisposable
             module.DeadlineClockWithoutExit();
         };
         Assert.Same(error, Assert.Throws<InvalidOperationException>(() => module.CallDiagnosticLoop(1f / 60)));
-        Assert.Equal("native_loop_exception", module.InputGateReason);
+        Assert.Equal("pad_snapshot_clock_readiness_lost", module.InputGateReason);
         Assert.False(RenderPassContext.IsActive);
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);

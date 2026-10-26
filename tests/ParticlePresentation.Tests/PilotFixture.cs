@@ -56,7 +56,19 @@ public unsafe sealed partial class VrrModule
         if (previous.HasValue) FhUtil.set_at(EngineAddresses.PpvUserStopPartF, previous.Value);
     }
     private bool timeline_has_live_objects() => LiveManagers;
-    private bool hook_or_log(HookSiteId site, string name, nint address, Func<bool> install) => HookSites.Install(site, install);
+    private bool ensure_test_hook_registration()
+    {
+        if (_hookRegistration is not null) return true;
+        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, ParticleTimeline = _config.ParticleTimeline, ParticleSpriteClock = _config.ParticleSpriteClock, FieldParticleRestartHold = _config.FieldParticleRestartHold };
+        var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, new Dictionary<HookSiteId, IReadOnlyList<nint>> { [HookSiteId.ParticlePresentationKernelTemplate] = Enum.GetValues<ParticlePresentationKernel>().Select(k => (nint)(int)k).ToArray() }));
+        return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
+            out _hookRegistration, out _);
+    }
+
+    private void diagnostic_event(string kind, object data) { }
+    private bool hook_or_log(HookSiteId site, string name, nint address, Func<bool> install)
+        => ensure_test_hook_registration() && register_hook(site, name, address, install);
     internal bool InitializeSpriteClock() => init_particle_sprite_clock();
     internal bool InitializePilot() => init_particle_presentation();
     internal bool QualifyPilot() => particle_presentation_is_qualified();
@@ -98,6 +110,7 @@ internal sealed class PilotLogger
     internal readonly List<string> Errors = [];
     internal void Error(string message) => Errors.Add(message);
     internal void Info(string message) { }
+    internal void Warning(string message) { }
 }
 internal static class NativeBuild
 {

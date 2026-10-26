@@ -294,7 +294,18 @@ public unsafe sealed partial class VrrModule
     private const nint TexAnimWorkBase = 0x60000;
     private const int TexAnimSlotCount = 64, TexAnimSlotStride = 0x30, TexAnimFormatOffset = 0x0d, TexAnimTimerOffset = 0x0e;
     private bool advance_this_frame() => false;
-    private bool hook_or_log(HookSiteId site, string name, nint address, Func<bool> hook) => HookSites.IsDeclared(site);
+    private bool ensure_test_hook_registration()
+    {
+        if (_hookRegistration is not null) return true;
+        VrrConfig config = _config;
+        var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, false, true, false, null));
+        return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
+            out _hookRegistration, out _);
+    }
+
+    private bool hook_or_log(HookSiteId site, string name, nint address, Func<bool> hook)
+        => ensure_test_hook_registration() && register_hook(site, name, address, hook);
     private static int scale_deadline(int frames, float scale) => Math.Clamp((int)MathF.Round(frames * scale), short.MinValue, short.MaxValue);
     private static int live_objects(byte* manager) => *(int*)(manager + 0x18);
 }

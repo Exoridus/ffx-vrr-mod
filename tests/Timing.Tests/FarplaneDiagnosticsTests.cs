@@ -77,7 +77,8 @@ public unsafe sealed partial class VrrModule
     private BinaryTraceSession? _binaryDiagnostics = null;
     private long _frames = 0;
     private long _diagnosticLoopCounter = 0;
-    private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install) => HookSites.IsDeclared(site);
+    private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install)
+        => ensure_test_hook_registration() && register_diagnostic_hook(site, name, rva, true, install);
 }
 
 internal static class NativeBuild

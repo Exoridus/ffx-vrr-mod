@@ -111,6 +111,21 @@ public unsafe sealed partial class VrrModule : FhModule
             _logger.Error("[Vrr] Correction-rate override differs from the engine limiter. The override does not change presentation pacing; this configuration is unsupported without an external pacing owner.");
 
 
+        bool binaryDiagnostics = Environment.GetEnvironmentVariable("FFX_DIAGNOSTICS_BINARY") == "1";
+        if (!prepare_hook_registration(_config, IndependentPresentationEnabled,
+            _config.Diagnostics || binaryDiagnostics,
+            (_config.Diagnostics || binaryDiagnostics) && (_config.DiagnosticsBinary || binaryDiagnostics),
+            new Dictionary<HookSiteId, IReadOnlyList<nint>>
+            {
+                [HookSiteId.AtelRateSettersAllLevelsTemplate] = AtelRateSettersAllLevels.Select(t => t.Rva).ToArray(),
+                [HookSiteId.AtelRateSettersOneLevelTemplate] = AtelRateSettersOneLevel.Select(t => t.Rva).ToArray(),
+                [HookSiteId.AtelDeadlineSettersAllLevelsTemplate] = AtelDeadlineSettersAllLevels.Select(t => t.Rva).ToArray(),
+                [HookSiteId.AtelDeadlineSettersOneLevelTemplate] = AtelDeadlineSettersOneLevel.Select(t => t.Rva).ToArray(),
+                [HookSiteId.ParticleStepKernelTemplate] = KernelUpdates.Select(t => t.Rva).ToArray(),
+                [HookSiteId.ParticlePresentationKernelTemplate] = Enum.GetValues<ParticlePresentationKernel>().Select(t => (nint)(int)t).ToArray()
+            })) return false;
+
+
         if (!preflight_expanded_menu_water()) return false;
 
         if (!TimingOwnership.TryAcquire(out _timing_ownership))
@@ -197,6 +212,7 @@ public unsafe sealed partial class VrrModule : FhModule
                          $"kernel_hold={_config.ParticleKernelHold} integrator_scale={_config.ParticleIntegratorScale}.");
 
             apply_rate_patches();
+            ok &= _hookRegistration?.RequiredRegistrationsComplete == true;
             _render_mode_ready = ok && _render_scheduler_active;
             if (IndependentPresentationEnabled && !_render_mode_ready)
             {
@@ -218,6 +234,7 @@ public unsafe sealed partial class VrrModule : FhModule
 
     private void cleanup_runtime(bool failedStartup = false)
     {
+        dispose_hook_registration();
         _render_mode_ready = false;
         _render_frame_enabled = false;
         _initialized = false;
@@ -245,17 +262,7 @@ public unsafe sealed partial class VrrModule : FhModule
     ///     so a bad RVA is distinguishable from a refused hook.
     /// </summary>
     private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install)
-    {
-        if (!HookSites.IsDeclared(site))
-        {
-            _logger.Error($"[Vrr] Unknown hook site {site}; {name} was not installed.");
-            return false;
-        }
-        bool ok = install();
-        diagnostic_event("timing_hook", new { name, rva = (long)rva, installed = ok });
-        if (!ok) _logger.Error($"[Vrr] Could not hook {name} at RVA 0x{rva:X}." );
-        return ok;
-    }
+        => register_hook(site, name, rva, install);
 
     // --- Present path ---
 

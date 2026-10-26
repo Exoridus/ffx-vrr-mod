@@ -33,6 +33,13 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_advance_vblank(float arg1)
     {
+        bool completed = false;
+        try { advance_vblank(arg1); completed = true; }
+        finally { pad_snapshot_clock_completed(completed); }
+    }
+
+    private void advance_vblank(float arg1)
+    {
         uint before  = FhUtil.get_at<uint>(EngineAddresses.SgVCount);
         uint before2 = FhUtil.get_at<uint>(EngineAddresses.SgVCount2);
 

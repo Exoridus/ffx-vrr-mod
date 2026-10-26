@@ -7,6 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/HookSites.cs" Link="HookSites.cs" />
+    <Compile Include="../../src/HookRegistration.cs" Link="HookRegistration.cs" />
+    <Compile Include="../../src/VrrModule.HookRegistration.cs" Link="VrrModule.HookRegistration.cs" />
     <Compile Include="../../src/StartupFailure.cs" Link="StartupFailure.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
