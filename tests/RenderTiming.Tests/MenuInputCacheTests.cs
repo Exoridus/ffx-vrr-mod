@@ -15,6 +15,7 @@ public sealed class MenuInputCacheTests : IDisposable
         _module.SetHookScope(true, true, true, true);
         _module.ResetHistoryStartup();
         FhUtil.MainMenu = FhUtil.MenuPause = FhUtil.Overdrive = 0;
+        FhUtil.MenuReservation = -1;
         FhUtil.Dummy = 0;
         NativeClock.MenuUpdate = null;
         NativeClock.MenuRead = null;
@@ -27,6 +28,7 @@ public sealed class MenuInputCacheTests : IDisposable
     public void Dispose()
     {
         FhUtil.MainMenu = FhUtil.MenuPause = FhUtil.Overdrive = 0;
+        FhUtil.MenuReservation = -1;
         FhUtil.Dummy = 0;
         NativeClock.MenuUpdate = null;
         NativeClock.MenuRead = null;
@@ -66,7 +68,7 @@ public sealed class MenuInputCacheTests : IDisposable
         Assert.Equal((ushort)0, repeat);
     }
     public static IEnumerable<object[]> Owners()
-        => from owner in new[] { "ordinary", "outside", "disarmed", "handover", "unready", "foreign", "sync", "movie", "menu", "main_menu", "overdrive", "dummy", "unknown_dummy" } select new object[] { owner };
+        => from owner in new[] { "ordinary", "outside", "disarmed", "handover", "unready", "foreign", "sync", "movie", "menu", "main_menu", "reservation", "overdrive", "dummy", "unknown_dummy" } select new object[] { owner };
     private void SetOwner(string owner)
     {
         if (owner == "ordinary") _module.SetHookScope(true, true, true, false);
@@ -78,6 +80,7 @@ public sealed class MenuInputCacheTests : IDisposable
         if (owner == "movie") _module.NativeMovie = true;
         if (owner == "menu") FhUtil.MenuPause = 1;
         if (owner == "main_menu") FhUtil.MainMenu = 1;
+        if (owner == "reservation") FhUtil.MenuReservation = 0;
         if (owner == "overdrive") FhUtil.Overdrive = 1;
         if (owner == "dummy") FhUtil.Dummy = 1;
         if (owner == "unknown_dummy") FhUtil.Dummy = 255;
@@ -175,7 +178,7 @@ public sealed class MenuInputCacheTests : IDisposable
         Assert.Equal(1, NativeClock.MenuCalls);
     }
     public static IEnumerable<object[]> Transitions()
-        => from owner in new[] { "sync", "movie", "menu", "main_menu", "overdrive", "dummy", "unknown_dummy" }
+        => from owner in new[] { "sync", "movie", "menu", "main_menu", "reservation", "overdrive", "dummy", "unknown_dummy" }
            from kind in Enumerable.Range(0, 2) from release in new[] { false, true } select new object[] { owner, kind, release };
     [Theory]
     [MemberData(nameof(Transitions))]
@@ -189,6 +192,7 @@ public sealed class MenuInputCacheTests : IDisposable
             {
                 _module.NativeSync = _module.NativeMovie = false;
                 FhUtil.MainMenu = FhUtil.MenuPause = FhUtil.Overdrive = 0;
+                FhUtil.MenuReservation = -1;
                 FhUtil.Dummy = 0;
             }
             else SetOwner(owner);
@@ -260,8 +264,8 @@ public sealed class MenuInputCacheTests : IDisposable
         NativeClock.HistoryHookAction = () =>
         {
             Assert.False(_module.HistoryReady);
-            Assert.Equal(13, _module.CodeChecks.Count);
-            Assert.Equal(18, _module.OperandChecks.Count);
+            Assert.Equal(14, _module.CodeChecks.Count);
+            Assert.Equal(19, _module.OperandChecks.Count);
             Assert.Equal(7, _module.CallChecks.Count);
             _module.UpdateMenu();
             _module.CallPad();

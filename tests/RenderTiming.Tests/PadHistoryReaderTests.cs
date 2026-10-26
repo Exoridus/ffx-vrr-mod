@@ -45,8 +45,8 @@ public unsafe sealed class PadHistoryReaderTests : IDisposable
         NativeClock.HistoryHookAction = () =>
         {
             Assert.False(_module.HistoryReady);
-            Assert.Equal(13, _module.CodeChecks.Count);
-            Assert.Equal(18, _module.OperandChecks.Count);
+            Assert.Equal(14, _module.CodeChecks.Count);
+            Assert.Equal(19, _module.OperandChecks.Count);
             Assert.Equal(7, _module.CallChecks.Count);
             for (int kind = 0; kind < 4; kind++) Assert.Equal(0x8000, _module.ReadHistory(kind, 0, 0, -1));
             int before = NativeClock.PadCalls;

@@ -189,6 +189,9 @@ public unsafe sealed partial class VrrModule
     internal double? ChosenRate;
     internal float CameraAlpha;
     internal int CameraResets, ActorResets;
+    internal int CameraCompletions, ActorCompletions;
+    internal (long SimulationTicks, long AdditionalImages, int Remaining) CompletionState
+        => (_simulation_ticks, _additional_images, _render_steps_remaining);
     internal float ReportedRate => PresentationTargetHz;
     internal void SetMaximum(int rate) => _max_framerate.Value = rate;
     private double? ChosenFramerate => ChosenRate;
@@ -208,8 +211,8 @@ public unsafe sealed partial class VrrModule
     private void reset_render_actors() => ActorResets++;
     private void restore_render_camera() { }
     private void render_actors_restore() { }
-    private void render_camera_complete_simulation() { }
-    private void render_actors_complete_simulation() { }
+    private void render_camera_complete_simulation() => CameraCompletions++;
+    private void render_actors_complete_simulation() => ActorCompletions++;
     private void render_camera_set_presentation_alpha(float alpha) => CameraAlpha = alpha;
     private void render_camera_begin_simulation() { }
     private void render_actors_begin_simulation() { }
@@ -302,6 +305,7 @@ internal static unsafe class FhUtil
     public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
     internal static nint PadRecordPointer;
     internal static int Overdrive, MenuPause, MainMenu;
+    internal static int MenuReservation = -1;
     internal static byte Dummy;
     public static T* ptr_at<T>(nint rva) where T : unmanaged
     {
@@ -310,6 +314,7 @@ internal static unsafe class FhUtil
     }
     public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
         : rva == 0xf3c930 ? (T)(object)Overdrive
+        : rva == 0xefbc38 ? (T)(object)MenuReservation
         : rva == 0x146a430 ? (T)(object)Dummy
         : rva == 0xf40824 ? (T)(object)MainMenu : rva == 0xf40828 ? (T)(object)MenuPause : default!;
 }

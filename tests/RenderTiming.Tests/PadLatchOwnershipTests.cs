@@ -227,7 +227,7 @@ public unsafe sealed partial class VrrModule
     {
         CodeChecks.Add((rva, pattern));
         if (rva == RejectedPadCodeSite) return false;
-        byte[]? entry = rva == 0x4ab034 ? MainMenuEntry : rva == 0x420b89 ? MenuPauseEntry
+        byte[]? entry = rva == 0x420763 ? MenuReservationEntry : rva == 0x4ab034 ? MainMenuEntry : rva == 0x420b89 ? MenuPauseEntry
             : MenuInputEntries.GetValueOrDefault(rva) ?? PadHistoryEntries.GetValueOrDefault(rva);
         if (entry != null)
         {
@@ -262,7 +262,7 @@ public unsafe sealed partial class VrrModule
     {
         OperandChecks.Add((rva, expected));
         return rva != RejectedPadOperandSite && (rva != 0x488ecd || PadGetterOperandMatches)
-            && MenuOperandMatches(rva, expected) && (rva != 0x4ab036 || (MainMenuEntry.Length >= 6 && BitConverter.ToUInt32(MainMenuEntry, 2) == 0x01340824)) && (rva != 0x420b8b || (MenuPauseEntry.Length >= 6 && BitConverter.ToUInt32(MenuPauseEntry, 2) == 0x01340828));
+            && MenuOperandMatches(rva, expected) && (rva != 0x420765 || (MenuReservationEntry.Length >= 6 && BitConverter.ToUInt32(MenuReservationEntry, 2) == 0x012fbc38)) && (rva != 0x4ab036 || (MainMenuEntry.Length >= 6 && BitConverter.ToUInt32(MainMenuEntry, 2) == 0x01340824)) && (rva != 0x420b8b || (MenuPauseEntry.Length >= 6 && BitConverter.ToUInt32(MenuPauseEntry, 2) == 0x01340828));
     }
     private bool fx_call_is(nint rva, nint expected) { CallChecks.Add((rva, expected)); return !RejectPadOverdriveCall && MenuCallMatches(rva, expected); }
 }

@@ -139,8 +139,15 @@ public unsafe sealed partial class VrrModule
 
     private void render_scheduler_exit_loop(bool nativeReturned = true)
     {
+        // A nested return can clear the shared loop marker before its outer call fails.
+        if (!nativeReturned && (RenderSchedulerReady || _render_inside_loop))
+        {
+            reset_pad_observation_timeline("native_loop_exception");
+            refuse_independent_presentation("native_loop_exception");
+            _render_frame_enabled = false;
+            if (!_render_inside_loop) RenderPassContext.IsActive = false;
+        }
         if (!_render_inside_loop) return;
-        if (!nativeReturned) reset_pad_observation_timeline("native_loop_exception");
         // A draw callback can derive this global from exec zero; do not carry that pause into simulation.
         viewport_restore(RenderPassContext.IsPresentation);
         party_swap_end_pass(RenderPassContext.IsPresentation);
@@ -148,24 +155,25 @@ public unsafe sealed partial class VrrModule
         render_restore_particles(_render_particle_pause_before);
         _render_particle_pause_before = null;
         double? tickDeadlineSeconds = null;
-        if (_diagnostics?.IsCapturing == true && _render_clock_seen && _render_simulation_pass
+        if (nativeReturned && _diagnostics?.IsCapturing == true && _render_clock_seen && _render_simulation_pass
             && OwnsRenderPass && _presentationAdmission.Failure is null
             && _simulationClock.TryGetStepDeadline(_render_plan.Steps - _render_steps_remaining, out double deadline))
             tickDeadlineSeconds = deadline;
         object? padTickCorrelation = nativeReturned ? pad_observations_pass_completed(tickDeadlineSeconds) : null;
-        if (_render_clock_seen && _render_simulation_pass)
+        if (nativeReturned && _render_clock_seen && _render_simulation_pass)
         {
             _simulation_ticks++;
             if (_render_steps_remaining > 0) _render_steps_remaining--;
             render_camera_complete_simulation();
             render_actors_complete_simulation();
         }
-        else if (_render_clock_seen) _additional_images++;
+        else if (nativeReturned && _render_clock_seen) _additional_images++;
         diagnostic_event("render_pass", new { simulation = _render_simulation_pass, clock_seen = _render_clock_seen,
             remaining = _render_steps_remaining, alpha = _render_plan.Alpha, simulation_ticks = _simulation_ticks,
             additional_images = _additional_images, discarded_steps = _simulation_debt_dropped,
             native_clock_owner = !_render_frame_enabled, tick_deadline_seconds = tickDeadlineSeconds,
             pad_tick_correlation = padTickCorrelation });
+        if (!nativeReturned) RenderPassContext.IsActive = false;
         RenderPassContext.IsPresentation = false;
         battle_effects_end_pass();
         _render_inside_loop = false;

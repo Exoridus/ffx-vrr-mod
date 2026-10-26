@@ -9,6 +9,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     public PadNativeOwnerTests()
     {
         FhUtil.MainMenu = FhUtil.MenuPause = FhUtil.Overdrive = 0;
+        FhUtil.MenuReservation = -1;
         FhUtil.Dummy = 0;
         NativeClock.PadCalls = 0;
         NativeClock.HistoryValue = 0x91ef;
@@ -23,6 +24,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     public void Dispose()
     {
         FhUtil.MainMenu = FhUtil.MenuPause = FhUtil.Overdrive = 0;
+        FhUtil.MenuReservation = -1;
         FhUtil.Dummy = 0;
         NativeClock.HistoryRead = null;
         NativeClock.Advance = null;
@@ -35,12 +37,13 @@ public sealed class PadNativeOwnerTests : IDisposable
         if (owner == "movie") _module.NativeMovie = true;
         if (owner == "menu") FhUtil.MenuPause = 1;
         if (owner == "main_menu") FhUtil.MainMenu = 1;
+        if (owner == "reservation") FhUtil.MenuReservation = 0;
         if (owner == "dummy") FhUtil.Dummy = 1;
         if (owner == "unknown_dummy") FhUtil.Dummy = 255;
         if (owner == "overdrive") FhUtil.Overdrive = 1;
     }
     public static IEnumerable<object[]> Readers()
-        => from owner in new[] { "sync", "movie", "menu", "main_menu", "overdrive", "dummy", "unknown_dummy" }
+        => from owner in new[] { "sync", "movie", "menu", "main_menu", "reservation", "overdrive", "dummy", "unknown_dummy" }
            from reader in Enumerable.Range(0, 4)
            from history in new[] { -1, 0, 3 }
            select new object[] { owner, reader, history };
@@ -53,7 +56,7 @@ public sealed class PadNativeOwnerTests : IDisposable
         Assert.Single(NativeClock.HistoryCalls);
     }
     public static IEnumerable<object[]> LateReaders()
-        => from owner in new[] { "sync", "movie", "menu", "main_menu", "overdrive", "dummy", "unknown_dummy" }
+        => from owner in new[] { "sync", "movie", "menu", "main_menu", "reservation", "overdrive", "dummy", "unknown_dummy" }
            from reader in Enumerable.Range(0, 4)
            select new object[] { owner, reader };
     [Theory]
@@ -73,6 +76,7 @@ public sealed class PadNativeOwnerTests : IDisposable
         {
             _module.NativeSync = _module.NativeMovie = false;
             FhUtil.MainMenu = FhUtil.MenuPause = FhUtil.Overdrive = 0;
+            FhUtil.MenuReservation = -1;
             FhUtil.Dummy = 0;
             return 0x91ef;
         };
@@ -84,6 +88,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie", false)]
     [InlineData("menu", false)]
     [InlineData("main_menu", false)]
+    [InlineData("reservation", false)]
     [InlineData("overdrive", false)]
     [InlineData("dummy", false)]
     [InlineData("unknown_dummy", false)]
@@ -91,6 +96,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie", true)]
     [InlineData("menu", true)]
     [InlineData("main_menu", true)]
+    [InlineData("reservation", true)]
     [InlineData("overdrive", true)]
     [InlineData("dummy", true)]
     [InlineData("unknown_dummy", true)]
@@ -109,6 +115,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie")]
     [InlineData("menu")]
     [InlineData("main_menu")]
+    [InlineData("reservation")]
     [InlineData("overdrive")]
     [InlineData("dummy")]
     [InlineData("unknown_dummy")]
@@ -128,6 +135,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie")]
     [InlineData("menu")]
     [InlineData("main_menu")]
+    [InlineData("reservation")]
     [InlineData("overdrive")]
     [InlineData("dummy")]
     [InlineData("unknown_dummy")]
@@ -146,6 +154,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie")]
     [InlineData("menu")]
     [InlineData("main_menu")]
+    [InlineData("reservation")]
     [InlineData("overdrive")]
     [InlineData("dummy")]
     [InlineData("unknown_dummy")]
@@ -178,6 +187,58 @@ public sealed class PadNativeOwnerTests : IDisposable
         _module.CallDiagnosticLoop(1f / 60);
         Assert.Equal(1, NativeClock.PadCalls);
         Assert.Equal(0, _module.PadState.Late);
+    }
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(4096)]
+    [InlineData(-2)]
+    [InlineData(int.MinValue)]
+    public void Every_non_idle_reservation_retains_native_input_before_menu_activation(int request)
+    {
+        FhUtil.MenuReservation = request;
+        Assert.Equal(0, FhUtil.MainMenu);
+        Assert.Equal((ushort)0x91ef, _module.ReadHistory(0, 0, 0, -1));
+    }
+    [Fact]
+    public void Reservation_guard_and_relocated_operand_preflight_before_input_hooks()
+    {
+        _module.EnableAdapter();
+        _module.ResetHistoryStartup();
+        Assert.True(_module.InitHistory());
+        Assert.Contains(_module.CodeChecks, x => x.Rva == 0x420763 && x.Pattern == "83 3D ?? ?? ?? ?? FF 74 44");
+        Assert.Contains(_module.OperandChecks, x => x.Rva == 0x420765 && x.Expected == 0xefbc38);
+    }
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(9)]
+    public void Reservation_guard_changes_keep_the_complete_input_group_native(int offset)
+    {
+        _module.EnableAdapter();
+        _module.ResetHistoryStartup();
+        if (offset == 9) _module.MenuReservationEntry = _module.MenuReservationEntry[..8];
+        else _module.MenuReservationEntry[offset] ^= 0xff;
+        Assert.True(_module.InitHistory());
+        Assert.False(_module.HistoryReady);
+        Assert.Empty(NativeClock.HistoryHookRegistrations);
+    }
+    [Fact]
+    public void Reservation_operand_rejection_keeps_the_complete_input_group_native()
+    {
+        _module.EnableAdapter();
+        _module.ResetHistoryStartup();
+        _module.RejectedPadOperandSite = 0x420765;
+        Assert.True(_module.InitHistory());
+        Assert.False(_module.HistoryReady);
+        Assert.Empty(NativeClock.HistoryHookRegistrations);
     }
     [Theory]
     [InlineData(1)]
@@ -265,6 +326,7 @@ public sealed class PadNativeOwnerTests : IDisposable
 }
 public unsafe sealed partial class VrrModule
 {
+    internal byte[] MenuReservationEntry = Convert.FromHexString("833D38BC2F01FF7444");
     internal byte[] MainMenuEntry = Convert.FromHexString("833D2408340100744C");
     internal byte[] MenuPauseEntry = Convert.FromHexString("833D28083401007511");
 }

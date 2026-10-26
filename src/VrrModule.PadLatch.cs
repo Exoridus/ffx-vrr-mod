@@ -15,6 +15,7 @@ public unsafe sealed partial class VrrModule
     private const nint PadRecords = 0xF30288, PadRecordBaseSite = 0x488EC0;
     // Overdrive windows poll and push independently on every pass for timed presses and stick rotation.
     private const nint OverdriveActive = 0xF3C930, OverdriveLatchSite = 0x49AE52;
+    private const nint PadMenuReservation = 0xEFBC38, PadMenuReservationSite = 0x420763;
     private const nint PadMainMenu = 0xF40824, PadMainMenuSite = 0x4AB034;
     private const nint PadMenuPause = 0xF40828, PadMenuPauseSite = 0x420B89;
     private const nint PadPressedHistory = 0x488E80, PadReleasedHistory = 0x488EA0,
@@ -62,7 +63,8 @@ public unsafe sealed partial class VrrModule
 
     // Timed and clock-bypassing input paths retain native publication and real-time repeat.
     private bool pad_native_input_owner()
-        => EngineSyncPaced || fmv_playing() || FhUtil.get_at<int>(PadMainMenu) != 0
+        => EngineSyncPaced || fmv_playing() || FhUtil.get_at<int>(PadMenuReservation) != -1
+            || FhUtil.get_at<int>(PadMainMenu) != 0
             || FhUtil.get_at<int>(PadMenuPause) != 0
             || FhUtil.get_at<int>(OverdriveActive) != 0 || FhUtil.get_at<byte>(PadDummyActive) != 0;
 
@@ -79,6 +81,8 @@ public unsafe sealed partial class VrrModule
             || !fx_code_matches(OverdriveLatchSite, "83 3D ?? ?? ?? ?? 00 74 14 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? E8")
             || !fx_operand_is(OverdriveLatchSite + 2, OverdriveActive)
             || !fx_call_is(OverdriveLatchSite + 0x13, PadLatch)
+            || !fx_code_matches(PadMenuReservationSite, "83 3D ?? ?? ?? ?? FF 74 44")
+            || !fx_operand_is(PadMenuReservationSite + 2, PadMenuReservation)
             || !fx_code_matches(PadMainMenuSite, "83 3D ?? ?? ?? ?? 00 74 4C")
             || !fx_operand_is(PadMainMenuSite + 2, PadMainMenu)
             || !fx_code_matches(PadMenuPauseSite, "83 3D ?? ?? ?? ?? 00 75 11")
