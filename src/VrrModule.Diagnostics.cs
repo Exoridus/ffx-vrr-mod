@@ -93,7 +93,7 @@ public unsafe sealed partial class VrrModule
                     config = _config, process_id = Environment.ProcessId, architecture = RuntimeInformation.ProcessArchitecture.ToString(),
                     image_base = process.MainModule?.BaseAddress.ToInt64(),
                     managed_modules = AppDomain.CurrentDomain.GetAssemblies().Select(a => new { name = a.GetName().Name, version = a.GetName().Version?.ToString() }).ToArray(),
-                    coverage = "animate; main loop/viewport/view commit when armed; vblank/character when installed; framework overlay; actual Present results while presenter is active; movie composition when native phase probe and binary capture are active; no universal draw counter" });
+                    coverage = "animate; main loop/viewport/view commit when armed; vblank/character when installed; framework overlay; actual Present results while presenter is active; movie composition when native phase probe and binary capture are active; post-poll pad snapshots when native phase probe is armed; no universal draw counter" });
             bool textureOnly = _config.TextureBlendProbe && !_config.Diagnostics
                 && Environment.GetEnvironmentVariable("FFX_DIAGNOSTICS_BINARY") != "1";
             if (textureOnly) _textureBlendDiagnostics = session;
@@ -113,6 +113,7 @@ public unsafe sealed partial class VrrModule
             if (_config.NativePhaseProbe)
             {
                 init_diagnostic_bindings();
+                init_pad_observations();
                 init_farplane_diagnostics();
                 init_menu_water_diagnostics();
                 diagnostic_hook(HookSiteId.DiagnosticsViewportFinalize, "viewport_finalize", DiagnosticFinalize, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x20, 0xc7, 0x05],

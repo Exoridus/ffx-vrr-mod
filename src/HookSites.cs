@@ -142,6 +142,7 @@ internal enum HookSiteId
     UpstreamUiUISPH001SphereGridUpdate,
     VideoOverridePhyFMVPlayerManagerInitialize,
     VideoOverridePhyFMVPlayerManagerPlayStart,
+    DiagnosticBindingsPadPollObservation,
 }
 
 internal static class HookSites

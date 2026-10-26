@@ -200,7 +200,7 @@ public unsafe sealed partial class VrrModule
 
     internal string? RejectedHook;
     private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> hook) => HookSites.Install(site, hook) && name != RejectedHook;
-    private void diagnostic_event(string kind, object data) => DiagnosticEvents.Add((kind, data, _diagnosticLoopId));
+    private void diagnostic_event(string kind, object data) => DiagnosticEvents.Add((kind, data, _diagnosticLoopId, Environment.CurrentManagedThreadId));
     private bool init_render_camera() => true;
     private bool init_render_actors() => true;
     private void reset_render_camera() => CameraResets++;
@@ -269,7 +269,7 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
                 "d_effect_process" => nameof(NativeClock.Effect),
                 "d_eternal_run" => nameof(NativeClock.Eternal),
                 "d_render_exec" => nameof(NativeClock.Exec),
-                "d_render_void" => location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
+                "d_render_void" => location.Rva == 0x489a80 ? nameof(NativeClock.Poll) : location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
                 "d_render_emit" => nameof(NativeClock.Emit),
                 "d_diag_exec" => nameof(NativeClock.Exec),
                 "d_diag_loop" => nameof(NativeClock.Loop),

@@ -96,9 +96,15 @@ public unsafe sealed partial class VrrModule
 {
     private const nint DiagnosticFinalize = 0;
     private long _load_passes;
-    internal readonly List<(string Kind, object Data, long Loop)> DiagnosticEvents = [];
+    internal readonly List<(string Kind, object Data, long Loop, int Thread)> DiagnosticEvents = [];
     internal Action? DiagnosticCleanup;
-    private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install) => install();
+    internal readonly List<(HookSiteId Site, string Name, nint Rva, byte[] Expected)> DiagnosticHookChecks = [];
+    internal byte[] PadPollEntry = Convert.FromHexString("5633F66A0056E885F3FFFF506A0056E8BCF5FFFF4683C41483FE027CE65EC3");
+    private bool diagnostic_hook(HookSiteId site, string name, nint rva, byte[] expected, Func<bool> install)
+    {
+        DiagnosticHookChecks.Add((site, name, rva, expected));
+        return HookSites.IsDeclared(site) && (rva != 0x489a80 || expected.AsSpan().SequenceEqual(PadPollEntry)) && install();
+    }
     private void diagnostic_raw(byte channel, float value) { }
     internal void CaptureLoops(bool capturing) => _diagnostics = new() { IsCapturing = capturing };
     internal void CallDiagnosticLoop(float delta) => h_diag_loop(delta);

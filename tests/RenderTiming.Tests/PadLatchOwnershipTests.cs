@@ -227,8 +227,19 @@ public unsafe sealed partial class VrrModule
     internal void DecidePad(bool presentation) => pad_latch_pass_decided(presentation);
     internal void EndPad() => pad_latch_end_pass();
     internal void RevokePadFrame(bool disarm) { _render_frame_enabled = false; if (disarm) _render_mode_ready = false; }
-    private bool fx_code_matches(nint rva, string pattern) => true;
-    private bool fx_operand_is(nint rva, nint expected) => true;
+    internal bool PadGetterCodeMatches = true, PadGetterOperandMatches = true;
+    internal readonly List<(nint Rva, string Pattern)> CodeChecks = [];
+    internal readonly List<(nint Rva, nint Expected)> OperandChecks = [];
+    private bool fx_code_matches(nint rva, string pattern)
+    {
+        CodeChecks.Add((rva, pattern));
+        return rva != 0x488ec0 || PadGetterCodeMatches;
+    }
+    private bool fx_operand_is(nint rva, nint expected)
+    {
+        OperandChecks.Add((rva, expected));
+        return rva != 0x488ecd || PadGetterOperandMatches;
+    }
     private bool fx_call_is(nint rva, nint expected) => true;
 }
 

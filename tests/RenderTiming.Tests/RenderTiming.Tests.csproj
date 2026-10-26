@@ -28,5 +28,6 @@
     <Compile Include="../../src/VrrModule.SimulationPass.cs" Link="VrrModule.SimulationPass.cs" />
     <Compile Include="../../src/VrrModule.PadLatch.cs" Link="VrrModule.PadLatch.cs" />
     <Compile Include="../../src/VrrModule.DiagnosticBindings.cs" Link="VrrModule.DiagnosticBindings.cs" />
+    <Compile Include="../../src/VrrModule.PadObservations.cs" Link="VrrModule.PadObservations.cs" />
   </ItemGroup>
 </Project>
