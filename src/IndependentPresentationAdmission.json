@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "14b6dba750dc3c04e3ec1ab1d6942bef33f406becd819107de9d271d9cb49e48",
+  "canonical_contract_snapshot_sha256": "9ccce5dc96e57d815afc110e953e57b84d0916f6052c0d0dccf2b80283d0922a",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -123,8 +123,8 @@
     },
     {
       "path": "src/BattleEffectPauseCode.cs",
-      "sha256": "129ec1bc479fe08c1f2915f47aa485821148fe2de565c5d4c3915d2044724eb0",
-      "lf_sha256": "129ec1bc479fe08c1f2915f47aa485821148fe2de565c5d4c3915d2044724eb0"
+      "sha256": "ed252dba85d0a06d10e3dd8a66cb9e3ada34edb31cfec20e098d4830d7f06a10",
+      "lf_sha256": "ed252dba85d0a06d10e3dd8a66cb9e3ada34edb31cfec20e098d4830d7f06a10"
     },
     {
       "path": "src/BattleEffectState.cs",
@@ -728,8 +728,8 @@
     },
     {
       "path": "tests/ParticlePresentation.Tests/OpuHandlerPolicyTests.cs",
-      "sha256": "fe26d6bf40bd6fe5b462f18155cbed08d94de58f3db854c4f355c221c82d2768",
-      "lf_sha256": "fe26d6bf40bd6fe5b462f18155cbed08d94de58f3db854c4f355c221c82d2768"
+      "sha256": "3b81f829739f2be654cafb5a6fd761324800f7e1ef25bf4ec25047b6d3a01752",
+      "lf_sha256": "3b81f829739f2be654cafb5a6fd761324800f7e1ef25bf4ec25047b6d3a01752"
     },
     {
       "path": "tests/ParticlePresentation.Tests/ParticlePresentation.Tests.csproj",

@@ -6,12 +6,53 @@ namespace Fahrenheit.Mods.Vrr;
 public sealed class OpuHandlerPolicyTests
 {
     [Fact]
-    public void HeldMode3AdmitsOnlyFourStaticOpcodesOnEveryDispatch()
+    public void HeldMode3AppliesBoundedSemanticsOnEveryDispatch()
     {
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
         foreach (ushort operandBits in new ushort[] { 0, 0x0200, 0x8000, 0xfe00 })
         for (ushort opcode = 0; opcode < 512; opcode++)
-            fixture.Check(3, (ushort)(opcode | operandBits), opcode is 0x002 or 0x009 or 0x053 or 0x061);
+            fixture.Check(3, (ushort)(opcode | operandBits), opcode switch
+            {
+                0x053 => Outcome.AdvanceWithoutCall,
+                0x002 or 0x061 => Outcome.Call,
+                0x009 when operandBits < 0x0400 => Outcome.Call,
+                _ => Outcome.Yield,
+            });
+    }
+
+    [Fact]
+    public void HeldMode3RejectsEveryWaitOperandAboveOne()
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        for (int count = 0; count < 128; count++)
+            fixture.Check(3, (ushort)(0x009 | (count << 9)), count < 2 ? Outcome.Call : Outcome.Yield);
+    }
+
+    [Fact]
+    public void HeldMode3SkipsHistoryAppendAndContinuesDispatch()
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        foreach (ushort operandBits in new ushort[] { 0, 0x0200, 0x8000, 0xfe00 })
+        {
+            fixture.Check(3, (ushort)(0x053 | operandBits), Outcome.AdvanceWithoutCall);
+            fixture.Check(3, 0x009, Outcome.Call);
+            fixture.Check(3, 0x061, Outcome.Call);
+        }
+        fixture.Check(3, 0x153, Outcome.Yield, fixture.Target(0x053));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(255)]
+    public void OtherModesKeepNativeWaitOperandsAndHistoryHandler(byte hold)
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        for (int count = 0; count < 128; count++)
+            fixture.Check(hold, (ushort)(0x009 | (count << 9)), Outcome.Call);
+        fixture.Check(hold, 0x053, Outcome.Call);
     }
 
     [Theory]
@@ -22,8 +63,8 @@ public sealed class OpuHandlerPolicyTests
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
         for (ushort opcode = 0; opcode < 512; opcode++)
         {
-            fixture.Check(hold, opcode, true);
-            fixture.Check(hold, opcode, true, fixture.Target(0));
+            fixture.Check(hold, opcode, Outcome.Call);
+            fixture.Check(hold, opcode, Outcome.Call, fixture.Target(0));
         }
     }
 
@@ -36,8 +77,8 @@ public sealed class OpuHandlerPolicyTests
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
         for (ushort opcode = 0; opcode < 512; opcode++)
         {
-            fixture.Check(hold, opcode, opcode is not (0x1f or 0x7f));
-            fixture.Check(hold, opcode, opcode is not (0x1f or 0x7f), fixture.Target(0));
+            fixture.Check(hold, opcode, opcode is 0x1f or 0x7f ? Outcome.Yield : Outcome.Call);
+            fixture.Check(hold, opcode, opcode is 0x1f or 0x7f ? Outcome.Yield : Outcome.Call, fixture.Target(0));
         }
     }
 
@@ -47,9 +88,9 @@ public sealed class OpuHandlerPolicyTests
         using var fixture = new HandlerFixture([0x002, 0x009, 0x053, 0x061, 0x1f, 0x7f]);
         foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061, 0x1f, 0x7f })
         {
-            fixture.Check(3, opcode, false);
-            fixture.Check(2, opcode, false);
-            fixture.Check(0, opcode, true);
+            fixture.Check(3, opcode, Outcome.Yield);
+            fixture.Check(2, opcode, Outcome.Yield);
+            fixture.Check(0, opcode, Outcome.Call);
         }
     }
 
@@ -57,10 +98,10 @@ public sealed class OpuHandlerPolicyTests
     public void AllowedDispatchDoesNotAdmitTheFollowingUnsupportedOpcode()
     {
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
-        fixture.Check(3, 0x002, true);
-        fixture.Check(3, 0x003, false);
-        fixture.Check(3, 0x061, true);
-        fixture.Check(3, 0x161, false);
+        fixture.Check(3, 0x002, Outcome.Call);
+        fixture.Check(3, 0x003, Outcome.Yield);
+        fixture.Check(3, 0x061, Outcome.Call);
+        fixture.Check(3, 0x161, Outcome.Yield);
     }
 
     [Fact]
@@ -70,7 +111,7 @@ public sealed class OpuHandlerPolicyTests
         foreach (ushort operandBits in new ushort[] { 0, 0x0200, 0x8000, 0xfe00 })
         foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
         foreach (ushort other in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
-            if (opcode != other) fixture.Check(3, (ushort)(opcode | operandBits), false, fixture.Target(other));
+            if (opcode != other) fixture.Check(3, (ushort)(opcode | operandBits), Outcome.Yield, fixture.Target(other));
     }
 
     [Fact]
@@ -79,8 +120,8 @@ public sealed class OpuHandlerPolicyTests
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
         foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
         {
-            fixture.Check(3, opcode, false, 0);
-            fixture.Check(3, opcode, false, fixture.Target(0));
+            fixture.Check(3, opcode, Outcome.Yield, 0);
+            fixture.Check(3, opcode, Outcome.Yield, fixture.Target(0));
         }
     }
 
@@ -88,9 +129,9 @@ public sealed class OpuHandlerPolicyTests
     public void CorrectTargetDoesNotAdmitFollowingWrongTarget()
     {
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
-        fixture.Check(3, 0x002, true);
-        fixture.Check(3, 0x002, false, fixture.Target(0x009));
-        fixture.Check(3, 0x002, true);
+        fixture.Check(3, 0x002, Outcome.Call);
+        fixture.Check(3, 0x002, Outcome.Yield, fixture.Target(0x009));
+        fixture.Check(3, 0x002, Outcome.Call);
     }
 
     [Fact]
@@ -101,10 +142,10 @@ public sealed class OpuHandlerPolicyTests
         foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
         {
             Assert.NotEqual(first.Target(opcode), second.Target(opcode));
-            first.Check(3, opcode, true);
-            second.Check(3, opcode, true);
-            first.Check(3, opcode, false, second.Target(opcode));
-            second.Check(3, opcode, false, first.Target(opcode));
+            first.Check(3, opcode, opcode == 0x053 ? Outcome.AdvanceWithoutCall : Outcome.Call);
+            second.Check(3, opcode, opcode == 0x053 ? Outcome.AdvanceWithoutCall : Outcome.Call);
+            first.Check(3, opcode, Outcome.Yield, second.Target(opcode));
+            second.Check(3, opcode, Outcome.Yield, first.Target(opcode));
         }
     }
 
@@ -134,6 +175,8 @@ public sealed class OpuHandlerPolicyTests
         Assert.False(OpuHandlerTableMatches([], expected));
         Assert.False(OpuHandlerTableMatches(table, [(0x002, imageBase + 0x40c500)]));
     }
+
+    private enum Outcome { Call, Yield, AdvanceWithoutCall }
 
     private unsafe sealed class HandlerFixture : IDisposable
     {
@@ -208,23 +251,26 @@ public sealed class OpuHandlerPolicyTests
             _ => 256u,
         });
 
-        internal void Check(byte hold, ushort instruction, bool accepted, uint? target = null)
+        internal void Check(byte hold, ushort instruction, Outcome outcome, uint? target = null)
         {
             new Span<byte>((void*)_data, 0x1000).Clear();
             State[13] = target ?? Target((ushort)(instruction & 0x1ff));
             *(byte*)_data = hold;
             *(ushort*)(Scratch + 0x21a) = instruction;
+            byte[] expectedScratch = new ReadOnlySpan<byte>(Scratch, 0xc00).ToArray();
+            if (outcome == Outcome.Yield) expectedScratch[0x210] = 1;
             _run();
+            bool accepted = outcome == Outcome.Call;
             string context = $"hold={hold}, instruction=0x{instruction:x4}";
             Assert.True(State[1] == (accepted ? 1u : 0u), context);
-            Assert.Equal(accepted ? NativeResult : Pc, State[2]);
+            Assert.Equal(outcome switch { Outcome.Call => NativeResult, Outcome.AdvanceWithoutCall => Pc + 4, _ => Pc }, State[2]);
             Assert.Equal(accepted ? ReturnedCarrier : Carrier, State[3]);
             Assert.Equal((uint)Scratch, State[4]);
             Assert.Equal(Pc, State[5]);
             Assert.Equal(State[6], State[7]);
             Assert.Equal(Bx, State[11]);
             Assert.Equal(Bp, State[12]);
-            Assert.Equal(accepted ? (byte)0 : (byte)1, Scratch[0x210]);
+            Assert.Equal(expectedScratch, new ReadOnlySpan<byte>(Scratch, 0xc00).ToArray());
             Assert.Equal(instruction, *(ushort*)(Scratch + 0x21a));
             if (accepted)
             {

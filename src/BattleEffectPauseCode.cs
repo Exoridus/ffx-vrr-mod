@@ -104,6 +104,7 @@ internal static class BattleEffectPauseCode
     ///     stream runs only when the entry callback allows it. Entry and next callbacks run on every
     ///     walk; they are cdecl (scratch, record) and the entry one returns non-zero to skip the stream.
     ///     Held mode 3 admits only supplied masked opcode and expected handler-entry pairs after existing denies.
+    ///     WAIT operands above one yield; history append advances four bytes without calling its handler.
     /// </summary>
     internal static byte[] OpuStubs(uint origin, OpuSites s, OpuData d, IReadOnlyList<ushort> denied, IReadOnlyList<(ushort Opcode, uint Target)> admitted, out OpuOffsets offsets)
     {
@@ -128,7 +129,18 @@ internal static class BattleEffectPauseCode
             int nextCandidate = e.Forward(Jne);
             e.Raw(0x3d).U32(target);
             toDeny.Add(e.Forward(Jne));
-            toAdmit.Add(e.Forward(Jmp));
+            if (op == 0x009)
+            {
+                // A fresh WAIT above one writes a countdown before the held decrement guard can run.
+                e.Raw(0x66, 0x81, 0xbe, 0x1a, 0x02, 0x00, 0x00, 0x00, 0x04);
+                toDeny.Add(e.Forward(Jae));
+            }
+            if (op == 0x053)
+            {
+                // This handler only appends history; its other paths also continue at PC + 4.
+                e.Raw(0x59, 0x8d, 0x47, 0x04).Jump(Jmp, s.HandlerReturn);
+            }
+            else toAdmit.Add(e.Forward(Jmp));
             e.Bind(nextCandidate);
         }
         toDeny.Add(e.Forward(Jmp));
