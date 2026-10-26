@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "5a8a0d7bc5f364ff8a13f77520fc0ef4164ba290d659017e964a45aeec31dd76",
+  "canonical_contract_snapshot_sha256": "fafa097ed7a53e96ea7b80761e8c40cdadf461107a7a61d1e990d5c5808442c3",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -553,8 +553,8 @@
     },
     {
       "path": "src/VrrModule.PadLatch.cs",
-      "sha256": "f0ee2ad1313627446035e12910477b56b3ed14f3a3bc1da3df9558108a4b61e6",
-      "lf_sha256": "f0ee2ad1313627446035e12910477b56b3ed14f3a3bc1da3df9558108a4b61e6"
+      "sha256": "a4023a0677123692989a7b6896e737a6c6bea7079d90f470a022d2009c0a995f",
+      "lf_sha256": "a4023a0677123692989a7b6896e737a6c6bea7079d90f470a022d2009c0a995f"
     },
     {
       "path": "src/VrrModule.PadObservations.cs",
@@ -813,8 +813,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/MenuInputCacheTests.cs",
-      "sha256": "50eef6edb3410b60f403c4c0382d3334d440d52f5bc96201ec92de24cbd016ae",
-      "lf_sha256": "50eef6edb3410b60f403c4c0382d3334d440d52f5bc96201ec92de24cbd016ae"
+      "sha256": "25da66ef4818da981571341ca0f432c9ced8732e92dda31167a8f5309d37d914",
+      "lf_sha256": "25da66ef4818da981571341ca0f432c9ced8732e92dda31167a8f5309d37d914"
     },
     {
       "path": "tests/RenderTiming.Tests/OpuRepeatBridgeTests.cs",
@@ -828,18 +828,18 @@
     },
     {
       "path": "tests/RenderTiming.Tests/PadHistoryReaderTests.cs",
-      "sha256": "ebc3bf9b9392e874d32020621d58a6e1c601581bdf0f375a20904b896ab84274",
-      "lf_sha256": "ebc3bf9b9392e874d32020621d58a6e1c601581bdf0f375a20904b896ab84274"
+      "sha256": "5a8c63aca965097dd6ccf1b564c04f650c9c80955327e8ad1bbd7532f9de9b68",
+      "lf_sha256": "5a8c63aca965097dd6ccf1b564c04f650c9c80955327e8ad1bbd7532f9de9b68"
     },
     {
       "path": "tests/RenderTiming.Tests/PadLatchOwnershipTests.cs",
-      "sha256": "53818f2719f61ad631d80c162dbc832f725b5d58de906b60fd741c597caa8024",
-      "lf_sha256": "53818f2719f61ad631d80c162dbc832f725b5d58de906b60fd741c597caa8024"
+      "sha256": "356ab091078189dced91917ba46def80431723bd32c8a681b33b91eef8168581",
+      "lf_sha256": "356ab091078189dced91917ba46def80431723bd32c8a681b33b91eef8168581"
     },
     {
       "path": "tests/RenderTiming.Tests/PadNativeOwnerTests.cs",
-      "sha256": "a994c6ad4cfca7116b5a2b521f00a084354dcd55732f17bc5a33fadcb78c81bd",
-      "lf_sha256": "a994c6ad4cfca7116b5a2b521f00a084354dcd55732f17bc5a33fadcb78c81bd"
+      "sha256": "fa6b0d1a227105e279c9f85d4b33c1fd91e645c4023b97cf59d3b6e084460b5b",
+      "lf_sha256": "fa6b0d1a227105e279c9f85d4b33c1fd91e645c4023b97cf59d3b6e084460b5b"
     },
     {
       "path": "tests/RenderTiming.Tests/PadObservationTests.cs",
@@ -853,8 +853,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/PadTickCorrelationTests.cs",
-      "sha256": "15edbf75b33cfb52a44d7caeb01d3ac49d2213604028d15d4f43ead85226fc3a",
-      "lf_sha256": "15edbf75b33cfb52a44d7caeb01d3ac49d2213604028d15d4f43ead85226fc3a"
+      "sha256": "6936769b1b642fe0e6c0f8beb9ffd21a8e4b147e36ed3e8536f433e9953b7209",
+      "lf_sha256": "6936769b1b642fe0e6c0f8beb9ffd21a8e4b147e36ed3e8536f433e9953b7209"
     },
     {
       "path": "tests/RenderTiming.Tests/PresentationAdmissionTests.cs",
@@ -878,8 +878,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
-      "sha256": "4605437ca1817666fdc7620811ae427d0dbe71512b7fe6796f76e78ec96bb4c0",
-      "lf_sha256": "c670a4ca005ea761d1ad8a61429eba88e9250c411d30629376110bffe9fd6ac3"
+      "sha256": "103442454fc88eff08b704d11751ab69c27966b5cf1cb3a89aa3a96602d9d4cf",
+      "lf_sha256": "54620c27c3f10809a77f76f47c9c2dba7ccdfa0a70dc7f03e2e5028bde9e3b26"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",

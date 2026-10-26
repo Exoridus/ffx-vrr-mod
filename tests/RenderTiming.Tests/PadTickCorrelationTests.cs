@@ -53,6 +53,7 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
     [InlineData("sync")]
     [InlineData("overdrive")]
     [InlineData("menu")]
+    [InlineData("main_menu")]
     [InlineData("dummy")]
     [InlineData("capture_off")]
     [InlineData("capture_changed")]
@@ -73,6 +74,7 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
         if (condition == "overdrive") FhUtil.Overdrive = 1;
         if (condition == "dummy") FhUtil.Dummy = 1;
         if (condition == "menu") FhUtil.MenuPause = 1;
+        if (condition == "main_menu") FhUtil.MainMenu = 1;
         if (condition == "capture_off") module.CaptureLoops(false);
         if (condition == "capture_changed") module.CaptureLoops(true);
         if (condition == "capture_loss") module.LosePadCaptureEvent();
@@ -87,7 +89,7 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
             Assert.Null(module.LastPadCandidateSequence(0));
             Assert.NotNull(module.PadTimelineBoundary);
         }
-        finally { FhUtil.Overdrive = FhUtil.MenuPause = 0; FhUtil.Dummy = 0; }
+        finally { FhUtil.MainMenu = FhUtil.Overdrive = FhUtil.MenuPause = 0; FhUtil.Dummy = 0; }
     }
     [Fact]
     public void Actual_poll_retains_both_bit_exact_port_samples_without_writing_native_memory()

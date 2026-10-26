@@ -301,7 +301,7 @@ internal static unsafe class FhUtil
     internal static readonly List<(nint Address, object? Value)> Writes = [];
     public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
     internal static nint PadRecordPointer;
-    internal static int Overdrive, MenuPause;
+    internal static int Overdrive, MenuPause, MainMenu;
     internal static byte Dummy;
     public static T* ptr_at<T>(nint rva) where T : unmanaged
     {
@@ -311,7 +311,7 @@ internal static unsafe class FhUtil
     public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
         : rva == 0xf3c930 ? (T)(object)Overdrive
         : rva == 0x146a430 ? (T)(object)Dummy
-        : rva == 0xf40828 ? (T)(object)MenuPause : default!;
+        : rva == 0xf40824 ? (T)(object)MainMenu : rva == 0xf40828 ? (T)(object)MenuPause : default!;
 }
 internal static partial class EngineAddresses
 {

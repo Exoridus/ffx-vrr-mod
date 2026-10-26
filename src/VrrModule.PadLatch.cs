@@ -5,7 +5,7 @@ namespace Fahrenheit.Mods.Vrr;
 ///     accessors suppress their returned edges during owned presentation passes, including older
 ///     history slots, without changing native input memory. Polling and overdrive sampling retain
 ///     their native rate. The guarded menu cache producer is held on extra images and its pressed/repeat
-///     getters hide edges. Dummy input retains native ownership. Other cache aliases,
+///     getters hide edges. Dummy and main-menu input retain native ownership. Other cache aliases,
 ///     transitions between ticks and timestamp-to-tick assignment remain unqualified.
 /// </summary>
 public unsafe sealed partial class VrrModule
@@ -15,6 +15,7 @@ public unsafe sealed partial class VrrModule
     private const nint PadRecords = 0xF30288, PadRecordBaseSite = 0x488EC0;
     // Overdrive windows poll and push independently on every pass for timed presses and stick rotation.
     private const nint OverdriveActive = 0xF3C930, OverdriveLatchSite = 0x49AE52;
+    private const nint PadMainMenu = 0xF40824, PadMainMenuSite = 0x4AB034;
     private const nint PadMenuPause = 0xF40828, PadMenuPauseSite = 0x420B89;
     private const nint PadPressedHistory = 0x488E80, PadReleasedHistory = 0x488EA0,
         PadRepeatHistory = 0x488E50, PadRepeat2History = 0x488E30;
@@ -61,7 +62,8 @@ public unsafe sealed partial class VrrModule
 
     // Timed and clock-bypassing input paths retain native publication and real-time repeat.
     private bool pad_native_input_owner()
-        => EngineSyncPaced || fmv_playing() || FhUtil.get_at<int>(PadMenuPause) != 0
+        => EngineSyncPaced || fmv_playing() || FhUtil.get_at<int>(PadMainMenu) != 0
+            || FhUtil.get_at<int>(PadMenuPause) != 0
             || FhUtil.get_at<int>(OverdriveActive) != 0 || FhUtil.get_at<byte>(PadDummyActive) != 0;
 
     private bool pad_suppress_presentation_edges()
@@ -77,6 +79,8 @@ public unsafe sealed partial class VrrModule
             || !fx_code_matches(OverdriveLatchSite, "83 3D ?? ?? ?? ?? 00 74 14 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? E8")
             || !fx_operand_is(OverdriveLatchSite + 2, OverdriveActive)
             || !fx_call_is(OverdriveLatchSite + 0x13, PadLatch)
+            || !fx_code_matches(PadMainMenuSite, "83 3D ?? ?? ?? ?? 00 74 4C")
+            || !fx_operand_is(PadMainMenuSite + 2, PadMainMenu)
             || !fx_code_matches(PadMenuPauseSite, "83 3D ?? ?? ?? ?? 00 75 11")
             || !fx_operand_is(PadMenuPauseSite + 2, PadMenuPause)
             || !fx_code_matches(PadPressedHistory, "55 8B EC FF 75 10 FF 75 0C FF 75 08 E8 EF FC FF FF 66 8B 40 06 83 C4 0C 5D C3")
