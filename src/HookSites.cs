@@ -147,6 +147,9 @@ internal enum HookSiteId
     PadLatchReleasedHistory,
     PadLatchRepeatHistory,
     PadLatchRepeat2History,
+    PadLatchMenuCacheUpdate,
+    PadLatchMenuPressed,
+    PadLatchMenuRepeat,
 }
 
 internal static class HookSites

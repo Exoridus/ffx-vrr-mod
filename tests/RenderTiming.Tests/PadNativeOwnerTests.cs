@@ -9,6 +9,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     public PadNativeOwnerTests()
     {
         FhUtil.MenuPause = FhUtil.Overdrive = 0;
+        FhUtil.Dummy = 0;
         NativeClock.PadCalls = 0;
         NativeClock.HistoryValue = 0x91ef;
         NativeClock.HistoryRead = null;
@@ -22,6 +23,7 @@ public sealed class PadNativeOwnerTests : IDisposable
     public void Dispose()
     {
         FhUtil.MenuPause = FhUtil.Overdrive = 0;
+        FhUtil.Dummy = 0;
         NativeClock.HistoryRead = null;
         NativeClock.Advance = null;
         NativeClock.LoopAction = null;
@@ -32,10 +34,12 @@ public sealed class PadNativeOwnerTests : IDisposable
         if (owner == "sync") _module.NativeSync = true;
         if (owner == "movie") _module.NativeMovie = true;
         if (owner == "menu") FhUtil.MenuPause = 1;
+        if (owner == "dummy") FhUtil.Dummy = 1;
+        if (owner == "unknown_dummy") FhUtil.Dummy = 255;
         if (owner == "overdrive") FhUtil.Overdrive = 1;
     }
     public static IEnumerable<object[]> Readers()
-        => from owner in new[] { "sync", "movie", "menu", "overdrive" }
+        => from owner in new[] { "sync", "movie", "menu", "overdrive", "dummy", "unknown_dummy" }
            from reader in Enumerable.Range(0, 4)
            from history in new[] { -1, 0, 3 }
            select new object[] { owner, reader, history };
@@ -48,7 +52,7 @@ public sealed class PadNativeOwnerTests : IDisposable
         Assert.Single(NativeClock.HistoryCalls);
     }
     public static IEnumerable<object[]> LateReaders()
-        => from owner in new[] { "sync", "movie", "menu", "overdrive" }
+        => from owner in new[] { "sync", "movie", "menu", "overdrive", "dummy", "unknown_dummy" }
            from reader in Enumerable.Range(0, 4)
            select new object[] { owner, reader };
     [Theory]
@@ -60,14 +64,33 @@ public sealed class PadNativeOwnerTests : IDisposable
         Assert.Single(NativeClock.HistoryCalls);
     }
     [Theory]
+    [MemberData(nameof(LateReaders))]
+    public void Native_owner_released_inside_original_getter_preserves_native_value(string owner, int reader)
+    {
+        Activate(owner);
+        NativeClock.HistoryRead = (_, _, _, _) =>
+        {
+            _module.NativeSync = _module.NativeMovie = false;
+            FhUtil.MenuPause = FhUtil.Overdrive = 0;
+            FhUtil.Dummy = 0;
+            return 0x91ef;
+        };
+        Assert.Equal(0x91ef, _module.ReadHistory(reader, 0, 0, -1));
+        Assert.Single(NativeClock.HistoryCalls);
+    }
+    [Theory]
     [InlineData("sync", false)]
     [InlineData("movie", false)]
     [InlineData("menu", false)]
     [InlineData("overdrive", false)]
+    [InlineData("dummy", false)]
+    [InlineData("unknown_dummy", false)]
     [InlineData("sync", true)]
     [InlineData("movie", true)]
     [InlineData("menu", true)]
     [InlineData("overdrive", true)]
+    [InlineData("dummy", true)]
+    [InlineData("unknown_dummy", true)]
     public void Native_owner_latch_is_immediate_before_and_after_clock(string owner, bool seen)
     {
         _module.ConfigurePad(seen, true);
@@ -83,6 +106,8 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie")]
     [InlineData("menu")]
     [InlineData("overdrive")]
+    [InlineData("dummy")]
+    [InlineData("unknown_dummy")]
     public void Pending_latch_survives_a_late_native_owner_before_presentation_decision(string owner)
     {
         _module.ConfigurePad(false, false);
@@ -99,6 +124,8 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie")]
     [InlineData("menu")]
     [InlineData("overdrive")]
+    [InlineData("dummy")]
+    [InlineData("unknown_dummy")]
     public void Native_input_owner_prevents_image_admission(string owner)
     {
         Assert.True(_module.EnableAdapter().InitScheduler());
@@ -114,6 +141,8 @@ public sealed class PadNativeOwnerTests : IDisposable
     [InlineData("movie")]
     [InlineData("menu")]
     [InlineData("overdrive")]
+    [InlineData("dummy")]
+    [InlineData("unknown_dummy")]
     public void Native_input_owner_selected_in_original_clock_keeps_native_publication_position(string owner)
     {
         _module.PreparePass();

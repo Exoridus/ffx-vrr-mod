@@ -227,23 +227,44 @@ public unsafe sealed partial class VrrModule
     {
         CodeChecks.Add((rva, pattern));
         if (rva == RejectedPadCodeSite) return false;
-        if (rva == 0x420b89)
+        byte[]? entry = rva == 0x420b89 ? MenuPauseEntry
+            : MenuInputEntries.GetValueOrDefault(rva) ?? PadHistoryEntries.GetValueOrDefault(rva);
+        if (entry != null)
         {
             string[] tokens = pattern.Split(' ');
-            return MenuPauseEntry.Length == tokens.Length && tokens.Select((token, index) =>
-                token == "??" || MenuPauseEntry[index] == Convert.ToByte(token, 16)).All(match => match);
+            return entry.Length >= tokens.Length && tokens.Select((token, index) =>
+                token == "??" || entry[index] == Convert.ToByte(token, 16)).All(match => match);
         }
-        if (PadHistoryEntries.TryGetValue(rva, out byte[]? entry))
-            return entry.AsSpan().SequenceEqual(Convert.FromHexString(pattern.Replace(" ", "")));
         return rva != 0x488ec0 || PadGetterCodeMatches;
+    }
+    private bool MenuOperandMatches(nint rva, nint expected)
+    {
+        foreach (var pair in MenuInputEntries)
+        {
+            int offset = (int)(rva - pair.Key);
+            if (offset >= 0 && offset < pair.Value.Length)
+                return offset + 4 <= pair.Value.Length && BitConverter.ToUInt32(pair.Value, offset) == (uint)(0x400000 + expected);
+        }
+        return true;
+    }
+    private bool MenuCallMatches(nint rva, nint expected)
+    {
+        foreach (var pair in MenuInputEntries)
+        {
+            int offset = (int)(rva - pair.Key);
+            if (offset >= 0 && offset < pair.Value.Length)
+                return offset + 5 <= pair.Value.Length && pair.Value[offset] == 0xe8
+                    && rva + 5 + BitConverter.ToInt32(pair.Value, offset + 1) == expected;
+        }
+        return true;
     }
     private bool fx_operand_is(nint rva, nint expected)
     {
         OperandChecks.Add((rva, expected));
         return rva != RejectedPadOperandSite && (rva != 0x488ecd || PadGetterOperandMatches)
-            && (rva != 0x420b8b || (MenuPauseEntry.Length >= 6 && BitConverter.ToUInt32(MenuPauseEntry, 2) == 0x01340828));
+            && MenuOperandMatches(rva, expected) && (rva != 0x420b8b || (MenuPauseEntry.Length >= 6 && BitConverter.ToUInt32(MenuPauseEntry, 2) == 0x01340828));
     }
-    private bool fx_call_is(nint rva, nint expected) { CallChecks.Add((rva, expected)); return !RejectPadOverdriveCall; }
+    private bool fx_call_is(nint rva, nint expected) { CallChecks.Add((rva, expected)); return !RejectPadOverdriveCall && MenuCallMatches(rva, expected); }
 }
 
 internal static partial class NativeClock

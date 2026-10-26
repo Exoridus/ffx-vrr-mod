@@ -275,10 +275,11 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
                     0x488e30 => nameof(NativeClock.Repeat2History),
                     _ => throw new InvalidOperationException("Unknown pad history accessor"),
                 },
+                "d_menu_edge" => location.Rva == 0x4be4b0 ? nameof(NativeClock.MenuPressed) : nameof(NativeClock.MenuRepeat),
                 "d_effect_process" => nameof(NativeClock.Effect),
                 "d_eternal_run" => nameof(NativeClock.Eternal),
                 "d_render_exec" => nameof(NativeClock.Exec),
-                "d_render_void" => location.Rva == 0x489a80 ? nameof(NativeClock.Poll) : location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
+                "d_render_void" => location.Rva == 0x4be500 ? nameof(NativeClock.MenuCacheUpdate) : location.Rva == 0x489a80 ? nameof(NativeClock.Poll) : location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
                 "d_render_emit" => nameof(NativeClock.Emit),
                 "d_diag_exec" => nameof(NativeClock.Exec),
                 "d_diag_loop" => nameof(NativeClock.Loop),
@@ -301,6 +302,7 @@ internal static unsafe class FhUtil
     public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
     internal static nint PadRecordPointer;
     internal static int Overdrive, MenuPause;
+    internal static byte Dummy;
     public static T* ptr_at<T>(nint rva) where T : unmanaged
     {
         if (PadRecordPointer == 0 || rva < 0xf30288 || rva >= 0xf30488) throw new InvalidOperationException("Unmapped pad fixture");
@@ -308,6 +310,7 @@ internal static unsafe class FhUtil
     }
     public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
         : rva == 0xf3c930 ? (T)(object)Overdrive
+        : rva == 0x146a430 ? (T)(object)Dummy
         : rva == 0xf40828 ? (T)(object)MenuPause : default!;
 }
 internal static partial class EngineAddresses

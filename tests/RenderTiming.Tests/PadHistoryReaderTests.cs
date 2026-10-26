@@ -45,9 +45,9 @@ public unsafe sealed class PadHistoryReaderTests : IDisposable
         NativeClock.HistoryHookAction = () =>
         {
             Assert.False(_module.HistoryReady);
-            Assert.Equal(8, _module.CodeChecks.Count);
-            Assert.Equal(3, _module.OperandChecks.Count);
-            Assert.Single(_module.CallChecks);
+            Assert.Equal(12, _module.CodeChecks.Count);
+            Assert.Equal(17, _module.OperandChecks.Count);
+            Assert.Equal(7, _module.CallChecks.Count);
             for (int kind = 0; kind < 4; kind++) Assert.Equal(0x8000, _module.ReadHistory(kind, 0, 0, -1));
             int before = NativeClock.PadCalls;
             _module.CallPad();
@@ -56,8 +56,8 @@ public unsafe sealed class PadHistoryReaderTests : IDisposable
         };
         Assert.True(_module.InitHistory());
         Assert.True(_module.HistoryReady);
-        Assert.Equal(new nint[] { 0x4893e0, 0x488e80, 0x488ea0, 0x488e50, 0x488e30 }, NativeClock.HistoryHookRegistrations.Select(h => h.Rva));
-        Assert.Equal(new[] { "d_render_void", "d_pad_history", "d_pad_history", "d_pad_history", "d_pad_history" }, NativeClock.Hooks);
+        Assert.Equal(new nint[] { 0x4893e0, 0x488e80, 0x488ea0, 0x488e50, 0x488e30, 0x4be500, 0x4be4b0, 0x4be470 }, NativeClock.HistoryHookRegistrations.Select(h => h.Rva));
+        Assert.Equal(new[] { "d_render_void", "d_pad_history", "d_pad_history", "d_pad_history", "d_pad_history", "d_render_void", "d_menu_edge", "d_menu_edge" }, NativeClock.Hooks);
         Assert.Equal(21, (int)HookSiteId.DiagnosticBindingsMainLoop);
         Assert.Equal(Enumerable.Range(140, 4), new[] { (int)HookSiteId.PadLatchPressedHistory, (int)HookSiteId.PadLatchReleasedHistory, (int)HookSiteId.PadLatchRepeatHistory, (int)HookSiteId.PadLatchRepeat2History });
         Assert.All(NativeClock.HistoryHookRegistrations, h => Assert.Equal("Cdecl", h.Callback.GetType().GetCustomAttributes(typeof(UnmanagedFunctionPointerAttribute), false).Cast<UnmanagedFunctionPointerAttribute>().Single().CallingConvention.ToString()));
