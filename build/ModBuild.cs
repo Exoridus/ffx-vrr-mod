@@ -61,10 +61,10 @@ static async Task<int> Run(string[] args)
     var payload = Path.Combine(state, "payload", configuration, id);
     var output = Path.GetFullPath(options.GetValueOrDefault("--out-dir", "artifacts/packages"), root);
     var pin = File.ReadAllText(Path.Combine(root, "fahrenheit.release.ref")).Trim();
-    var sourceBundle = (mode is "local" or "source") && pin == "676ef8d588ab9f41bd74971ae2fefd04dc58571d"
+    var sourceBundle = (mode is "local" or "source") && pin == "c92958336634375c12ec442b27c5f5aed5ae230d"
         ? Path.Combine(root, "build", "fahrenheit-hook-repair.bundle") : null;
     var sourceBundleHash = sourceBundle is null ? null : Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(sourceBundle)));
-    if (sourceBundleHash is not null && sourceBundleHash != "34672328E94612391470C52D9571937DC19B4A5502A844BC2C05BA7FF37F6E17")
+    if (sourceBundleHash is not null && sourceBundleHash != "3F5A0195B4906D8C9565CA2732122A05B9667740B6BAAF1CD300548CE625A951")
         throw new InvalidDataException("Bundled Fahrenheit source checksum mismatch.");
     string? localFeed = null;
     var sdkPackages = new Dictionary<string, string>();

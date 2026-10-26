@@ -1,4 +1,4 @@
-<Project Sdk="Fahrenheit.Sdk/1.0.0-alpha12">
+<Project Sdk="Fahrenheit.Sdk/1.0.0-alpha13">
     <PropertyGroup>
         <AssemblyName>fhvrr</AssemblyName>
         <AssemblyTitle>Variable Refresh Rate</AssemblyTitle>

@@ -14,7 +14,7 @@ A [Fahrenheit](https://github.com/fahrenheit-crew/fahrenheit) mod for the Window
 </div>
 
 > [!IMPORTANT]
-> Experimental. Built against Fahrenheit alpha12 from the commit in [fahrenheit.release.ref](fahrenheit.release.ref)
+> Experimental. Built against Fahrenheit alpha13 from the commit in [fahrenheit.release.ref](fahrenheit.release.ref)
 > for Steam build **25501027**. FFX-2 is not supported.
 > Independent presentation is currently vetoed: the required engine contracts and live capabilities are not yet qualified.
 > A VRR request retains native timing and the original swapchain; new native gameplay/VRR acceptance has not been run.

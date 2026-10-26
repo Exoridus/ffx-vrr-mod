@@ -1,10 +1,25 @@
 {
   "workflow": "local-fahrenheit-hook-startup-repair",
-  "run_at": "2026-10-24T15:32:12.7345648+02:00",
+  "run_at": "2026-10-26T19:45:44.7797566+00:00",
   "upstream": "https://github.com/fahrenheit-crew/fahrenheit.git",
-  "prerequisite_commit": "ee0d0f9dc3d8e4ca7315cec3ebc834445721ee05",
-  "commit": "676ef8d588ab9f41bd74971ae2fefd04dc58571d",
-  "bundle_sha256": "34672328e94612391470c52d9571937dc19b4a5502a844bc2c05ba7ff37f6e17",
+  "prerequisite_commit": "ec06fa3fb202a282bc2b4dbfbff69bad5c059aa8",
+  "commit": "c92958336634375c12ec442b27c5f5aed5ae230d",
+  "bundle_sha256": "3f5a0195b4906d8c9565ca2732122a05b9667740b6baaf1cd300548ce625a951",
   "published": false,
-  "scope": "Managed hook startup repair, forwarding of unowned debugger exceptions and explicit legacy thread-name notification handling. Recoverable x86 JIT failure reproduced offline; native gameplay acceptance pending."
+  "previous_commit": "676ef8d588ab9f41bd74971ae2fefd04dc58571d",
+  "upstream_version": "1.0.0-alpha13",
+  "repair_commits": [
+    "14965bb49154c93f903e13a650e53cc5d4c81d29",
+    "5808e138b58b020a5b3183880f5d0a44060b398f",
+    "c92958336634375c12ec442b27c5f5aed5ae230d"
+  ],
+  "scope": "Latest reviewed upstream plus adapted pending-hook cancellation/startup refusal, unowned debugger exception forwarding and legacy thread naming handling. No CALL-site API added; no native gameplay acceptance.",
+  "verification": {
+    "sdk_release_build": "passed",
+    "x86_tests_passed": 14,
+    "x86_tests_skipped": 6,
+    "x86_tests_failed": 0,
+    "pending_hook_tests_passed": 3,
+    "skip_reason": "Existing unsupported FFX2 encoding cases."
+  }
 }

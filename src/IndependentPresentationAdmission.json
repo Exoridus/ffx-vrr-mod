@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "b79218b35fe26181c3d7f4279c227c31eb612816083a2d43bb9b1222f8832278",
+  "canonical_contract_snapshot_sha256": "afdf3e3dfab649da3450403976185052216f96779a28b5b334d8191d669e29e8",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -98,8 +98,8 @@
   "source_inputs": [
     {
       "path": "Fahrenheit.Mods.Vrr.csproj",
-      "sha256": "facf3eaa9ddfa120d881c0f3bcd17816e4afd39a9e0b5fae0074fa9e0fa86e1c",
-      "lf_sha256": "fdb1dc39e26fe7d7abed4ff07e113b99e1ca89cfc061a47b85ce912bf0a3aa87"
+      "sha256": "065ea5cfcf026262ea60e0b6f43a061cff30ed6f710c5e910c19a97b2cac7be2",
+      "lf_sha256": "ef533c9d547985d7b3275efb55eabd47090d5408a110741e85b423f7665ebcfe"
     },
     {
       "path": "build/IndependentAdmissionBuildValidation.cs",
@@ -108,8 +108,8 @@
     },
     {
       "path": "build/ModBuild.cs",
-      "sha256": "e65d920011f7e2afcd46a44cf381963b00c311d330f82f2d480f94759780b7aa",
-      "lf_sha256": "e65d920011f7e2afcd46a44cf381963b00c311d330f82f2d480f94759780b7aa"
+      "sha256": "087490d5cea2e3e678092395c4835a7e00d8f1d0d556ce60811b0be25cd2a907",
+      "lf_sha256": "087490d5cea2e3e678092395c4835a7e00d8f1d0d556ce60811b0be25cd2a907"
     },
     {
       "path": "build/tests/IndependentAdmissionBuildValidationTests.cs",
