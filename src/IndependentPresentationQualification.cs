@@ -27,7 +27,7 @@ internal sealed record IndependentPresentationQualification(string Reason, int C
                 || !IsHash(root.GetProperty("canonical_contract_snapshot_sha256"))
                 || !UniqueStrings(root.GetProperty("required_contracts"), out int contracts) || contracts == 0
                 || !UniqueStrings(root.GetProperty("blockers"), out int blockers) || blockers == 0
-                || !ValidInputs(root.GetProperty("source_inputs")) || !ValidInputs(root.GetProperty("generator_inputs")))
+                || !ValidInputs(root.GetProperty("source_inputs"), source: true) || !ValidInputs(root.GetProperty("generator_inputs")))
                 return new("Qualification resource is invalid or unsupported; independent presentation is vetoed.");
             return new($"Independent presentation is vetoed: {contracts} unqualified contracts, {blockers} blockers; no live capability qualification.", contracts, blockers);
         }
@@ -59,12 +59,13 @@ internal sealed record IndependentPresentationQualification(string Reason, int C
         return true;
     }
 
-    private static bool ValidInputs(JsonElement element)
+    private static bool ValidInputs(JsonElement element, bool source = false)
     {
         if (element.ValueKind != JsonValueKind.Array || element.GetArrayLength() == 0) return false;
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var input in element.EnumerateArray())
-            if (!HasFields(input, ["path", "sha256"]) || !IsHash(input.GetProperty("sha256"))
+            if (!HasFields(input, source ? ["path", "sha256", "lf_sha256"] : ["path", "sha256"]) || !IsHash(input.GetProperty("sha256"))
+                || (source && !IsHash(input.GetProperty("lf_sha256")))
                 || input.GetProperty("path").ValueKind != JsonValueKind.String
                 || string.IsNullOrWhiteSpace(input.GetProperty("path").GetString())
                 || !paths.Add(input.GetProperty("path").GetString()!)) return false;

@@ -29,9 +29,23 @@ internal static class IndependentAdmissionBuildValidation
             for (var part = new FileInfo(full) as FileSystemInfo; part is not null && part.FullName != Path.GetFullPath(context); part = part is FileInfo f ? f.Directory : ((DirectoryInfo)part).Parent)
                 if ((part.Attributes & FileAttributes.ReparsePoint) != 0)
                     throw new InvalidDataException($"Qualification source is a reparse point: {relative}");
-            string hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(full)));
-            if (!hash.Equals(source.GetProperty("sha256").GetString(), StringComparison.OrdinalIgnoreCase))
+            byte[] bytes = File.ReadAllBytes(full);
+            string hash = Convert.ToHexString(SHA256.HashData(bytes));
+            if (!hash.Equals(source.GetProperty("sha256").GetString(), StringComparison.OrdinalIgnoreCase)
+                && !LfHash(bytes).Equals(source.GetProperty("lf_sha256").GetString(), StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"Stale qualification source hash: {relative}. Regenerate the reviewed projection before building.");
         }
+    }
+
+    private static string LfHash(ReadOnlySpan<byte> bytes)
+    {
+        var normalized = new byte[bytes.Length];
+        int length = 0;
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            if (bytes[i] == 0x0d && i + 1 < bytes.Length && bytes[i + 1] == 0x0a) continue;
+            normalized[length++] = bytes[i];
+        }
+        return Convert.ToHexString(SHA256.HashData(normalized.AsSpan(0, length)));
     }
 }

@@ -71,7 +71,7 @@ public sealed class IndependentStartupTests
             canonical_contract_snapshot_sha256 = new string('a', 64),
             required_contracts = Enumerable.Range(0, contractCount).Select(n => $"contract-{n}").ToArray(),
             blockers = Enumerable.Range(0, 73).Select(n => $"blocker-{n}").ToArray(),
-            source_inputs = new[] { new { path = "src/VrrModule.cs", sha256 = new string('b', 64) } },
+            source_inputs = new[] { new { path = "src/VrrModule.cs", sha256 = new string('b', 64), lf_sha256 = new string('b', 64) } },
             generator_inputs = new[] { new { path = "src/Generator.cs", sha256 = new string('c', 64) } }
         };
         string json = JsonSerializer.Serialize(snapshot);
@@ -84,5 +84,17 @@ public sealed class IndependentStartupTests
         Assert.Equal(0, IndependentPresentationQualification.Evaluate(unknown).ContractCount);
         using var positive = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json[..^1] + ",\"can_activate\":true}"));
         Assert.Equal(0, IndependentPresentationQualification.Evaluate(positive).ContractCount);
+        var missingLf = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        missingLf["source_inputs"]![0]!.AsObject().Remove("lf_sha256");
+        using var missingStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(missingLf.ToJsonString()));
+        Assert.Equal(0, IndependentPresentationQualification.Evaluate(missingStream).ContractCount);
+        var invalidLf = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        invalidLf["source_inputs"]![0]!["lf_sha256"] = "invalid";
+        using var invalidStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(invalidLf.ToJsonString()));
+        Assert.Equal(0, IndependentPresentationQualification.Evaluate(invalidStream).ContractCount);
+        var mixed = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        mixed["generator_inputs"]![0]!["lf_sha256"] = new string('c', 64);
+        using var mixedStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(mixed.ToJsonString()));
+        Assert.Equal(0, IndependentPresentationQualification.Evaluate(mixedStream).ContractCount);
     }
 }

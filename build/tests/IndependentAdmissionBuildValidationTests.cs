@@ -11,7 +11,7 @@ public sealed class IndependentAdmissionBuildValidationTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "src", "Owner.cs"), "reviewed source");
     }
 
-    private void WriteResource(string[]? paths = null, string? hash = null)
+    private void WriteResource(string[]? paths = null, string? hash = null, string? lfHash = null)
     {
         hash ??= Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(_root, "src", "Owner.cs"))));
         var snapshot = new
@@ -19,10 +19,30 @@ public sealed class IndependentAdmissionBuildValidationTests : IDisposable
             schema_version = "1.0", policy = "independent_presentation_veto_only", supported_build = "Steam 25501027",
             canonical_contract_snapshot_sha256 = new string('a', 64),
             required_contracts = Enumerable.Range(0, 14).Select(n => $"contract-{n}").ToArray(), blockers = new[] { "unqualified" },
-            source_inputs = (paths ?? ["src/Owner.cs"]).Select(path => new { path, sha256 = hash }).ToArray(),
+            source_inputs = (paths ?? ["src/Owner.cs"]).Select(path => new { path, sha256 = hash, lf_sha256 = lfHash ?? hash }).ToArray(),
             generator_inputs = new[] { new { path = "src/Generator.cs", sha256 = new string('c', 64) } }
         };
         File.WriteAllText(Path.Combine(_root, "src", "IndependentPresentationAdmission.json"), JsonSerializer.Serialize(snapshot));
+    }
+
+    [Fact]
+    public void Reviewed_CRLF_source_accepts_equivalent_LF_checkout()
+    {
+        string source = Path.Combine(_root, "src", "Owner.cs");
+        File.WriteAllBytes(source, [0xef, 0xbb, 0xbf, 0xff, 0x0d, 0x0a, 0x41, 0x0d, 0x42]);
+        WriteResource(lfHash: Convert.ToHexString(SHA256.HashData(new byte[] { 0xef, 0xbb, 0xbf, 0xff, 0x0a, 0x41, 0x0d, 0x42 })));
+        File.WriteAllBytes(source, [0xef, 0xbb, 0xbf, 0xff, 0x0a, 0x41, 0x0d, 0x42]);
+        IndependentAdmissionBuildValidation.Validate(_root);
+    }
+
+    [Fact]
+    public void Changed_source_after_line_ending_normalization_is_rejected()
+    {
+        string source = Path.Combine(_root, "src", "Owner.cs");
+        File.WriteAllText(source, "reviewed\r\nsource\r\n");
+        WriteResource(lfHash: Convert.ToHexString(SHA256.HashData("reviewed\nsource\n"u8)));
+        File.WriteAllText(source, "changed\nsource\n");
+        Assert.Contains("Stale", Assert.Throws<InvalidDataException>(() => IndependentAdmissionBuildValidation.Validate(_root)).Message);
     }
 
     [Fact]
