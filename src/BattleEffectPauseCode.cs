@@ -87,15 +87,25 @@ internal static class BattleEffectPauseCode
     internal readonly record struct OpuData(uint Hold, uint Skip, uint FollowSkip, uint EntryCell, uint NextCell, uint FollowCell);
     internal readonly record struct OpuOffsets(int Sentry, int Handler, int Dec, int Next, int Gate, int Follow);
 
+    internal static bool OpuHandlerTableMatches(ReadOnlySpan<byte> table, IReadOnlyList<(ushort Opcode, uint Target)> admitted)
+    {
+        foreach (var (opcode, target) in admitted)
+        {
+            int offset = opcode * 4;
+            if (offset > table.Length - 4 || U32(table, offset) != target) return false;
+        }
+        return true;
+    }
+
     /// <summary>
     ///     The six walker stubs (upstream MAG-025 mode 3 plus FOLLOWGUARD). The hold byte is 0 on every
     ///     walk that may step, 3 on a held presentation walk: WAIT countdowns keep their count, the
     ///     integration gate reads "paused", rejected opcodes yield at their PC with WAIT 0, and a WAIT-0
     ///     stream runs only when the entry callback allows it. Entry and next callbacks run on every
     ///     walk; they are cdecl (scratch, record) and the entry one returns non-zero to skip the stream.
-    ///     Held mode 3 admits only masked opcodes 0x002, 0x009, 0x053 and 0x061 after existing denies.
+    ///     Held mode 3 admits only supplied masked opcode and expected handler-entry pairs after existing denies.
     /// </summary>
-    internal static byte[] OpuStubs(uint origin, OpuSites s, OpuData d, IReadOnlyList<ushort> denied, out OpuOffsets offsets)
+    internal static byte[] OpuStubs(uint origin, OpuSites s, OpuData d, IReadOnlyList<ushort> denied, IReadOnlyList<(ushort Opcode, uint Target)> admitted, out OpuOffsets offsets)
     {
         var e = new Emitter(origin);
 
@@ -112,8 +122,15 @@ internal static class BattleEffectPauseCode
         foreach (ushort op in denied) { e.Raw(0x81, 0xf9).U32(op); toDeny.Add(e.Forward(Je)); }
         e.CmpByte(d.Hold, 3);
         var toAdmit = new List<int> { e.Forward(Jne) };
-        ReadOnlySpan<ushort> candidates = [0x002, 0x009, 0x053, 0x061];
-        foreach (ushort op in candidates) { e.Raw(0x81, 0xf9).U32(op); toAdmit.Add(e.Forward(Je)); }
+        foreach (var (op, target) in admitted)
+        {
+            e.Raw(0x81, 0xf9).U32(op);
+            int nextCandidate = e.Forward(Jne);
+            e.Raw(0x3d).U32(target);
+            toDeny.Add(e.Forward(Jne));
+            toAdmit.Add(e.Forward(Jmp));
+            e.Bind(nextCandidate);
+        }
         toDeny.Add(e.Forward(Jmp));
         foreach (int at in toAdmit) e.Bind(at);
         e.Raw(0x59);

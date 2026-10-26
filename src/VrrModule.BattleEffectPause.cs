@@ -4,16 +4,12 @@ using static Fahrenheit.Mods.Vrr.BattleEffectPauseCode;
 namespace Fahrenheit.Mods.Vrr;
 
 /// <summary>
-///     Battle effects on presentation-only passes (port of the upstream FFX-60fps MAG rows). Those
-///     passes skip MsEffectProcess(0) as before and now run the draw side of every effect without
-///     stepping it: the eternal set's second list, the OPU unit bytecode walker (WAIT countdowns,
-///     position integration and two opcodes held; only per-frame draw loops run, MAG-025), the OPP
-///     record ops whose state is put back after the draw (MAG-030), the family-X node walk that only
-///     draws (MAG-020/026), particle programs with the pause flag set (MAG-006/029), and in the
-///     current magic overlay the PPP record driver (MAG-016), the actor motion script (MAG-023) and
-///     the thrown-item arc node (MAG-024). Logic passes after an image reset the stale pause state a
-///     presentation draw leaves in an overlay (MAG-018/028). MAG-019 keeps a paused draw from reaching
-///     a VFX shader setup whose materials are not set yet.
+///     Battle effect adapters for presentation-only passes (port of the upstream FFX-60fps MAG rows).
+///     Guards cover particle pause tests, selected walker dispatch entries, WAIT countdowns,
+///     integration, record restoration, family-X walks and the current magic overlay's driver,
+///     motion script and arc node. Logic passes reset stale overlay pause state; the shader guard
+///     rejects draws whose materials are not ready. These contracts do not establish handler-body
+///     or helper purity, RNG isolation, allocation lifetime or draw-output stability.
 /// </summary>
 public unsafe sealed partial class VrrModule
 {
@@ -30,6 +26,9 @@ public unsafe sealed partial class VrrModule
     private const nint BxMagicFileStart = 0x5da7f0, BxMagicHandle = 0x864cac, BxMagicId = 0x864ca0, BxInitMagicPrx = 0x1efb6a0;
     private static readonly (int Op, nint Handler)[] BxOppOps = [(1, 0x411120), (9, 0x4124b0), (10, 0x411530), (17, 0x411bc0)];
     private static readonly ushort[] BxDeniedOpcodes = [0x1f, 0x7f];
+    private const nint BxOpuTable = 0x848ec8;
+    private static readonly (ushort Opcode, nint TargetRva)[] BxOpuHandlers =
+        [(0x002, 0x4168b0), (0x009, 0x40c500), (0x053, 0x4171a0), (0x061, 0x419940)];
 
     private const string BxStepPauseOpcodes = "83 3D ?? ?? ?? ?? 00 75 42";
     private const string BxUnitProgramPattern = "A1 ?? ?? ?? ?? 6A 30 57 C7 00 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B F0 83 C4 08 85 F6 74 ?? 0F B7 47 1E";
@@ -79,6 +78,9 @@ public unsafe sealed partial class VrrModule
 
     private static nint bx_va(nint rva) => (nint)FhUtil.ptr_at<byte>(rva);
 
+    private static (ushort Opcode, uint Target)[] bx_opu_handlers()
+        => BxOpuHandlers.Select(entry => (entry.Opcode, (uint)bx_va(entry.TargetRva))).ToArray();
+
     private string? bx_contract_error()
     {
         if (!_particle_pilot_installed || !_fieldPauseInstalled) return "the particle presentation and field pause are not installed";
@@ -98,6 +100,9 @@ public unsafe sealed partial class VrrModule
             || !fx_code_matches(BxHandler, BxHandlerPattern) || !fx_code_matches(BxDec, BxDecPattern)
             || !fx_code_matches(BxNext, BxNextPattern) || !fx_code_matches(BxGate, BxGatePattern))
             return "MAG-025 walker stream loop changed";
+        Span<byte> opuTable = stackalloc byte[(0x061 + 1) * 4];
+        if (!MemoryProbe.TryCopy(bx_va(BxOpuTable), opuTable) || !OpuHandlerTableMatches(opuTable, bx_opu_handlers()))
+            return "MAG-025 OPU candidate handler table changed or is unreadable";
         if (!fx_code_matches(BxFollowSite, BxFollowPattern) || !fx_code_matches(BxFollowAttach, BxAttachPattern)
             || !fx_call_is(BxFollowAttach + 0x1f, BxFindUnit) || !fx_code_matches(BxFindUnit, BxFindUnitPattern))
             return "MAG-025 follow call, attach handler or unit lookup changed";
@@ -165,7 +170,7 @@ public unsafe sealed partial class VrrModule
         uint d = (uint)(nint)data;
         var sites = new OpuSites(Va(BxNext), Va(BxSentry + 7), Va(BxHandler + 7), Va(BxNext + 7), Va(BxGate + 7),
             Va(BxFollowReturn), *(uint*)FhUtil.ptr_at<byte>(BxFollowSite + 0x15), Va(BxFollowAttach));
-        byte[] opu = OpuStubs((uint)code, sites, new OpuData(d + 1, d + 2, d + 3, d + 4, d + 8, d + 0xc), BxDeniedOpcodes, out var at);
+        byte[] opu = OpuStubs((uint)code, sites, new OpuData(d + 1, d + 2, d + 3, d + 4, d + 8, d + 0xc), BxDeniedOpcodes, bx_opu_handlers(), out var at);
         int shader = (opu.Length + 15) & ~15;
         byte[] guard = ShaderSetupStub((uint)code + (uint)shader, Va(BxShaderSetup),
             new ReadOnlySpan<byte>(FhUtil.ptr_at<byte>(BxShaderSetup), 9));
@@ -223,7 +228,7 @@ public unsafe sealed partial class VrrModule
         }
         _battleEffectPauseInstalled = true;
         _logger.Info("[Vrr] Battle effect pause installed (MAG-006/008/018/019/020/023/024/025/026/028/029/030, MAG-016 per overlay): " +
-                     "presentation passes draw battle effects without stepping them.");
+                     "presentation passes use guarded battle-effect adapters; handler purity remains unqualified.");
         return true;
     }
 

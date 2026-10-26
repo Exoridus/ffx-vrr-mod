@@ -20,7 +20,11 @@ public sealed class OpuHandlerPolicyTests
     public void NativeModesKeepEveryHandler(byte hold)
     {
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
-        for (ushort opcode = 0; opcode < 512; opcode++) fixture.Check(hold, opcode, true);
+        for (ushort opcode = 0; opcode < 512; opcode++)
+        {
+            fixture.Check(hold, opcode, true);
+            fixture.Check(hold, opcode, true, fixture.Target(0));
+        }
     }
 
     [Theory]
@@ -31,7 +35,10 @@ public sealed class OpuHandlerPolicyTests
     {
         using var fixture = new HandlerFixture([0x1f, 0x7f]);
         for (ushort opcode = 0; opcode < 512; opcode++)
+        {
             fixture.Check(hold, opcode, opcode is not (0x1f or 0x7f));
+            fixture.Check(hold, opcode, opcode is not (0x1f or 0x7f), fixture.Target(0));
+        }
     }
 
     [Fact]
@@ -56,6 +63,78 @@ public sealed class OpuHandlerPolicyTests
         fixture.Check(3, 0x161, false);
     }
 
+    [Fact]
+    public void HeldMode3RejectsOtherCandidateTargetsOnEveryDispatch()
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        foreach (ushort operandBits in new ushort[] { 0, 0x0200, 0x8000, 0xfe00 })
+        foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
+        foreach (ushort other in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
+            if (opcode != other) fixture.Check(3, (ushort)(opcode | operandBits), false, fixture.Target(other));
+    }
+
+    [Fact]
+    public void HeldMode3RejectsNullAndUnrelatedTargets()
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
+        {
+            fixture.Check(3, opcode, false, 0);
+            fixture.Check(3, opcode, false, fixture.Target(0));
+        }
+    }
+
+    [Fact]
+    public void CorrectTargetDoesNotAdmitFollowingWrongTarget()
+    {
+        using var fixture = new HandlerFixture([0x1f, 0x7f]);
+        fixture.Check(3, 0x002, true);
+        fixture.Check(3, 0x002, false, fixture.Target(0x009));
+        fixture.Check(3, 0x002, true);
+    }
+
+    [Fact]
+    public void HandlerTargetsRelocateWithEachAllocatedFixture()
+    {
+        using var first = new HandlerFixture([0x1f, 0x7f]);
+        using var second = new HandlerFixture([0x1f, 0x7f]);
+        foreach (ushort opcode in new ushort[] { 0x002, 0x009, 0x053, 0x061 })
+        {
+            Assert.NotEqual(first.Target(opcode), second.Target(opcode));
+            first.Check(3, opcode, true);
+            second.Check(3, opcode, true);
+            first.Check(3, opcode, false, second.Target(opcode));
+            second.Check(3, opcode, false, first.Target(opcode));
+        }
+    }
+
+    [Theory]
+    [InlineData(0x10000000u)]
+    [InlineData(0x65000000u)]
+    public void PreflightAcceptsRelocatedExpectedEntriesAndRejectsEachChangedCell(uint imageBase)
+    {
+        (ushort Opcode, uint Target)[] expected =
+        [
+            (0x002, imageBase + 0x4168b0), (0x009, imageBase + 0x40c500),
+            (0x053, imageBase + 0x4171a0), (0x061, imageBase + 0x419940),
+        ];
+        byte[] table = new byte[0x188];
+        BitConverter.GetBytes(imageBase + 0x4168b0).CopyTo(table, 0x008);
+        BitConverter.GetBytes(imageBase + 0x40c500).CopyTo(table, 0x024);
+        BitConverter.GetBytes(imageBase + 0x4171a0).CopyTo(table, 0x14c);
+        BitConverter.GetBytes(imageBase + 0x419940).CopyTo(table, 0x184);
+        Assert.True(OpuHandlerTableMatches(table, expected));
+        foreach (int cell in new[] { 0x008, 0x024, 0x14c, 0x184 })
+        {
+            table[cell] ^= 1;
+            Assert.False(OpuHandlerTableMatches(table, expected));
+            table[cell] ^= 1;
+            Assert.False(OpuHandlerTableMatches(table.AsSpan(0, cell + 3), expected));
+        }
+        Assert.False(OpuHandlerTableMatches([], expected));
+        Assert.False(OpuHandlerTableMatches(table, [(0x002, imageBase + 0x40c500)]));
+    }
+
     private unsafe sealed class HandlerFixture : IDisposable
     {
         private const uint Pc = 0x13572468, NativeResult = 0x24681357;
@@ -76,15 +155,16 @@ public sealed class OpuHandlerPolicyTests
                 _code = VirtualAlloc(0, 0x1000, 0x3000, 4);
                 Assert.NotEqual(0, _code);
                 uint code = (uint)_code, data = (uint)_data;
-                uint continuation = code + 0x100, callee = code + 0x200, stubs = code + 0x300;
+                uint continuation = code + 0x100, stubs = code + 0x500;
                 var wrapper = new Emitter(code);
                 wrapper.Raw(0x55, 0x53, 0x56, 0x57, 0xbe).U32((uint)Scratch)
                     .Raw(0xbf).U32(Pc).Raw(0xbb).U32(Bx).Raw(0xbd).U32(Bp)
-                    .Raw(0xb9).U32(Carrier).Raw(0xb8).U32(callee)
+                    .Raw(0xb9).U32(Carrier).Raw(0xa1).U32(data + 52)
                     .Raw(0x89, 0x25).U32(data + 24);
                 byte[] generated = OpuStubs(stubs,
                     new(continuation, continuation, continuation, continuation, continuation, continuation, 0, 0),
-                    new(data, data + 64, data + 65, data + 68, data + 72, data + 76), denied, out var offsets);
+                    new(data, data + 64, data + 65, data + 68, data + 72, data + 76), denied,
+                    [(0x002, Target(0x002)), (0x009, Target(0x009)), (0x053, Target(0x053)), (0x061, Target(0x061))], out var offsets);
                 wrapper.Jump(Jmp, stubs + (uint)offsets.Handler);
                 Copy(code, wrapper.ToArray());
                 Copy(stubs, generated);
@@ -97,13 +177,17 @@ public sealed class OpuHandlerPolicyTests
                     .Raw(0x8b, 0x25).U32(data + 24).Raw(0x5f, 0x5e, 0x5b, 0x5d, 0xc3);
                 Copy(continuation, tail.ToArray());
 
-                var callback = new Emitter(callee);
-                callback.Raw(0xff, 0x05).U32(data + 4)
-                    .Raw(0x8b, 0x54, 0x24, 0x04, 0x89, 0x15).U32(data + 32)
-                    .Raw(0x8b, 0x54, 0x24, 0x08, 0x89, 0x15).U32(data + 36)
-                    .Raw(0x89, 0x0d).U32(data + 40)
-                    .Raw(0xb9).U32(ReturnedCarrier).Raw(0xb8).U32(NativeResult).Raw(0xc3);
-                Copy(callee, callback.ToArray());
+                for (int slot = 0; slot < 5; slot++)
+                {
+                    uint callee = code + 0x200 + (uint)slot * 64;
+                    var callback = new Emitter(callee);
+                    callback.Raw(0xff, 0x05).U32(data + 4)
+                        .Raw(0x8b, 0x54, 0x24, 0x04, 0x89, 0x15).U32(data + 32)
+                        .Raw(0x8b, 0x54, 0x24, 0x08, 0x89, 0x15).U32(data + 36)
+                        .Raw(0x89, 0x0d).U32(data + 40)
+                        .Raw(0xb9).U32(ReturnedCarrier).Raw(0xb8).U32(NativeResult).Raw(0xc3);
+                    Copy(callee, callback.ToArray());
+                }
                 Assert.True(VirtualProtect(_code, 0x1000, 0x20, out _));
                 Assert.True(FlushInstructionCache(GetCurrentProcess(), _code, 0x1000));
                 _run = (delegate* unmanaged[Cdecl]<void>)_code;
@@ -115,9 +199,19 @@ public sealed class OpuHandlerPolicyTests
             }
         }
 
-        internal void Check(byte hold, ushort instruction, bool accepted)
+        internal uint Target(ushort opcode) => (uint)_code + 0x200 + (opcode switch
+        {
+            0x002 => 0u,
+            0x009 => 64u,
+            0x053 => 128u,
+            0x061 => 192u,
+            _ => 256u,
+        });
+
+        internal void Check(byte hold, ushort instruction, bool accepted, uint? target = null)
         {
             new Span<byte>((void*)_data, 0x1000).Clear();
+            State[13] = target ?? Target((ushort)(instruction & 0x1ff));
             *(byte*)_data = hold;
             *(ushort*)(Scratch + 0x21a) = instruction;
             _run();
