@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "afee3d8b8010ccd4fa7e4382b80962154bf4fdde6501f75471fe8cf863a74055",
+  "canonical_contract_snapshot_sha256": "b79218b35fe26181c3d7f4279c227c31eb612816083a2d43bb9b1222f8832278",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
