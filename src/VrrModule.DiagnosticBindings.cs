@@ -44,7 +44,7 @@ public unsafe sealed partial class VrrModule
     private uint? diagnostic_exec() => _diagnosticExecAvailable
         ? new FhCallHandle<d_diag_exec>(new FhCallLocation(DiagnosticGetExec, 0)).fnptr!() : null;
 
-    private object diagnostic_view()
+    private object diagnostic_view(long? nativeStart = null, long? nativeEnd = null, bool? nativeReturned = null)
     {
         uint[]? bits = null;
         if (_diagnosticView != 0 && MemoryProbe.IsReadable(_diagnosticView, 64))
@@ -54,7 +54,8 @@ public unsafe sealed partial class VrrModule
         }
         return new { source2 = MemoryProbe.IsReadable(_diagnosticSource2, 4) ? *(uint*)_diagnosticSource2 : (uint?)null,
             source3 = MemoryProbe.IsReadable(_diagnosticSource3, 4) ? *(uint*)_diagnosticSource3 : (uint?)null,
-            view_bits = bits, effective_exec = diagnostic_exec(), backlog = FhUtil.get_at<int>(EngineAddresses.ElapsedFrameCountFrameSkip) };
+            view_bits = bits, effective_exec = diagnostic_exec(), backlog = FhUtil.get_at<int>(EngineAddresses.ElapsedFrameCountFrameSkip),
+            native_start_ticks = nativeStart, native_end_ticks = nativeEnd, native_normal_return = nativeReturned };
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -70,16 +71,24 @@ public unsafe sealed partial class VrrModule
         _load_passes++;
         render_scheduler_enter_loop(delta);
         diagnostic_raw(3, delta);
-        if (_diagnostics?.IsCapturing == true) diagnostic_event("loop_enter", new { delta_bits = BitConverter.SingleToInt32Bits(delta), view = diagnostic_view() });
+        bool measure = _diagnostics?.IsCapturing == true;
+        if (measure) diagnostic_event("loop_enter", new { delta_bits = BitConverter.SingleToInt32Bits(delta), view = diagnostic_view() });
+        long? nativeStart = null;
+        bool nativeReturned = false;
         try
         {
-            new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).chain_from(h_diag_loop).fnptr!(delta);
+            var original = new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).chain_from(h_diag_loop).fnptr!;
+            if (measure) nativeStart = Stopwatch.GetTimestamp();
+            original(delta);
+            nativeReturned = true;
         }
         finally
         {
+            long? nativeEnd = nativeStart.HasValue ? Stopwatch.GetTimestamp() : null;
             render_scheduler_exit_loop();
             diagnostic_raw(4, delta);
-            if (_diagnostics?.IsCapturing == true) diagnostic_event("loop_exit", diagnostic_view());
+            if (_diagnostics?.IsCapturing == true)
+                diagnostic_event("loop_exit", diagnostic_view(nativeStart, nativeEnd, nativeStart.HasValue ? nativeReturned : null));
             _diagnosticLoopId = previous;
         }
     }

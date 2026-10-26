@@ -10,7 +10,8 @@ namespace Fahrenheit.Mods.Vrr;
 ///     cursor two or three entries at 144 Hz. Upstream FFX-60fps row UI-017 latches only on logic
 ///     passes; here the push also waits for the pass decision when it comes first, and presentation
 ///     passes see the slot's edge words cleared. The poll (TkUpdateScanControler) still runs on every
-///     pass, and the held-direction repeat is wall-clock based, so neither presses nor repeats are lost.
+///     pass, and held-direction repeat retains its native wall clock. Observed transitions between
+///     simulation ticks and timestamp-to-tick assignment remain unqualified.
 /// </summary>
 public unsafe sealed partial class VrrModule
 {
@@ -58,7 +59,7 @@ public unsafe sealed partial class VrrModule
     private void h_pad_latch()
     {
         _pad_latch_calls++;
-        if (!_render_frame_enabled || !_render_inside_loop || FhUtil.get_at<int>(OverdriveActive) != 0)
+        if (!OwnsRenderPass || FhUtil.get_at<int>(OverdriveActive) != 0)
         {
             pad_latch_original();
             return;
@@ -71,7 +72,7 @@ public unsafe sealed partial class VrrModule
     // Called once the clock has decided the pass kind.
     private void pad_latch_pass_decided(bool presentation)
     {
-        if (!_pad_latch_installed) return;
+        if (!_pad_latch_installed || !IsOwnedRenderLoop) return;
         bool pending = _pad_latch_pending;
         _pad_latch_pending = false;
         if (presentation)
@@ -85,6 +86,7 @@ public unsafe sealed partial class VrrModule
     // Main loop exit: put the edges back, and push a latch the clock never resolved (a loop without the clock).
     private void pad_latch_end_pass()
     {
+        if (!_render_inside_loop || _render_owner_thread != Environment.CurrentManagedThreadId) return;
         if (_pad_edges_masked)
         {
             for (int port = 0; port < 2; port++)

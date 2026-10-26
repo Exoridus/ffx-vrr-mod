@@ -163,9 +163,7 @@ public unsafe sealed partial class VrrModule
     private void viewport_presentation_begin() { }
     private void viewport_restore(bool presentation) { }
     private void party_swap_collect() { }
-    private void party_swap_end_pass(bool presentation) { }
-    private void pad_latch_pass_decided(bool presentation) { }
-    private void pad_latch_end_pass() { }
+    private void party_swap_end_pass(bool presentation) => DiagnosticCleanup?.Invoke();
     internal void BeginFrame() => render_scheduler_begin_frame();
     internal void RefusePresentation(string reason) => _presentationAdmission.Refuse(reason);
     internal void EndPass() => render_scheduler_exit_loop();
@@ -199,12 +197,10 @@ public unsafe sealed partial class VrrModule
     private bool fmv_playing() => NativeMovie;
     private SchedulerConfig _config = new();
     private readonly SchedulerLogger _logger = new();
-    private const nint DiagnosticMainLoop = 0;
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void d_diag_loop(float delta);
-    private void h_diag_loop(float delta) { }
+
     internal string? RejectedHook;
     private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> hook) => HookSites.Install(site, hook) && name != RejectedHook;
-    private void diagnostic_event(string kind, object data) { }
+    private void diagnostic_event(string kind, object data) => DiagnosticEvents.Add((kind, data, _diagnosticLoopId));
     private bool init_render_camera() => true;
     private bool init_render_actors() => true;
     private void reset_render_camera() => CameraResets++;
@@ -233,7 +229,7 @@ public unsafe sealed partial class VrrModule
     internal int OverlayTicks, FrameSkipSamples;
     private long _fps_simulated;
     private float Scale => NativeSync ? 1f : TargetFramerate / 30f;
-    private readonly TestDiagnostics? _diagnostics = null;
+    private TestDiagnostics? _diagnostics;
     private void sample_frame_skip() => FrameSkipSamples++;
     private object diagnostic_state() => new object();
     internal bool RunNativePass() { h_advance_vblank(1f / TargetFramerate); return _advance_frame; }
@@ -259,7 +255,7 @@ internal sealed partial record SchedulerConfig
     public bool ParticleTimeline => true;
     public bool EffectHold { get; init; } = true;
 }
-internal sealed class SchedulerLogger { public readonly List<string> Warnings = []; public void Error(string message) { } public void Warning(string message) => Warnings.Add(message); }
+internal sealed class SchedulerLogger { public readonly List<string> Warnings = []; public void Error(string message) { } public void Info(string message) { } public void Warning(string message) => Warnings.Add(message); }
 internal readonly record struct FhCallLocation(nint Rva, int Unused);
 internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Delegate
 {
@@ -273,8 +269,10 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
                 "d_effect_process" => nameof(NativeClock.Effect),
                 "d_eternal_run" => nameof(NativeClock.Eternal),
                 "d_render_exec" => nameof(NativeClock.Exec),
-                "d_render_void" => nameof(NativeClock.Calculate),
+                "d_render_void" => location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
                 "d_render_emit" => nameof(NativeClock.Emit),
+                "d_diag_exec" => nameof(NativeClock.Exec),
+                "d_diag_loop" => nameof(NativeClock.Loop),
                 _ => nameof(NativeClock.Tick),
             };
             return (T)Delegate.CreateDelegate(typeof(T), typeof(NativeClock).GetMethod(method)!);
@@ -288,11 +286,19 @@ internal static partial class NativeClock
     internal static Action? Advance;
     public static void Tick(float delta) => Advance?.Invoke();
 }
-internal static class FhUtil
+internal static unsafe class FhUtil
 {
     internal static readonly List<(nint Address, object? Value)> Writes = [];
     public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
-    public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer : default!;
+    internal static nint PadRecordPointer;
+    internal static int Overdrive;
+    public static T* ptr_at<T>(nint rva) where T : unmanaged
+    {
+        if (PadRecordPointer == 0 || rva < 0xf30288 || rva >= 0xf30488) throw new InvalidOperationException("Unmapped pad fixture");
+        return (T*)(PadRecordPointer + rva - 0xf30288);
+    }
+    public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
+        : rva == 0xf3c930 ? (T)(object)Overdrive : default!;
 }
 internal static partial class EngineAddresses
 {
@@ -301,4 +307,4 @@ internal static partial class EngineAddresses
 
 internal sealed class TestRateSetting { internal int Value; internal int get() => Value; }
 
-internal sealed class TestDiagnostics { internal bool IsCapturing => false; }
+internal sealed class TestDiagnostics { internal bool IsCapturing { get; set; } }

@@ -26,5 +26,7 @@
     <Compile Include="../../src/VrrModule.Effects.cs" Link="VrrModule.Effects.cs" />
     <Compile Include="../../src/VrrModule.RenderScheduler.cs" Link="VrrModule.RenderScheduler.cs" />
     <Compile Include="../../src/VrrModule.SimulationPass.cs" Link="VrrModule.SimulationPass.cs" />
+    <Compile Include="../../src/VrrModule.PadLatch.cs" Link="VrrModule.PadLatch.cs" />
+    <Compile Include="../../src/VrrModule.DiagnosticBindings.cs" Link="VrrModule.DiagnosticBindings.cs" />
   </ItemGroup>
 </Project>
