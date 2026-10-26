@@ -14,7 +14,7 @@ A [Fahrenheit](https://github.com/fahrenheit-crew/fahrenheit) mod for the Window
 </div>
 
 > [!IMPORTANT]
-> Experimental. Built against Fahrenheit alpha13 from the commit in [fahrenheit.release.ref](fahrenheit.release.ref)
+> Experimental. Targets the official Fahrenheit alpha12 SDK and matching unmodified runtime.
 > for Steam build **25501027**. FFX-2 is not supported.
 > Independent presentation is currently vetoed: the required engine contracts and live capabilities are not yet qualified.
 > A VRR request retains native timing and the original swapchain; new native gameplay/VRR acceptance has not been run.
@@ -28,16 +28,17 @@ A [Fahrenheit](https://github.com/fahrenheit-crew/fahrenheit) mod for the Window
 
 ## Installation
 
-Requires Fahrenheit with its prerequisites: **.NET Runtime 10** and the **Visual C++ Redistributable**,
+Requires the unmodified official **Fahrenheit alpha12** runtime with its prerequisites: **.NET Runtime 10** and the **Visual C++ Redistributable**,
 both in the **x86** version (see the [Fahrenheit installation guide](https://github.com/fahrenheit-crew/fahrenheit/wiki/Installation-guide)).
 
 | Download | Extract to | Use |
 | --- | --- | --- |
 | `fhvrr-mod-<tag>.zip` | `GAME_DIR/fahrenheit/mods/` | Add to an existing Fahrenheit installation. Add `fhvrr` to `fahrenheit/mods/loadorder`. |
-| `fhvrr-full-<tag>.zip` | `GAME_DIR/`, next to `FFX.exe` | Mod plus matching Fahrenheit. Start with `start-ffx-with-mods.cmd`. |
 
-Keep the `fhvrr/` folder complete. To update, replace the folder; to uninstall, delete it and its
-loadorder entry. Each download has a `.sha256` file to compare with `Get-FileHash`.
+Close the game before installing, updating or removing the mod. Keep the `fhvrr/` folder complete.
+To update, replace only that folder. To uninstall, delete it and remove only its `fhvrr` loadorder
+entry. Fahrenheit and other mods remain installed. Each download has a `.sha256` file to compare
+with `Get-FileHash`.
 
 Use windowed or borderless mode with MSAA off. Do not combine with another frame-rate mod.
 
@@ -65,9 +66,9 @@ Please attach both, plus the scene and your mod list, to bug reports.
 Requires Git and the .NET 10 SDK pinned in [global.json](global.json).
 
 ```powershell
-.\build.cmd mod-build  --sdk local --configuration Debug
-.\build.cmd mod-verify --sdk local --configuration Release
-.\build.cmd mod-pack   --sdk local --configuration Release --tag v0.0.0-dev --out-dir .release
+.\build.cmd mod-build  --sdk official --configuration Release
+.\build.cmd mod-verify --sdk official --configuration Release
+.\build.cmd mod-pack   --sdk official --configuration Release --tag v0.1.0 --out-dir .release
 ```
 
 The build checks the generated `src/IndependentPresentationAdmission.json` against the copied source inputs.
@@ -75,10 +76,10 @@ After changing runtime source, review its hook IDs, bindings and source pins in 
 `inputs/mappings/vrr_hook_installations.json`. Run `build.cmd build-vrr-hook-source-inventory` and then
 `build.cmd build-vrr-core-contracts`; both reject unreviewed declaration drift. This input can explain a veto; it cannot authorize independent presentation.
 
-`--sdk local` builds Fahrenheit from the pinned commit; a not yet upstreamed startup fix is applied
-from the hash-checked bundle in `build/`. Add `--full true` to `mod-pack` for the full package
-(needs the Visual Studio C++ build tools). Public releases use `--sdk official` and the `release.yml`
-workflow; a normal push never creates a release.
+Official SDK mode is the default and restores published packages from NuGet into an isolated cache.
+The ZIP contains only the mod and its assets. Fahrenheit is installed separately; `--full true` is refused.
+For development, `--sdk local` builds the unchanged official source commit in `fahrenheit.release.ref`.
+The `release.yml` workflow publishes releases; a normal push never creates a release.
 
 ## Related projects
 

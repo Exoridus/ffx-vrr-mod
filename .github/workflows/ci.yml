@@ -27,16 +27,14 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-build
-        with:
-          full-build: ${{ matrix.configuration == 'Release' }}
       - name: Verify Debug payload and tests
         if: matrix.configuration == 'Debug'
         shell: cmd
         run: build.cmd mod-verify --sdk local --configuration Debug
-      - name: Build and verify mod + full development packages
+      - name: Build and verify mod-only development package
         if: matrix.configuration == 'Release'
         shell: cmd
-        run: build.cmd mod-pack --sdk local --configuration Release --tag v0.0.0-ci --out-dir .release --full true
+        run: build.cmd mod-pack --sdk local --configuration Release --tag v0.0.0-ci --out-dir .release
       - name: Upload installable development packages
         if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -94,5 +94,6 @@ code in the project and write reusable engine results as findings.
 
 Use `build.cmd mod-build`, `mod-verify` and `mod-pack`. Build logic is C# under build/.
 The SDK generates the manifest. Only official SDK builds may be publicly released.
-Mod ZIPs extract into fahrenheit/mods/; full ZIPs extract next to FFX.exe.
+Mod ZIPs extract into fahrenheit/mods/. Fahrenheit is installed separately and remains unchanged.
+Do not distribute a replacement host, launcher or shared loadorder with this mod.
 Keep runtime assets, PDBs, dependency metadata and localization together. Do not deploy during verification.

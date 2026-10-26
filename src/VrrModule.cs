@@ -205,13 +205,13 @@ public unsafe sealed partial class VrrModule : FhModule
             }
             _initialized = ok;
             diagnostic_event("initialization_complete", new { success = ok, independent_presentation_requested = _config.VrrEnabled, independent_presentation_enabled = IndependentPresentationEnabled, independent_presentation_ready = _render_mode_ready, qualification = _independentQualification.Reason });
-            if (!ok) cleanup_runtime(failedStartup: true);
+            if (!ok) StartupFailure.Abort(() => cleanup_runtime(failedStartup: true), Environment.FailFast);
             return ok;
         }
         catch (Exception error)
         {
             _logger.Error($"[Vrr] Initialization failed: {error}");
-            cleanup_runtime(failedStartup: true);
+            StartupFailure.Abort(() => cleanup_runtime(failedStartup: true), Environment.FailFast);
             return false;
         }
     }

@@ -60,8 +60,6 @@ jobs:
           }
           $global:LASTEXITCODE = 0
       - uses: ./.github/actions/setup-build
-        with:
-          full-build: ${{ inputs.sdk == 'local' }}
       - name: Verify Debug payload and tests
         shell: cmd
         run: build.cmd mod-verify --sdk local --configuration Debug
@@ -70,7 +68,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
           RELEASE_SDK: ${{ inputs.sdk || 'official' }}
-        run: build.cmd mod-pack --sdk "%RELEASE_SDK%" --configuration Release --tag "%RELEASE_VERSION%" --out-dir .release --full true
+        run: build.cmd mod-pack --sdk "%RELEASE_SDK%" --configuration Release --tag "%RELEASE_VERSION%" --out-dir .release
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-packages

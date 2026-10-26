@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "afdf3e3dfab649da3450403976185052216f96779a28b5b334d8191d669e29e8",
+  "canonical_contract_snapshot_sha256": "33042df612f1a0b530ce1124fd675bf4f0e60f5436447106f7e811faabea8923",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -98,8 +98,8 @@
   "source_inputs": [
     {
       "path": "Fahrenheit.Mods.Vrr.csproj",
-      "sha256": "065ea5cfcf026262ea60e0b6f43a061cff30ed6f710c5e910c19a97b2cac7be2",
-      "lf_sha256": "ef533c9d547985d7b3275efb55eabd47090d5408a110741e85b423f7665ebcfe"
+      "sha256": "facf3eaa9ddfa120d881c0f3bcd17816e4afd39a9e0b5fae0074fa9e0fa86e1c",
+      "lf_sha256": "fdb1dc39e26fe7d7abed4ff07e113b99e1ca89cfc061a47b85ce912bf0a3aa87"
     },
     {
       "path": "build/IndependentAdmissionBuildValidation.cs",
@@ -108,8 +108,8 @@
     },
     {
       "path": "build/ModBuild.cs",
-      "sha256": "087490d5cea2e3e678092395c4835a7e00d8f1d0d556ce60811b0be25cd2a907",
-      "lf_sha256": "087490d5cea2e3e678092395c4835a7e00d8f1d0d556ce60811b0be25cd2a907"
+      "sha256": "1faedaeb5169733d3a261ed756e8c16467154ce0d739069cca1618bef96347de",
+      "lf_sha256": "1faedaeb5169733d3a261ed756e8c16467154ce0d739069cca1618bef96347de"
     },
     {
       "path": "build/tests/IndependentAdmissionBuildValidationTests.cs",
@@ -120,6 +120,11 @@
       "path": "build/tests/ModBuild.Tests.csproj",
       "sha256": "4f28d46f04249063fe16eb76e0f55f0bf79eef6662f3c3a88265b07a9c84c4e0",
       "lf_sha256": "bec6e80c665828ec504a662ff080c6019e60f53771458d9049629954f732239b"
+    },
+    {
+      "path": "build/tests/ModBuildCliTests.cs",
+      "sha256": "fd72ccd1abbde4ff7200ffebd5ff045b5797400abba12c0903b9f96fad450930",
+      "lf_sha256": "fd72ccd1abbde4ff7200ffebd5ff045b5797400abba12c0903b9f96fad450930"
     },
     {
       "path": "src/BattleEffectPauseCode.cs",
@@ -275,6 +280,11 @@
       "path": "src/RenderPassContext.cs",
       "sha256": "5708daf78e09caf2f338c6636042e23fb26df6bca4a2ad0ef4031696658ecd25",
       "lf_sha256": "a271bdea1744ea4863d2d5c738266611243c32b6eab2bcb32f29928a09aebe87"
+    },
+    {
+      "path": "src/StartupFailure.cs",
+      "sha256": "2d46ac52194e32e95b2c873e85d5dd0242b4435f0059facb26b727127c092612",
+      "lf_sha256": "2d46ac52194e32e95b2c873e85d5dd0242b4435f0059facb26b727127c092612"
     },
     {
       "path": "src/TextureBlendProbeState.cs",
@@ -703,8 +713,8 @@
     },
     {
       "path": "src/VrrModule.cs",
-      "sha256": "8dc2c0409eb19c757a754eca9afe80ffe2229f8325647175fb922662be3d22ae",
-      "lf_sha256": "8dc2c0409eb19c757a754eca9afe80ffe2229f8325647175fb922662be3d22ae"
+      "sha256": "93366a8a23f20f617305fbb4e5640b6ebd473830733a01b784fb5f50cf2ea546",
+      "lf_sha256": "93366a8a23f20f617305fbb4e5640b6ebd473830733a01b784fb5f50cf2ea546"
     },
     {
       "path": "tests/Dxgi.Tests/Dxgi.Tests.csproj",
@@ -905,6 +915,16 @@
       "path": "tests/RenderTiming.Tests/SphereGridRestorationTests.cs",
       "sha256": "f429c1c8ea9ae1af0f14df7158ef772fc7e5605de88907d4f4cf2e5c7f06c8a0",
       "lf_sha256": "f429c1c8ea9ae1af0f14df7158ef772fc7e5605de88907d4f4cf2e5c7f06c8a0"
+    },
+    {
+      "path": "tests/Timing.Tests/StartupFailureTests.cs",
+      "sha256": "7d9b4f6dd7f72e0f0ac5529a43258c3618ca6cff49ee4fe0777f122107de0782",
+      "lf_sha256": "7d9b4f6dd7f72e0f0ac5529a43258c3618ca6cff49ee4fe0777f122107de0782"
+    },
+    {
+      "path": "tests/Timing.Tests/Timing.Tests.csproj",
+      "sha256": "fd44f8866d4bbac5d9840dd3ba242cb7b5847cdabce0c4ea9460b4eb0a15154e",
+      "lf_sha256": "e518a7c6424fbe71d8539b9052d5a3fee07374a9b6f9a1df22f02fec7594b23d"
     }
   ],
   "generator_inputs": [

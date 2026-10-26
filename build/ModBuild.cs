@@ -21,8 +21,8 @@ static async Task<int> Run(string[] args)
     var command = args.ElementAtOrDefault(1) ?? "help";
     if (command is "help" or "--help" or "-h")
     {
-        Console.WriteLine("build.cmd mod-build|mod-verify|mod-pack [--sdk local|official|source] [--configuration Release|Debug] [--tag vX.Y.Z[-suffix]] [--out-dir path] [--full true|false]");
-        Console.WriteLine("Local is for pinned development packages. Official uses only nuget.org and an isolated package cache. No command deploys to a game installation.");
+        Console.WriteLine("build.cmd mod-build|mod-verify|mod-pack [--sdk local|official|source] [--configuration Release|Debug] [--tag vX.Y.Z[-suffix]] [--out-dir path]");
+        Console.WriteLine("Official is the default and uses only nuget.org and an isolated package cache. Local is for pinned development packages. Distribution is mod-only; install Fahrenheit separately. No command deploys to a game installation.");
         return 0;
     }
     if (command is not ("mod-build" or "mod-verify" or "mod-pack")) throw new ArgumentException($"Unknown command: {command}");
@@ -33,9 +33,10 @@ static async Task<int> Run(string[] args)
             throw new ArgumentException($"Invalid option: {args[i]}");
         options.Add(args[i], args[i + 1]);
     }
-    var mode = options.GetValueOrDefault("--sdk", "local");
+    var mode = options.GetValueOrDefault("--sdk", "official");
     var configuration = options.GetValueOrDefault("--configuration", "Release");
-    var full = bool.Parse(options.GetValueOrDefault("--full", "false"));
+    if (bool.Parse(options.GetValueOrDefault("--full", "false")))
+        throw new ArgumentException("Distribution is mod-only; install Fahrenheit separately. --full true is no longer supported.");
     if (mode is not ("local" or "official" or "source")) throw new ArgumentException("SDK must be local, official or source (legacy template only).");
     if (configuration is not ("Debug" or "Release")) throw new ArgumentException("Configuration must be Debug or Release.");
     if (mode == "official" && configuration != "Release") throw new ArgumentException("Official distribution requires Release configuration.");
@@ -61,11 +62,6 @@ static async Task<int> Run(string[] args)
     var payload = Path.Combine(state, "payload", configuration, id);
     var output = Path.GetFullPath(options.GetValueOrDefault("--out-dir", "artifacts/packages"), root);
     var pin = File.ReadAllText(Path.Combine(root, "fahrenheit.release.ref")).Trim();
-    var sourceBundle = (mode is "local" or "source") && pin == "c92958336634375c12ec442b27c5f5aed5ae230d"
-        ? Path.Combine(root, "build", "fahrenheit-hook-repair.bundle") : null;
-    var sourceBundleHash = sourceBundle is null ? null : Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(sourceBundle)));
-    if (sourceBundleHash is not null && sourceBundleHash != "3F5A0195B4906D8C9565CA2732122A05B9667740B6BAAF1CD300548CE625A951")
-        throw new InvalidDataException("Bundled Fahrenheit source checksum mismatch.");
     string? localFeed = null;
     var sdkPackages = new Dictionary<string, string>();
     if (mode is "local" or "source")
@@ -82,7 +78,7 @@ static async Task<int> Run(string[] args)
         {
             if (Execute("git", ["-C", checkout, "status", "--porcelain"], root, capture: true).Length > 0)
                 throw new InvalidOperationException("Fahrenheit checkout has local changes; cannot switch its pinned revision.");
-            Execute("git", ["-C", checkout, "fetch", sourceBundle ?? "origin", sourceBundle is null ? pin : "HEAD"], root);
+            Execute("git", ["-C", checkout, "fetch", "origin", pin], root);
             Execute("git", ["-C", checkout, "checkout", "--detach", pin], root);
         }
         if (Execute("git", ["-C", checkout, "status", "--porcelain", "--untracked-files=no"], root, capture: true).Length != 0)
@@ -116,6 +112,7 @@ static async Task<int> Run(string[] args)
     foreach (var name in new[] { "SettingsMigration.cs" })
         if (File.Exists(Path.Combine(root, "build", name))) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name));
     CopyTree(Path.Combine(root, "build", "tests"), Path.Combine(context, "build", "tests"));
+    CopyTree(Path.Combine(root, "build", "distribution"), Path.Combine(context, "build", "distribution"));
     foreach (var name in new[] { "ModPackage.cs", "ModBuild.cs", "IndependentAdmissionBuildValidation.cs" }) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name), true);
     IndependentAdmissionBuildValidation.Validate(context);
     var sources = new XElement("packageSources", new XElement("clear"), new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", "https://api.nuget.org/v3/index.json")));
@@ -178,36 +175,6 @@ static async Task<int> Run(string[] args)
             throw new InvalidDataException("FFmpeg distribution source checksum mismatch.");
         File.Copy(decoderSourceInput, decoderSource, true);
         File.WriteAllText(decoderSource + ".sha256", decoderSourceHash.ToLowerInvariant() + "  " + Path.GetFileName(decoderSource) + "\n");
-        if (sourceBundle is not null)
-        {
-            var bundledSourceOutput = Path.Combine(output, $"fahrenheit-{pin}-source.bundle");
-            File.Copy(sourceBundle, bundledSourceOutput, true);
-            File.Copy(sourceBundle + ".provenance.json", bundledSourceOutput + ".provenance.json", true);
-        }
-        string? fullArchive = null;
-        if (full)
-        {
-            var host = mode == "local"
-                ? BuildHost(root, configuration)
-                : await DownloadOfficialHost(state, sdkVersion);
-            var fullStage = Path.Combine(state, "full-stage");
-            Recreate(fullStage, state);
-            var bin = Path.Combine(fullStage, "fahrenheit", "bin");
-            ModPackage.CopyHost(host, bin);
-            CopyTree(payload, Path.Combine(fullStage, "fahrenheit", "mods", id));
-            File.WriteAllText(Path.Combine(fullStage, "fahrenheit", "mods", "loadorder"), id + "\n");
-            File.WriteAllText(Path.Combine(fullStage, "start-ffx-with-mods.cmd"), "@echo off\r\nsetlocal\r\nif not exist \"%~dp0FFX.exe\" (\r\n  echo FFX.exe not found. Extract this package into the game directory.\r\n  exit /b 1\r\n)\r\npushd \"%~dp0fahrenheit\\bin\"\r\nfhstage0.exe \"%~dp0FFX.exe\"\r\nset \"RC=%ERRORLEVEL%\"\r\npopd\r\nexit /b %RC%\r\n");
-            File.WriteAllText(Path.Combine(fullStage, "README.txt"), $"Extract into the directory containing FFX.exe, then run start-ffx-with-mods.cmd.\nRequires Microsoft .NET Runtime 10 x86.\nSDK origin: {mode}; Fahrenheit: {sdkVersion}; development source pin: {pin}.\nThis full package supplies a loadorder for {id} only. Back up an existing Fahrenheit installation before replacing it, or use the mod-only ZIP to keep other mods and configuration.\n");
-            var licenseRoot = mode is "local" or "source" ? Path.Combine(root, ".workspace", "fahrenheit") : Path.Combine(state, "official-host");
-            foreach (var license in Directory.GetFiles(licenseRoot, "*", mode is "local" or "source" ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories)
-                .Where(f => Path.GetFileName(f).StartsWith("LICENSE", StringComparison.OrdinalIgnoreCase) || Path.GetFileName(f).StartsWith("COPYING", StringComparison.OrdinalIgnoreCase) || Path.GetFileName(f) == "THIRD-PARTY-NOTICES"))
-            {
-                var target = Path.Combine(fullStage, "licenses", Path.GetRelativePath(licenseRoot, license));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Copy(license, target, true);
-            }
-            fullArchive = ModPackage.CreateFull(fullStage, id, version, output, tag);
-        }
         var provenance = new
         {
             mod_id = id, version, tag, configuration, sdk, fahrenheit_version = sdkVersion, sdk_origin = mode, fahrenheit_ref = mode is "local" or "source" ? pin : null,
@@ -217,26 +184,15 @@ static async Task<int> Run(string[] args)
             input_sha256 = inputs,
             sdk_package_sha256 = sdkPackages,
             decoder_source_sha256 = decoderSourceHash,
-            fahrenheit_source_bundle_sha256 = sourceBundleHash,
             archive_sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(archive))),
             payload_sha256 = Directory.GetFiles(payload, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToDictionary(f => Path.GetRelativePath(payload, f).Replace('\\', '/'), f => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(f))))
         };
         File.WriteAllText(archive + ".provenance.json", JsonSerializer.Serialize(provenance, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        if (fullArchive is not null)
-        {
-            var fullProvenance = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(archive + ".provenance.json"))!;
-            fullProvenance["archive_sha256"] = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(fullArchive)));
-            var fullStage = Path.Combine(state, "full-stage");
-            fullProvenance["full_payload_sha256"] = JsonSerializer.SerializeToNode(Directory.GetFiles(fullStage, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
-                .ToDictionary(f => Path.GetRelativePath(fullStage, f).Replace('\\', '/'), f => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(f)))));
-            File.WriteAllText(fullArchive + ".provenance.json", fullProvenance.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        }
         File.WriteAllText(Path.Combine(output, "release-notes.md"), $"# {Property("AssemblyTitle")} {tag}\n\n" +
             (mode == "local" ? $"Development build: requires Fahrenheit built from `{pin}`. This package is not an official-SDK release.\n\n" : $"Requires official Fahrenheit `{sdkVersion}`.\n\n") +
             $"Extract `{Path.GetFileName(archive)}` into `fahrenheit/mods/`, then add `{id}` to `fahrenheit/mods/loadorder` if absent. Keep the entire `{id}/` folder together. Settings are available in F7.\n\n" +
-            (fullArchive is null ? "" : $"For a matching host plus mod, extract `{Path.GetFileName(fullArchive)}` beside `FFX.exe` and launch `start-ffx-with-mods.cmd`. Requires .NET Runtime 10 x86. Back up existing Fahrenheit files and loadorder before replacing them.\n\n") +
             "Experimental FFX-only mod. Compilation and package validation do not establish compatibility with every game build or scene. See the repository README for features and known limitations.\n");
-        Console.WriteLine($"PACKAGE: {archive}\nFULL PACKAGE: {fullArchive ?? "not requested"}\nSDK origin: {mode}\nPayload validation and tests passed.");
+        Console.WriteLine($"PACKAGE: {archive}\nSDK origin: {mode}\nPayload validation and tests passed.");
     }
     else Console.WriteLine($"Validated mod payload: {payload}");
     return 0;
@@ -271,43 +227,4 @@ static void CopyTree(string source, string destination)
     foreach (var child in Directory.GetDirectories(source))
         if (Path.GetFileName(child) is not ("bin" or "obj" or "artifacts" or ".workspace"))
             CopyTree(child, Path.Combine(destination, Path.GetFileName(child)));
-}
-
-static string BuildHost(string root, string configuration)
-{
-    var checkout = Path.Combine(root, ".workspace", "fahrenheit");
-    var deploy = Path.Combine(checkout, "artifacts", "deploy", configuration == "Release" ? "rel" : "dbg");
-    Recreate(deploy, Path.Combine(checkout, "artifacts"));
-    foreach (var project in new[] { "core/Fahrenheit.csproj", "runtime/Fahrenheit.Runtime.csproj" })
-        Execute("dotnet", ["build", Path.Combine(checkout, "src", project), "-c", configuration, "--verbosity", "minimal", "-p:GeneratePackageOnBuild=false", "-p:SolutionDir=" + checkout + Path.DirectorySeparatorChar], checkout);
-    Execute("dotnet", ["run", "--file", Path.Combine(root, "build", "PrepareNativeDependencies.cs"), "--", checkout, configuration], root);
-    var vswhere = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft Visual Studio", "Installer", "vswhere.exe");
-    var visualStudio = Execute(vswhere, ["-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"], root, capture: true).Trim();
-    if (visualStudio.Length == 0) throw new InvalidOperationException("Full builds require Visual Studio C++ Build Tools, Windows SDK debugging tools, and integrated vcpkg.");
-    var msbuild = Path.Combine(visualStudio, "MSBuild", "Current", "Bin", "MSBuild.exe");
-    var toolset = new[] { "v145", "v144", "v143", "v142" }.FirstOrDefault(t => Directory.GetDirectories(Path.Combine(visualStudio, "MSBuild", "Microsoft", "VC"), "v*")
-        .Any(d => File.Exists(Path.Combine(d, "Platforms", "Win32", "PlatformToolsets", t, "Toolset.props"))))
-        ?? throw new InvalidOperationException("No installed x86 VC++ platform toolset found.");
-    foreach (var project in new[] { "stage1/Fahrenheit.Stage1.vcxproj", "stage0/Fahrenheit.Stage0.vcxproj" })
-        Execute(msbuild, [Path.Combine(checkout, "src", project), "/t:Rebuild", "/nologo", "/m", "/v:minimal", "/p:Configuration=" + configuration, "/p:Platform=Win32", "/p:PlatformToolset=" + toolset], checkout);
-    return Path.Combine(deploy, "bin");
-}
-
-static async Task<string> DownloadOfficialHost(string state, string sdkVersion)
-{
-    using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("FahrenheitModBuild/1.0");
-    using var releases = JsonDocument.Parse(await client.GetStringAsync("https://api.github.com/repos/fahrenheit-crew/fahrenheit/releases?per_page=100"));
-    var release = releases.RootElement.EnumerateArray().FirstOrDefault(r => r.GetProperty("tag_name").GetString()?.TrimStart('v') == sdkVersion);
-    if (release.ValueKind == JsonValueKind.Undefined) throw new InvalidOperationException($"No official Fahrenheit GitHub release matches {sdkVersion}.");
-    var assets = release.GetProperty("assets").EnumerateArray().Where(a => a.GetProperty("name").GetString() is { } n && n.EndsWith(".zip") && n.Contains("release", StringComparison.OrdinalIgnoreCase)).ToArray();
-    if (assets.Length != 1) throw new InvalidOperationException("Cannot identify exactly one official x86 release ZIP; review the upstream release assets.");
-    var extracted = Path.Combine(state, "official-host");
-    Recreate(extracted, state);
-    var zip = Path.Combine(state, "official-host.zip");
-    await File.WriteAllBytesAsync(zip, await client.GetByteArrayAsync(assets[0].GetProperty("browser_download_url").GetString()!));
-    System.IO.Compression.ZipFile.ExtractToDirectory(zip, extracted);
-    var loaders = Directory.GetFiles(extracted, "fhstage0.exe", SearchOption.AllDirectories);
-    if (loaders.Length != 1) throw new InvalidOperationException("Official host ZIP must contain exactly one Stage 0 loader.");
-    return Path.GetDirectoryName(loaders[0])!;
 }
