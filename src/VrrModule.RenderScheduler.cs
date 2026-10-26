@@ -52,8 +52,7 @@ public unsafe sealed partial class VrrModule
         }
         // A refusal is logged there and keeps every frame on the native clock.
         init_field_particle_pause();
-        // A refusal is logged there and keeps battle and magic overlays on the native clock.
-        init_battle_effect_pause();
+        // Dynamic overlay patches lack unload-safe journal ownership; battle retains the native clock.
         bool ok = hook_or_log(HookSiteId.RenderSchedulerRenderMainLoop, "render main loop", DiagnosticMainLoop,
             () => new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).hook(this, h_diag_loop));
         ok &= hook_or_log(HookSiteId.RenderSchedulerRenderExecCount, "render exec count", RenderGetExec,

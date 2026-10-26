@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "984da5d857f65ab1df1f7fda4239df3b2b3edeeffce315ab48635b41858b7e88",
+  "canonical_contract_snapshot_sha256": "4cc767bfde0774896fd38daf988465034dd1cb1190862175d3d8cf770d63d3b4",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -623,8 +623,8 @@
     },
     {
       "path": "src/VrrModule.RenderScheduler.cs",
-      "sha256": "3a3ee90cc71c4addb8dddda63294ac837000f9090697ef1ceea4a832810b9215",
-      "lf_sha256": "3a3ee90cc71c4addb8dddda63294ac837000f9090697ef1ceea4a832810b9215"
+      "sha256": "51b5b1972f0500f1b005f9138eecb3aec9e41c2451c70bb1f71b64eb67ce0ca5",
+      "lf_sha256": "51b5b1972f0500f1b005f9138eecb3aec9e41c2451c70bb1f71b64eb67ce0ca5"
     },
     {
       "path": "src/VrrModule.SimulationPass.cs",
@@ -787,6 +787,11 @@
       "lf_sha256": "4dad2efa8d498fd71ed19bc5b258056226c7ef163758514c7f9522472ad54bd2"
     },
     {
+      "path": "tests/RenderTiming.Tests/BattleAdapterInitializationTests.cs",
+      "sha256": "ccf997a972f26291a8c84aadd4c037112a1cebc80a0da34859204ba3901bd363",
+      "lf_sha256": "ccf997a972f26291a8c84aadd4c037112a1cebc80a0da34859204ba3901bd363"
+    },
+    {
       "path": "tests/RenderTiming.Tests/BattlePresentationTests.cs",
       "sha256": "a9462d15a4fbd1a7d5fb7236afb707eca52e0fdc0ef14fd3da52d1ba2b300139",
       "lf_sha256": "a9462d15a4fbd1a7d5fb7236afb707eca52e0fdc0ef14fd3da52d1ba2b300139"
@@ -883,8 +888,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
-      "sha256": "3cd7d0bbeae7b4f42accdfbac6255fbfda164ef0e931d5f5e6b0be2347eb1223",
-      "lf_sha256": "04c369eb5294d3c72ea12e106d8b1279b59ad50c84ae376dfe6f702308894ce1"
+      "sha256": "379d16882b6fd74fc196e87d704c7b349acab1571f4bc970d68854c215ada62d",
+      "lf_sha256": "fcd055691ae51f85f84fc726429836b9fc12c09551faf4de417e8f0cb0ce5b44"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",

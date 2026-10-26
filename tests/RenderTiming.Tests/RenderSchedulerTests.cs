@@ -156,7 +156,9 @@ public unsafe sealed partial class VrrModule
     private bool _battleEffectPauseInstalled;
     internal byte BattleHold => _bx[0];
     internal bool BattlePauseNeedsCleanup => _bxPresented;
-    private bool init_battle_effect_pause() => true;
+    internal int BattlePauseInitCalls;
+    internal bool BattlePauseInstalled => _battleEffectPauseInstalled;
+    private bool init_battle_effect_pause() { BattlePauseInitCalls++; return true; }
     private void battle_effects_begin_pass(bool presentation) { }
     private string _qualificationRefusal = "";
     private bool _filter_presentation_hold = true;
@@ -205,8 +207,9 @@ public unsafe sealed partial class VrrModule
     internal string? RejectedHook;
     private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> hook) => HookSites.Install(site, hook) && name != RejectedHook;
     private void diagnostic_event(string kind, object data) => DiagnosticEvents.Add((kind, data, _diagnosticLoopId, Environment.CurrentManagedThreadId));
-    private bool init_render_camera() => true;
-    private bool init_render_actors() => true;
+    internal int CameraInitCalls, ActorInitCalls;
+    private bool init_render_camera() { CameraInitCalls++; return true; }
+    private bool init_render_actors() { ActorInitCalls++; return true; }
     private void reset_render_camera() => CameraResets++;
     private void reset_render_actors() => ActorResets++;
     private void restore_render_camera() { }
