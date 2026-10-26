@@ -116,7 +116,8 @@ static async Task<int> Run(string[] args)
     foreach (var name in new[] { "SettingsMigration.cs" })
         if (File.Exists(Path.Combine(root, "build", name))) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name));
     CopyTree(Path.Combine(root, "build", "tests"), Path.Combine(context, "build", "tests"));
-    foreach (var name in new[] { "ModPackage.cs" }) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name), true);
+    foreach (var name in new[] { "ModPackage.cs", "ModBuild.cs", "IndependentAdmissionBuildValidation.cs" }) File.Copy(Path.Combine(root, "build", name), Path.Combine(context, "build", name), true);
+    IndependentAdmissionBuildValidation.Validate(context);
     var sources = new XElement("packageSources", new XElement("clear"), new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", "https://api.nuget.org/v3/index.json")));
     var mapping = new XElement("packageSourceMapping", new XElement("clear"), new XElement("packageSource", new XAttribute("key", "nuget.org"), new XElement("package", new XAttribute("pattern", "*"))));
     var cacheIdentity = legacy ? "source-" + pin : "official";

@@ -42,7 +42,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_render_scheduler()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         if (!init_particle_presentation()) return false;
         _simulationClock = new FixedSimulationClock((int)TargetFramerate);
         if (!_config.VBlankRate || !_config.CharacterDelta || !_config.ParticleTimeline)

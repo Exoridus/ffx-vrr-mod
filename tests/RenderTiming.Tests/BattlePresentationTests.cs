@@ -19,7 +19,7 @@ public sealed class BattlePresentationTests
         if (changed) NativeActorPool.AfterCopy = () => NativeActorPool.Pointer = 0x200000;
         try
         {
-            Assert.Equal(expected, new VrrModule().ProbeBattlePool(owned ? Environment.CurrentManagedThreadId : 0));
+            Assert.Equal(expected, new VrrModule().EnableAdapter().ProbeBattlePool(owned ? Environment.CurrentManagedThreadId : 0));
         }
         finally { NativeActorPool.Reset(); }
     }
@@ -31,7 +31,7 @@ public sealed class BattlePresentationTests
         NativeActorPool.Pointer = 0x100000;
         try
         {
-            Assert.False(new VrrModule().ProbeBattlePool(Environment.CurrentManagedThreadId + 1));
+            Assert.False(new VrrModule().EnableAdapter().ProbeBattlePool(Environment.CurrentManagedThreadId + 1));
             Assert.Equal(0, NativeActorPool.CopyCount);
         }
         finally { NativeActorPool.Reset(); }
@@ -43,7 +43,7 @@ public sealed class BattlePresentationTests
         NativeActorPool.Reset();
         NativeActorPool.Pointer = 0x100000;
         NativeActorPool.CopySucceeded = false;
-        try { Assert.False(new VrrModule().ProbeBattlePool(Environment.CurrentManagedThreadId)); }
+        try { Assert.False(new VrrModule().EnableAdapter().ProbeBattlePool(Environment.CurrentManagedThreadId)); }
         finally { NativeActorPool.Reset(); }
     }
 }

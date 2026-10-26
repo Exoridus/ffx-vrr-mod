@@ -76,7 +76,9 @@ public unsafe sealed partial class VrrModule
 
             ImGui.Separator();
             ImGui.Text($"correction={TargetFramerate:F2}Hz scale={Scale:F3}");
-            if (_config.VrrEnabled)
+            if (_config.VrrEnabled && !IndependentPresentationEnabled)
+                ImGui.Text($"Independent presentation requested; native timing: {_independentQualification.Reason}");
+            if (IndependentPresentationEnabled)
             {
                 ImGui.Text($"Render cap={PresentationTargetHz:F0} FPS (0=unlimited); simulation={TargetFramerate:F0} Hz");
             }

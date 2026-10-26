@@ -31,7 +31,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_particle_presentation()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         if (!preflight_particle_sprite_clock()) return false;
         if (!NativeBuild.TryValidate(out string error))
         {

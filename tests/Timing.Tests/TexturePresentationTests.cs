@@ -205,6 +205,7 @@ public unsafe sealed class TexturePresentationTests
 
 public unsafe sealed partial class VrrModule
 {
+    private bool IndependentPresentationEnabled => _config.VrrEnabled;
     internal void CaptureUvForTest(byte* slot, byte* renderer, float v)
         => capture_texture_uv(slot, 0, 0, 1, 0, v, (uint)(nuint)renderer);
     internal void InvalidateUvForTest(int slot) => invalidate_texture_uv(slot);

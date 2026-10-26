@@ -35,7 +35,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_pad_latch_hook()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         if (!fx_code_matches(PadLatch, PadLatchPattern)
             || !fx_code_matches(PadRecordBaseSite, "55 8B EC 8B 45 08 03 45 0C C1 E0 08 05 ?? ?? ?? ?? 5D C3")
             || !fx_operand_is(PadRecordBaseSite + 0xD, PadRecords)

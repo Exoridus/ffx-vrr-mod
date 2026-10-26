@@ -16,7 +16,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_texture_presentation()
     {
-        if (!_config.VrrEnabled && !_config.TextureFrameInterpolation) return true;
+        if (!IndependentPresentationEnabled && !_config.TextureFrameInterpolation) return true;
         if (!texture_binding_prefix(TextureUvOutput, [0x55, 0x8b, 0xec, 0x81, 0xec, 0x08, 0x03, 0, 0])
             || !texture_binding_prefix(TextureFinalDraw, [0x55, 0x8b, 0xec, 0x81, 0xec, 0x20, 0x04, 0, 0])
             || !texture_binding_prefix(TextureWorkCreate, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x10, 0x8b, 0x45, 0x08])
@@ -26,7 +26,7 @@ public unsafe sealed partial class VrrModule
             return false;
         }
         bool ok = true;
-        if (_config.VrrEnabled) ok = hook_or_log("texture UV output", TextureUvOutput,
+        if (IndependentPresentationEnabled) ok = hook_or_log("texture UV output", TextureUvOutput,
             () => new FhCallHandle<d_texture_uv_output>(new FhCallLocation(TextureUvOutput, 0)).hook(this, h_texture_uv_output));
         ok &= hook_or_log("texture final image", TextureFinalDraw,
             () => new FhCallHandle<d_texture_final_draw>(new FhCallLocation(TextureFinalDraw, 0)).hook(this, h_texture_final_draw));
@@ -34,7 +34,7 @@ public unsafe sealed partial class VrrModule
             () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(TextureWorkCreate, 0)).hook(this, h_texture_work_create));
         ok &= hook_or_log("texture slot lifetime", TextureSlotDelete,
             () => new FhCallHandle<d_texture_delete>(new FhCallLocation(TextureSlotDelete, 0)).hook(this, h_texture_slot_delete));
-        _texturePresentationBound = ok && _config.VrrEnabled;
+        _texturePresentationBound = ok && IndependentPresentationEnabled;
         _textureFramePhaseBound = ok && _config.TextureFrameInterpolation;
         return ok;
     }

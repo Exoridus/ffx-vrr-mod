@@ -13,6 +13,7 @@ namespace Fahrenheit.Mods.Vrr;
 public unsafe sealed partial class VrrModule
 {
     private readonly PresentationAdmission _presentationAdmission = new();
+    private bool IndependentPresentationEnabled => _config.VrrEnabled;
     private readonly TestConfig _config = new();
     private readonly TestLogger _logger = new();
     private bool _presenter_active = true;

@@ -148,6 +148,8 @@ public unsafe sealed partial class VrrModule
     {
         correction_hz = TargetFramerate, scale = Scale, limiter_interval = VSyncInterval,
         actor_interpolation = render_actors_counters(),
+        independent_presentation_requested = _config.VrrEnabled, independent_presentation_enabled = IndependentPresentationEnabled,
+        independent_presentation_qualification = _independentQualification.Reason,
         render_scheduler = _render_scheduler_active, simulation_ticks = _simulation_ticks,
         additional_images = _additional_images, discarded_steps = _simulation_debt_dropped,
         presenter_active = _presenter_active, present_attempts = _present_attempts,

@@ -32,7 +32,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_upstream_ui_hooks()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         bool ok = true;
 
         if (fx_code_matches(MinimapDraw, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC 68 03 00 00 A1 ?? ?? ?? ?? 33 C5")

@@ -94,12 +94,7 @@ public unsafe sealed partial class VrrModule : FhModule
                 : $"[Vrr] No config at {config_path} - every setting is at its default.");
         if (config_warning is not null) _logger.Warning($"[Vrr] Config at {config_path}: {config_warning}");
         _sync_aware = _config.SyncDataAware;
-        _vsync_interval_target = _config.VrrEnabled ? _config.PresentInterval : ChosenFramerate == 30d ? 2u : 1u;
-        if (!_config.VrrEnabled && ChosenFramerate == 120d)
-        {
-            _logger.Error("[Vrr] 120 Hz simulation requires the independent presentation path. No timing hooks installed.");
-            return false;
-        }
+        if (!prepare_presentation_startup()) return false;
         _simulation_framerate = (float)(ChosenFramerate ?? 60d);
         if (!float.IsFinite(_simulation_framerate) || _simulation_framerate <= 0)
         {
@@ -111,7 +106,7 @@ public unsafe sealed partial class VrrModule : FhModule
             _logger.Error("[Vrr] Timing hooks require the presentation driver. No timing hooks installed.");
             return false;
         }
-        if (!_config.VrrEnabled && ChosenFramerate is { } correction && _vsync_interval_target > 0
+        if (!IndependentPresentationEnabled && ChosenFramerate is { } correction && _vsync_interval_target > 0
             && Math.Abs(correction - 60.0 / _vsync_interval_target) > 1)
             _logger.Error("[Vrr] Correction-rate override differs from the engine limiter. The override does not change presentation pacing; this configuration is unsupported without an external pacing owner.");
 
@@ -203,13 +198,13 @@ public unsafe sealed partial class VrrModule : FhModule
 
             apply_rate_patches();
             _render_mode_ready = ok && _render_scheduler_active;
-            if (_config.VrrEnabled && !_render_mode_ready)
+            if (IndependentPresentationEnabled && !_render_mode_ready)
             {
                 _render_scheduler_active = false;
                 _logger.Error("[Vrr] Independent presentation was not armed because a required initialization failed. The native swapchain and 60 Hz limiter are retained.");
             }
             _initialized = ok;
-            diagnostic_event("initialization_complete", new { success = ok, independent_presentation_ready = _render_mode_ready });
+            diagnostic_event("initialization_complete", new { success = ok, independent_presentation_requested = _config.VrrEnabled, independent_presentation_enabled = IndependentPresentationEnabled, independent_presentation_ready = _render_mode_ready, qualification = _independentQualification.Reason });
             if (!ok) cleanup_runtime(failedStartup: true);
             return ok;
         }
@@ -279,8 +274,8 @@ public unsafe sealed partial class VrrModule : FhModule
         load_telemetry_frame();
         // Unlocking the engine limiter is only valid while the render scheduler owns the clock; otherwise the
         // native clock would run faster than 60 Hz. Pacing then falls to PresentationTargetHz.
-        VSyncInterval = _config.VrrEnabled ? (_render_frame_enabled ? 0u : 1u) : VSyncIntervalTarget;
-        if (_config.VrrEnabled) presenter_pace(_frame_pacer);
+        VSyncInterval = IndependentPresentationEnabled ? (_render_frame_enabled ? 0u : 1u) : VSyncIntervalTarget;
+        if (IndependentPresentationEnabled) presenter_pace(_frame_pacer);
         sample_present_rate();
         apply_rate_patches();
 

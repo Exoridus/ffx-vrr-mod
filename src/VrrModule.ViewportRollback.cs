@@ -29,7 +29,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_viewport_rollback()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         _viewportRollbackInstalled =
             fx_code_matches(CameraTweenSlotsSite, "33 C9 83 F8 02 77 3F 8D 14 C5 00 00 00 00 2B D0 8B 45 0C 83 E0 01 03 D0 C1 E2 06 81 C2")
             && fx_operand_is(CameraTweenSlotsSite + 0x1D, ViewportBlocks + 0xDC)

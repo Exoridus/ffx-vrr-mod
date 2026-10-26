@@ -51,7 +51,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_field_particle_restart_hook()
     {
-        if (!_config.FieldParticleRestartHold && !_config.VrrEnabled) return true;
+        if (!_config.FieldParticleRestartHold && !IndependentPresentationEnabled) return true;
 
         return hook_or_log("pppFpLoop", EngineAddresses.PppFpLoop,
             () => new FhCallHandle<d_ppp_fp_loop>(new FhCallLocation(EngineAddresses.PppFpLoop, 0)).hook(this, h_ppp_fp_loop));

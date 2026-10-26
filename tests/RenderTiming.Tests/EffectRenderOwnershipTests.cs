@@ -8,7 +8,7 @@ public sealed class EffectRenderOwnershipTests
     [Fact]
     public void Independent_rendering_does_not_require_legacy_effect_holds()
     {
-        Assert.True(new VrrModule().InitializeWithoutLegacyEffectHold());
+        Assert.True(new VrrModule().EnableAdapter().InitializeWithoutLegacyEffectHold());
     }
 
     [Theory]
@@ -39,7 +39,7 @@ public sealed class EffectRenderOwnershipTests
     public void Legacy_configuration_keeps_its_hook_selection(bool vrr, bool hold, bool eternal, int expected)
     {
         NativeClock.Hooks.Clear();
-        Assert.True(new VrrModule().InitializeEffects(vrr, hold, eternal));
+        Assert.True(new VrrModule().EnableAdapter().InitializeEffects(vrr, hold, eternal));
         Assert.Equal(expected, NativeClock.Hooks.Count);
     }
 
@@ -67,7 +67,7 @@ public sealed class EffectRenderOwnershipTests
     public void Independent_rendering_installs_both_effect_owners_without_legacy_hold()
     {
         NativeClock.Hooks.Clear();
-        Assert.True(new VrrModule().InitializeEffectsWithoutLegacyHold());
+        Assert.True(new VrrModule().EnableAdapter().InitializeEffectsWithoutLegacyHold());
         Assert.Contains("d_effect_process", NativeClock.Hooks);
         Assert.Contains("d_eternal_run", NativeClock.Hooks);
     }
@@ -98,6 +98,7 @@ public unsafe sealed partial class VrrModule
     internal bool InitializeEffects(bool vrr, bool hold, bool eternal)
     {
         _config = new SchedulerConfig { VrrEnabled = vrr, EffectHold = hold, EternalEffectHold = eternal };
+        IndependentPresentationEnabled = vrr;
         return init_effect_hooks();
     }
 

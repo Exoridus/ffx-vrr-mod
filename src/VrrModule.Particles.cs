@@ -44,7 +44,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_particle_hooks()
     {
-        if (!_config.ParticleTimeline && !_config.VrrEnabled && !_config.ParticleSpriteClock) return true;
+        if (!_config.ParticleTimeline && !IndependentPresentationEnabled && !_config.ParticleSpriteClock) return true;
         if (!init_particle_sprite_clock()) return false;
 
         bool ok = hook_or_log("_pppStartPart", EngineAddresses.PppStartPart,

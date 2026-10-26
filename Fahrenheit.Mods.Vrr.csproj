@@ -12,6 +12,7 @@
         <PublishDir>$(MSBuildProjectDirectory)/artifacts/deploy/$(Configuration)/mods/$(AssemblyName)/</PublishDir>
     </PropertyGroup>
     <ItemGroup>
+        <EmbeddedResource Include="src/IndependentPresentationAdmission.json" Condition="Exists('src/IndependentPresentationAdmission.json')" LogicalName="Fahrenheit.Mods.Vrr.IndependentPresentationAdmission.json" />
         <PackageReference Include="TerraFX.Interop.Windows" Version="10.0.26100.6" />
         <Compile Remove="build/**;.workspace/**;tests/**;obj/**;bin/**" />
     </ItemGroup>

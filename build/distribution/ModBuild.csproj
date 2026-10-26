@@ -7,6 +7,6 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../ModBuild.cs;../ModPackage.cs" />
+    <Compile Include="../ModBuild.cs;../ModPackage.cs;../IndependentAdmissionBuildValidation.cs;../../src/IndependentPresentationQualification.cs" />
   </ItemGroup>
 </Project>

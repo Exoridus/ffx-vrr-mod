@@ -1,0 +1,317 @@
+{
+  "schema_version": "1.0",
+  "policy": "independent_presentation_veto_only",
+  "supported_build": "Steam 25501027",
+  "canonical_contract_snapshot_sha256": "c542bde75b0a5af28d0af248f63fee5c5f2a013bf23eecde700d4c36a36d1463",
+  "required_contracts": [
+    "clock.pass_scope",
+    "clock.effective_exec",
+    "clock.calculation_rate",
+    "particle.emission_gate",
+    "clock.native_owner_handover",
+    "clock.simulation_step",
+    "effects.held_walk_scope",
+    "effects.dispatch_draw",
+    "effects.dispatch_advance",
+    "effects.eternal_mixed",
+    "presentation.image_identity",
+    "actors.capture_completion",
+    "graphics.lifecycle_epoch",
+    "presentation.ordinary_completion"
+  ],
+  "blockers": [
+    "missing_capability:actors.capture_completion:native_actor_draw_lifecycle_validated",
+    "missing_capability:actors.capture_completion:native_group0_join_and_submission_owner",
+    "missing_capability:actors.capture_completion:owned_actor_capture_and_completion_boundaries",
+    "missing_capability:clock.native_owner_handover:native_media_and_sync_owner_detected",
+    "missing_capability:clock.pass_scope:admission_to_present_identity_or_serialized_boundary",
+    "missing_capability:clock.pass_scope:inner_loop_abi_guarded",
+    "missing_capability:clock.pass_scope:single_timing_owner",
+    "missing_capability:clock.pass_scope:supported_executable_guard_passed",
+    "missing_capability:clock.pass_scope:worker_jobs_joined_before_phase_exit",
+    "missing_capability:clock.simulation_step:corrected_fixed60_simulation",
+    "missing_capability:clock.simulation_step:single_timing_owner",
+    "missing_capability:effects.dispatch_advance:paired_effect_lists_owned",
+    "missing_capability:effects.dispatch_draw:all_live_effect_draw_producers_qualified",
+    "missing_capability:effects.eternal_mixed:all_live_effect_draw_producers_qualified",
+    "missing_capability:effects.eternal_mixed:eternal_list_native_hold_valid",
+    "missing_capability:effects.held_walk_scope:battle_pause_patch_set_guarded",
+    "missing_capability:effects.held_walk_scope:current_overlay_generation_qualified",
+    "missing_capability:graphics.lifecycle_epoch:fully_observed_native_graphics_startup_owner",
+    "missing_capability:graphics.lifecycle_epoch:native_lifecycle_composition_validated",
+    "missing_capability:graphics.lifecycle_epoch:native_resource_lifetime_exclusion_validated",
+    "missing_capability:presentation.image_identity:native_flip_owner_cardinality_validated",
+    "missing_capability:presentation.image_identity:pending_submission_lifecycle_validated",
+    "missing_capability:presentation.image_identity:worker_jobs_joined_before_present_admission",
+    "missing_capability:presentation.ordinary_completion:loading_and_foreign_render_paths_qualified",
+    "missing_capability:presentation.ordinary_completion:native_ordinary_render_owner_and_completion_validated",
+    "open_issue:actors.capture_completion:gpu_resource_history_purity_and_skeleton_topology",
+    "open_issue:actors.capture_completion:loading_render_mode_and_foreign_submission_qualification",
+    "open_issue:actors.capture_completion:native_acceptance_of_actor_history_and_draw_lifecycle",
+    "open_issue:actors.capture_completion:queued_not_yet_entered_jobs_require_native_completion_contract",
+    "open_issue:clock.calculation_rate:native_consumers_must_not_escape_the_owned_phase",
+    "open_issue:clock.effective_exec:all_consumers_of_exec_zero_must_have_phase_contracts",
+    "open_issue:clock.native_owner_handover:native_transition_and_audio_visual_acceptance",
+    "open_issue:clock.pass_scope:catch_up_input_tick_assignment",
+    "open_issue:clock.pass_scope:native_acceptance_of_admission_to_present_identity",
+    "open_issue:clock.pass_scope:native_worker_phase_join_acceptance",
+    "open_issue:clock.simulation_step:catch_up_input_tick_assignment",
+    "open_issue:clock.simulation_step:discarded_time_units_with_speed_modifier",
+    "open_issue:clock.simulation_step:measured_catch_up_work_budget",
+    "open_issue:effects.dispatch_advance:replace_legacy_half_rate_vm_holds_with_full_rate_contracts",
+    "open_issue:effects.dispatch_draw:fresh_geometry_and_packet_lifetime_for_each_visible_image",
+    "open_issue:effects.dispatch_draw:mode1_indirect_producer_coverage",
+    "open_issue:effects.eternal_mixed:complete_live_producer_lifecycle_and_draw_coverage",
+    "open_issue:effects.held_walk_scope:complete_dynamic_producer_generation_and_admission_proof",
+    "open_issue:effects.held_walk_scope:downstream_rng_and_resource_lifecycle",
+    "open_issue:effects.held_walk_scope:overlay_refusal_before_mutation",
+    "open_issue:graphics.lifecycle_epoch:foreign_uncovered_lifecycle_and_resource_destruction_exclusion",
+    "open_issue:graphics.lifecycle_epoch:native_device_loss_resize_shutdown_acceptance",
+    "open_issue:graphics.lifecycle_epoch:native_startup_and_observer_ordering_acceptance",
+    "open_issue:particle.emission_gate:indirect_emission_and_rng_paths_need_complete_owner_coverage",
+    "open_issue:presentation.image_identity:covered_epochs_do_not_exclude_foreign_reinitialization_or_concurrent_destruction",
+    "open_issue:presentation.image_identity:device_loss_resize_and_shutdown_native_acceptance",
+    "open_issue:presentation.image_identity:foreign_hook_cardinality_and_native_thread_reinitialization",
+    "open_issue:presentation.image_identity:gpu_and_resource_mutations_before_rejection_are_not_rolled_back",
+    "open_issue:presentation.image_identity:native_acceptance_of_submission_pairing_and_refusal",
+    "open_issue:presentation.image_identity:native_ordinary_witness_and_loading_geometry_completion_qualification",
+    "open_issue:presentation.image_identity:native_worker_join_before_final_present_admission",
+    "open_issue:presentation.ordinary_completion:gpu_and_resource_mutations_before_final_decision",
+    "open_issue:presentation.ordinary_completion:loading_and_indirect_foreign_render_composition",
+    "open_issue:presentation.ordinary_completion:native_ordinary_path_and_dynamic_callback_acceptance",
+    "unqualified:actors.capture_completion",
+    "unqualified:clock.calculation_rate",
+    "unqualified:clock.effective_exec",
+    "unqualified:clock.native_owner_handover",
+    "unqualified:clock.pass_scope",
+    "unqualified:clock.simulation_step",
+    "unqualified:effects.dispatch_advance",
+    "unqualified:effects.dispatch_draw",
+    "unqualified:effects.eternal_mixed",
+    "unqualified:effects.held_walk_scope",
+    "unqualified:graphics.lifecycle_epoch",
+    "unqualified:particle.emission_gate",
+    "unqualified:presentation.image_identity",
+    "unqualified:presentation.ordinary_completion"
+  ],
+  "source_inputs": [
+    {
+      "path": "Fahrenheit.Mods.Vrr.csproj",
+      "sha256": "f7565b58ebd65a02d1c003cee9990a5002d8f660402a90968540deede2a9841b"
+    },
+    {
+      "path": "build/IndependentAdmissionBuildValidation.cs",
+      "sha256": "f2dc66394b91a005459cb66e5151235c02287efe8e953b9f5c5ce63f0cecddde"
+    },
+    {
+      "path": "build/ModBuild.cs",
+      "sha256": "e65d920011f7e2afcd46a44cf381963b00c311d330f82f2d480f94759780b7aa"
+    },
+    {
+      "path": "build/tests/IndependentAdmissionBuildValidationTests.cs",
+      "sha256": "e8f2f8cc239641aeb651ba81ff398460f9ac6766c34a099582062cfa49f34832"
+    },
+    {
+      "path": "build/tests/ModBuild.Tests.csproj",
+      "sha256": "4f28d46f04249063fe16eb76e0f55f0bf79eef6662f3c3a88265b07a9c84c4e0"
+    },
+    {
+      "path": "src/BattleEffectPauseCode.cs",
+      "sha256": "70bc5c968c2a3d59fc2be542ce11ad339a70ad323f4c6fe62b570d49219e00ea"
+    },
+    {
+      "path": "src/DxgiHooks.cs",
+      "sha256": "20649ac4b04099643d5f3a2ab17956ec07902d1a3db5d5f06c4f81a09cbfe6ab"
+    },
+    {
+      "path": "src/EngineAddresses.cs",
+      "sha256": "5f2358790224e396bbfa68d56b0c823d41c4b0cb60bddb5c91eead0388a2a55b"
+    },
+    {
+      "path": "src/FixedSimulationClock.cs",
+      "sha256": "3e71994b423060960586dc8c225389800f3fee765c69673b978e88b25eae4c3e"
+    },
+    {
+      "path": "src/IndependentPresentationQualification.cs",
+      "sha256": "ec2a71730782c5f8e1b6341f8fc71c90fdc7ee730e619e2bf70b3a700037f3b3"
+    },
+    {
+      "path": "src/MemoryProbe.cs",
+      "sha256": "64f5539015c8967a8f84382d9a021bababe1b0a50232aacbdcac007e2321b1ac"
+    },
+    {
+      "path": "src/NativeBuild.cs",
+      "sha256": "92f6b78ae02376fce8191e27164543f32bbc0b1d023ba5eb5e4de9940c5b414e"
+    },
+    {
+      "path": "src/PresentationAdmission.cs",
+      "sha256": "e235b6b6ee9a32f10606b851c8fb14598d68935a147cb92caad91a8cf1361cad"
+    },
+    {
+      "path": "src/RenderActorHistory.cs",
+      "sha256": "240fe5b1395b2ef519680e8defd4d0d6a9dd9b439afe4d575b63ab251eddd6e7"
+    },
+    {
+      "path": "src/RenderCameraHistory.cs",
+      "sha256": "7e8f3a3740644fe7b77a96adfca68e57f543129b750734231841214b68b0678a"
+    },
+    {
+      "path": "src/RenderPassContext.cs",
+      "sha256": "5708daf78e09caf2f338c6636042e23fb26df6bca4a2ad0ef4031696658ecd25"
+    },
+    {
+      "path": "src/TimingOwnership.cs",
+      "sha256": "691fb40b19895738cf7ac777c0e7f6f9c86f4e13dcae16df35a0bda4e1bd6e96"
+    },
+    {
+      "path": "src/VrrModule.BattleEffectPause.cs",
+      "sha256": "8b04da149306790ac0e9ea1d02c8e482c177ade7290f2bd5731946ec504aea42"
+    },
+    {
+      "path": "src/VrrModule.DiagnosticBindings.cs",
+      "sha256": "a8cbbf574507179c3b7d071aa241958b39ed89c74e8c11f94680400aa7bda282"
+    },
+    {
+      "path": "src/VrrModule.Effects.cs",
+      "sha256": "c574abeab6f87e0e73ce0f712c573b03ea45e993b37f4f46d2aef2e30edb8d5a"
+    },
+    {
+      "path": "src/VrrModule.FieldParticlePresentation.cs",
+      "sha256": "4bfe0dccf118d318f61dac73cf35d2c2b417aaadaa49fcf7e88ab6bc3e1a7d44"
+    },
+    {
+      "path": "src/VrrModule.GraphicsLifetime.cs",
+      "sha256": "331cdc7467be293175ef67339a1b1f1d9e46a04c4fac529b9e2ce383110d995b"
+    },
+    {
+      "path": "src/VrrModule.PadLatch.cs",
+      "sha256": "1d1af9eb6b762de10d0eb7807b757915c2c26ab61e1bc48c996bd8551273b18f"
+    },
+    {
+      "path": "src/VrrModule.ParticlePresentation.cs",
+      "sha256": "2bdbf0630e7886c8f698e41fc785f47d149819d878690a0e2dbaaf7ebd95c871"
+    },
+    {
+      "path": "src/VrrModule.ParticleTimeline.cs",
+      "sha256": "d3550d5645fe7c86e0e81666b69bb20a91e19ee40d526045f6f065a9796167e7"
+    },
+    {
+      "path": "src/VrrModule.Presenter.cs",
+      "sha256": "d3e98067da12bf565d174c4334cd7d03aa0f2dcb37f126d7c334c39526e6bb85"
+    },
+    {
+      "path": "src/VrrModule.Qualification.cs",
+      "sha256": "02756d84c0e345649ff00c4cad974e91dc88a9b9ae83061a0e96f69a6df6f3f3"
+    },
+    {
+      "path": "src/VrrModule.RenderActors.cs",
+      "sha256": "1bc74bc5b40150afd3755a1b6a8c6927c63cc2d2bc437fd047e457daff3b2d73"
+    },
+    {
+      "path": "src/VrrModule.RenderImages.cs",
+      "sha256": "4db03cfe97e096cd0991c6abdae6a1835c2fd66cf2bbce378e87ec6f912f76a5"
+    },
+    {
+      "path": "src/VrrModule.RenderScheduler.cs",
+      "sha256": "ff0571af22f98b9dab1fe725fc9969ec7f89dadc57199afa3b972864ac5e35e3"
+    },
+    {
+      "path": "src/VrrModule.SimulationPass.cs",
+      "sha256": "471849499bd75dd93504765ae05d028302f0be5718586de1ced898af091ed8eb"
+    },
+    {
+      "path": "src/VrrModule.Timing.cs",
+      "sha256": "a81006a123ab3f682575eec1b21d0e0c3012d3175a9d9ea90bf2f3db3f736f3a"
+    },
+    {
+      "path": "src/VrrModule.cs",
+      "sha256": "4a9ed74050776edd1f4440b41227445e239f3d2ffe36e9bb66ab2b3c4ff06f3e"
+    },
+    {
+      "path": "tests/Dxgi.Tests/Dxgi.Tests.csproj",
+      "sha256": "26c374684f237733d65b9063dd733b146e5e42e97c9fb33274e2ccc71728cb1b"
+    },
+    {
+      "path": "tests/Dxgi.Tests/PresentHookTests.cs",
+      "sha256": "60f39032fdc09a3d6b0783f99ec97d97313ee0af56b7292b4e3a867f8f084ead"
+    },
+    {
+      "path": "tests/Dxgi.Tests/TextureDeviceTests.cs",
+      "sha256": "8af6fdead8c22042d5172d27d218953392d7291b588fe8de0ebb5e6665892d50"
+    },
+    {
+      "path": "tests/ParticlePresentation.Tests/InstalledPauseQualificationTests.cs",
+      "sha256": "b10f73fad1774ec6c78b70d43aefce486b865b6bed860e6655c8a9164472ca30"
+    },
+    {
+      "path": "tests/ParticlePresentation.Tests/LateProducerAdmissionTests.cs",
+      "sha256": "bddb4f5b76bdf1e5c206f3ca74052e5624dfcf436c6536aa31363e3efd96c2d5"
+    },
+    {
+      "path": "tests/RenderImage.Tests/ActorCompletionTests.cs",
+      "sha256": "451e9ff2d11be769ce2379ef5cd7f5bc620c3f464a822042f5b70ef37ae5f3c8"
+    },
+    {
+      "path": "tests/RenderImage.Tests/BridgeFixture.cs",
+      "sha256": "3158324e169e3b624b1c2457fe8326ed258b229ec0db56932300911057cafd24"
+    },
+    {
+      "path": "tests/RenderImage.Tests/NativeImageEligibilityTests.cs",
+      "sha256": "0908e53b4a332b6914ac29c90005dd2f213c8ab0192697efa9b74c2f2e4e1ef0"
+    },
+    {
+      "path": "tests/RenderImage.Tests/RenderCompletionEpochTests.cs",
+      "sha256": "1b994f1c8d86494be6bde35ac9eadd772d358664605e199bc820347b26d079f5"
+    },
+    {
+      "path": "tests/RenderImage.Tests/RenderImage.Tests.csproj",
+      "sha256": "7ca34450a21857216532148decff260f2772d36eba68aef1d864507ff601546d"
+    },
+    {
+      "path": "tests/RenderImage.Tests/RenderImageBridgeTests.cs",
+      "sha256": "4dad2efa8d498fd71ed19bc5b258056226c7ef163758514c7f9522472ad54bd2"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/IndependentStartupTests.cs",
+      "sha256": "d4546ee26415291d37ac5f079b9dfb53948895583b736309a63175714a219e86"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/PresentationAdmissionTests.cs",
+      "sha256": "987cd5a6a7a3c7e51effe8374fc383958e1d18429df3dbaea3d836f6f4e0faf4"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/RenderActivationTests.cs",
+      "sha256": "5090eb1befa3976528ecbd30de051fd4f54c38315d3df5186e230593a9f5734d"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/RenderImageIdentityTests.cs",
+      "sha256": "36b1a19033c89f440299fb5410900cd50ebbd1171e609e32ca4359e1a1979bba"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/RenderImageReadinessTests.cs",
+      "sha256": "f907d8c33e3095d7f6e253bdbb88b3ace0167128b375c16afb8dd4efb4346d53"
+    }
+  ],
+  "generator_inputs": [
+    {
+      "path": "build/Build.VrrCoreContracts.cs",
+      "sha256": "5fb0fd4ff61ff1bddb13b8f2e60dbd1d08ef9458542735f3f5b543544bc7bee4"
+    },
+    {
+      "path": "src/Forensics.Knowledge/FindingReader.cs",
+      "sha256": "2f04922926ad3fc20a8f554796203a89c919a9711668643f6d8590515a7f06d3"
+    },
+    {
+      "path": "src/Forensics.Knowledge/Projects/VrrCoreAdmissionProjection.cs",
+      "sha256": "3272da3b74263db289a61cb79bb887a1cc15ddd273f3e22d9fb65f2f757086e9"
+    },
+    {
+      "path": "src/Forensics.Knowledge/Projects/VrrCoreContracts.cs",
+      "sha256": "43e623685590057fce5234583111645d67c4dfb0d296b95e6ab0e25157a74be7"
+    },
+    {
+      "path": "src/Forensics.SourceMining/VrrHookSourceReader.cs",
+      "sha256": "0de60d3fe495e82d6f119e26a8fa6e356032ef14559b01a8a70626013c8efeaa"
+    }
+  ]
+}

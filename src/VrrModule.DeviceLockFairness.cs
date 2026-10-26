@@ -28,7 +28,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_device_lock_fairness()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         if (!fx_code_matches(DeviceLockEnter, DeviceLockEnterPattern) || !fx_operand_is(DeviceLockEnter + 0x3B, DeviceLock))
         {
             _logger.Error("[Vrr] Phyre device lock bytes differ from build 25501027; Present keeps the device lock and loading stays frame-rate bound.");

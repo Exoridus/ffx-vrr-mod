@@ -15,15 +15,15 @@ A [Fahrenheit](https://github.com/fahrenheit-crew/fahrenheit) mod for the Window
 
 > [!IMPORTANT]
 > Experimental. Built against Fahrenheit alpha12 from the commit in [fahrenheit.release.ref](fahrenheit.release.ref)
-> and tested on Steam build **25501027**. FFX-2 is not supported.
+> for Steam build **25501027**. FFX-2 is not supported.
+> Independent presentation is currently vetoed: the required engine contracts and live capabilities are not yet qualified.
+> A VRR request retains native timing and the original swapchain; new native gameplay/VRR acceptance has not been run.
 
 ## What it does
 
-- The game simulates at a fixed 60 Hz, so gameplay, animations and timers keep their original speed.
-- Rendering runs up to your monitor's refresh rate. Extra frames interpolate the camera and characters.
-- A flip-model swapchain with tearing allowed lets G-SYNC/FreeSync/VRR displays follow the frame rate
-  and lowers display latency.
-- Scene loads do not slow down at high frame rates.
+- Retains the existing fixed-rate corrections, with 60 Hz as the development target.
+- Contains experimental independent rendering, interpolation and flip presentation behind the qualification veto.
+- Reports requested and effective presentation separately; hook installation alone cannot enable the independent path.
 - Optional AV1 replacement movies up to 4K, see [docs/video-replacement.md](docs/video-replacement.md).
 
 ## Installation
@@ -48,7 +48,7 @@ Open Fahrenheit's settings with **F7**.
 | Setting | Default | Effect |
 | --- | --- | --- |
 | Simulation rate | `60` | Game speed reference, applied on the next start. Keep 60. |
-| Maximum render FPS | `0` | `0` follows the display; otherwise a cap of at least 30. Movies stay at 60 or below. |
+| Maximum render FPS | `0` | Applies only to qualified independent presentation; currently inactive. |
 | FPS overlay | On | Shows `rendered / simulation FPS` in the top right corner. |
 
 Diagnostics are written to `%LOCALAPPDATA%\Fahrenheit\VRR\diagnostics\` and to the Fahrenheit log.
@@ -69,6 +69,10 @@ Requires Git and the .NET 10 SDK pinned in [global.json](global.json).
 .\build.cmd mod-verify --sdk local --configuration Release
 .\build.cmd mod-pack   --sdk local --configuration Release --tag v0.0.0-dev --out-dir .release
 ```
+
+The build checks the generated `src/IndependentPresentationAdmission.json` against the copied source inputs.
+After changing reviewed inputs, regenerate it with `build.cmd build-vrr-core-contracts` in the sibling
+knowledge-base repository. This input can explain a veto; it cannot authorize independent presentation.
 
 `--sdk local` builds Fahrenheit from the pinned commit; a not yet upstreamed startup fix is applied
 from the hash-checked bundle in `build/`. Add `--full true` to `mod-pack` for the full package

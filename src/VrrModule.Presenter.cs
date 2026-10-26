@@ -32,10 +32,10 @@ public unsafe sealed partial class VrrModule
     // GPU GDI" in PresentMon): no tearing, so no monitor VRR, and a frame of composition latency. The flip
     // chain below replaces it. It was once disabled for a per-pass slowdown that turned out to be uncached
     // VirtualQuery calls, which hit the native chain just the same.
-    private bool init_vrr_presenter()
-        => init_texture_device_observer() & (!_config.VrrEnabled || hook_or_log("D3D11CreateDeviceAndSwapChain", 0,
+    private bool install_vrr_swapchain_hook()
+        => hook_or_log("D3D11CreateDeviceAndSwapChain", 0,
             () => new FhCallHandle<d_create_swapchain>(new FhCallLocation("d3d11.dll", "D3D11CreateDeviceAndSwapChain"))
-                .hook(this, h_create_swapchain)));
+                .hook(this, h_create_swapchain));
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     private int h_create_swapchain(IDXGIAdapter* adapter, uint driverType, nint software,

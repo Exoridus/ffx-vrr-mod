@@ -76,7 +76,7 @@ public sealed class RenderSchedulerTests
     public void InstalledFieldPauseEnablesPresentationUntilANativeOwnerVetoes()
     {
         var module = new VrrModule();
-        Assert.True(module.InitScheduler());
+        Assert.True(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
         Assert.Equal(1, module.FieldPauseInstalls);
         module.BeginFrame();
@@ -94,7 +94,7 @@ public sealed class RenderSchedulerTests
     public void RefusedFieldPauseKeepsTheNativeClock()
     {
         var module = new VrrModule { ProducerQualified = false };
-        Assert.True(module.InitScheduler());
+        Assert.True(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
         Assert.Equal(1, module.FieldPauseInstalls);
         module.BeginFrame();
@@ -126,6 +126,19 @@ public sealed class RenderSchedulerCollection;
 
 public unsafe sealed partial class VrrModule
 {
+    internal VrrModule EnableAdapter() { IndependentPresentationEnabled = true; return this; }
+    private static uint _vsync_interval_target;
+    internal int SharedTextureObservers, IndependentSwapchainHooks;
+    private bool init_texture_device_observer() { SharedTextureObservers++; return true; }
+    private bool install_vrr_swapchain_hook() { IndependentSwapchainHooks++; return true; }
+    internal bool InitPresenter() => init_vrr_presenter();
+    internal int WarningCount => _logger.Warnings.Count;
+    internal void RequestIndependent(bool requested) => _config = _config with { VrrEnabled = requested };
+    internal bool Preflight() => prepare_presentation_startup();
+    internal bool Effective => IndependentPresentationEnabled;
+    internal bool Requested => _config.VrrEnabled;
+    internal uint Limiter => _vsync_interval_target;
+    internal string VetoReason => _independentQualification.Reason;
     internal bool NativeMovie, NativeSync;
     internal bool ProducerQualified = true;
     private bool init_particle_presentation() => true;
@@ -240,12 +253,13 @@ internal sealed partial record SchedulerConfig
 {
     public int TargetFramerateOverride { get; init; }
     public bool VrrEnabled { get; init; } = true;
+    public uint PresentInterval => 0;
     public bool VBlankRate => true;
     public bool CharacterDelta => true;
     public bool ParticleTimeline => true;
     public bool EffectHold { get; init; } = true;
 }
-internal sealed class SchedulerLogger { public void Error(string message) { } }
+internal sealed class SchedulerLogger { public readonly List<string> Warnings = []; public void Error(string message) { } public void Warning(string message) => Warnings.Add(message); }
 internal readonly record struct FhCallLocation(nint Rva, int Unused);
 internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Delegate
 {

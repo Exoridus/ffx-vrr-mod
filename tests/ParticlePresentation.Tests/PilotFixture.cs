@@ -10,6 +10,7 @@ public sealed class ParticlePresentationCollection;
 
 public unsafe sealed partial class VrrModule
 {
+    private bool IndependentPresentationEnabled => _config.VrrEnabled;
     private const nint GameOverMagicId = 0x864ca0;
     private readonly PilotConfig _config = new();
     private readonly PilotLogger _logger = new();

@@ -17,7 +17,7 @@ public sealed class RenderActivationTests : IDisposable
     public void Scheduler_installation_does_not_arm_independent_presentation()
     {
         var module = new VrrModule();
-        Assert.True(module.InitScheduler());
+        Assert.True(module.EnableAdapter().InitScheduler());
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
         long serial = RenderPassContext.SimulationSerial;
@@ -61,7 +61,7 @@ public sealed class RenderActivationTests : IDisposable
     public void Incomplete_hook_group_cannot_be_armed(string rejected)
     {
         var module = new VrrModule { RejectedHook = rejected };
-        Assert.False(module.InitScheduler());
+        Assert.False(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);

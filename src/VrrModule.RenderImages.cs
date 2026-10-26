@@ -56,7 +56,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_render_images()
     {
-        if (!_config.VrrEnabled) return true;
+        if (!IndependentPresentationEnabled) return true;
         if (IntPtr.Size != 4 || !NativeBuild.TryValidate(out _))
         {
             _logger.Error("[Vrr] Image submission binding refused: unsupported executable or pointer width.");

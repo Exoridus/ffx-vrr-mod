@@ -24,7 +24,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_effect_hooks()
     {
-        if (!_config.EffectHold && !_config.EffectProbe && !_config.VrrEnabled) return true;
+        if (!_config.EffectHold && !_config.EffectProbe && !IndependentPresentationEnabled) return true;
 
         bool ok = hook_or_log("MsEffectProcess", EngineAddresses.MsEffectProcess,
             () => new FhCallHandle<d_effect_process>(new FhCallLocation(EngineAddresses.MsEffectProcess, 0))
@@ -34,7 +34,7 @@ public unsafe sealed partial class VrrModule
         // The eternal set's second list has to be held with the first or not at all. Holding one of
         // the two retimes half its population, which is the defect this module has already shipped
         // three times.
-        if (_config.VrrEnabled || (_config.EffectHold && _config.EternalEffectHold))
+        if (IndependentPresentationEnabled || (_config.EffectHold && _config.EternalEffectHold))
         {
             ok &= hook_or_log("eternal effect run_after", EngineAddresses.EternalEffectRunAfter,
                 () => new FhCallHandle<d_eternal_run>(new FhCallLocation(EngineAddresses.EternalEffectRunAfter, 0))
