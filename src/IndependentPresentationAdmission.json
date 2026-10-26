@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "4cc767bfde0774896fd38daf988465034dd1cb1190862175d3d8cf770d63d3b4",
+  "canonical_contract_snapshot_sha256": "afee3d8b8010ccd4fa7e4382b80962154bf4fdde6501f75471fe8cf863a74055",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -633,8 +633,8 @@
     },
     {
       "path": "src/VrrModule.SphereGridProbe.cs",
-      "sha256": "7bf03998044c129f5261dd081e4d1f3639d41f2f8e6438e2c5926a47d11dd0a2",
-      "lf_sha256": "7bf03998044c129f5261dd081e4d1f3639d41f2f8e6438e2c5926a47d11dd0a2"
+      "sha256": "7241f0dace328837426afbf8a659569f13da9928fc47194a6bcbddfd1e728d62",
+      "lf_sha256": "7241f0dace328837426afbf8a659569f13da9928fc47194a6bcbddfd1e728d62"
     },
     {
       "path": "src/VrrModule.StartupTiming.cs",
@@ -888,18 +888,23 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
-      "sha256": "379d16882b6fd74fc196e87d704c7b349acab1571f4bc970d68854c215ada62d",
-      "lf_sha256": "fcd055691ae51f85f84fc726429836b9fc12c09551faf4de417e8f0cb0ce5b44"
+      "sha256": "6af078c0f00bf48358b9c34b43ac395b23b819a23148239ee7e20d9b6598ba72",
+      "lf_sha256": "62b2f2a832ee97008ee92a27640ae40bcd0078ee39ff0c35f7c76dde9b596f27"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",
-      "sha256": "af37d20ff1767b5f2c0da48697e8d7f308829309e13c7ab22037235cd496b9e1",
-      "lf_sha256": "031feb26d3bf4a5911a4ed1edfb1163a416f099c3ed2c40b560703041ccdc681"
+      "sha256": "ff39985c2b84431e097a9b82145bfdf96a3c752aa1323e6d57e36da9b9285651",
+      "lf_sha256": "ab6552f640c33c76c97befe0f240a0b4be9c4feb3cb81a6a0e6a8797c2dee5d9"
     },
     {
       "path": "tests/RenderTiming.Tests/SimulationTickDeadlineTests.cs",
       "sha256": "0014d79b4292f8ce203706085b8d10a17daafc0d895dac2e3555f45befc44494",
       "lf_sha256": "0014d79b4292f8ce203706085b8d10a17daafc0d895dac2e3555f45befc44494"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/SphereGridRestorationTests.cs",
+      "sha256": "f429c1c8ea9ae1af0f14df7158ef772fc7e5605de88907d4f4cf2e5c7f06c8a0",
+      "lf_sha256": "f429c1c8ea9ae1af0f14df7158ef772fc7e5605de88907d4f4cf2e5c7f06c8a0"
     }
   ],
   "generator_inputs": [
@@ -929,7 +934,7 @@
     },
     {
       "path": "src/Forensics.SourceMining/VrrHookSourceReader.cs",
-      "sha256": "de125c286e403791ac5056ffae3168f2c90d83a23df3ab1dc6d4ff2f4e1c7225"
+      "sha256": "621e6de6efc5c3eaeefe6cf7017600313eeacbfdac1247dde2257aa0630f5768"
     }
   ]
 }

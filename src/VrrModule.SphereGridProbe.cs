@@ -31,6 +31,8 @@ public unsafe sealed partial class VrrModule
      * between the last two updates; the update's own values are put back when the pass ends. */
     private static readonly int[] SphereSmoothOffsets = [0x112B8, 0x112BC, 0x11308, 0x1130C, 0x11318, 0x1131C, 0x11450, 0x11454, 0x11620];
     private readonly float[] _spherePrev = new float[9], _sphereCur = new float[9];
+    private readonly int[] _sphereSmoothWritten = new int[9];
+    private int _sphereSmoothMask;
     private bool _sphereHistory, _sphereSmoothed;
     private nint _sphereSmoothBase;
     private int _sphereTicksSinceUpdate;
@@ -40,6 +42,11 @@ public unsafe sealed partial class VrrModule
     private void sphere_record_update()
     {
         nint grid = FhUtil.get_at<nint>(SphereGridEngine);
+        if (grid != _sphereSmoothBase)
+        {
+            _sphereSmoothMask = 0;
+            _sphereSmoothed = false;
+        }
         if (grid == 0) { _sphereHistory = false; return; }
         bool sameGrid = _sphereHistory && grid == _sphereSmoothBase;
         for (int i = 0; i < SphereSmoothOffsets.Length; i++)
@@ -64,23 +71,34 @@ public unsafe sealed partial class VrrModule
         {
             float* field = (float*)(grid + SphereSmoothOffsets[i]);
             // A field the update did not leave as written is not ours to blend.
-            if (*field != _sphereCur[i]) continue;
+            if (*(int*)field != BitConverter.SingleToInt32Bits(_sphereCur[i])) continue;
             float a = _spherePrev[i], b = _sphereCur[i];
             if (!float.IsFinite(a) || !float.IsFinite(b) || Math.Abs(b - a) > 4096f) continue;
             // moving_progress restarts at 0 on the next link; blending back from 1 would run the ring backwards.
             if (SphereSmoothOffsets[i] == 0x11620 && b < a) continue;
-            *field = a + (b - a) * alpha;
+            int expected = BitConverter.SingleToInt32Bits(b);
+            int written = BitConverter.SingleToInt32Bits(a + (b - a) * alpha);
+            if (System.Threading.Interlocked.CompareExchange(ref *(int*)field, written, expected) != expected) continue;
+            _sphereSmoothWritten[i] = written;
+            _sphereSmoothMask |= 1 << i;
         }
-        _sphereSmoothed = true;
-        _sphereSmoothPasses++;
+        _sphereSmoothed = _sphereSmoothMask != 0;
+        if (_sphereSmoothed) _sphereSmoothPasses++;
     }
 
     private void sphere_smooth_restore()
     {
         if (!_sphereSmoothed) return;
         _sphereSmoothed = false;
+        int mask = _sphereSmoothMask;
+        _sphereSmoothMask = 0;
         if (FhUtil.get_at<nint>(SphereGridEngine) != _sphereSmoothBase) return;
-        for (int i = 0; i < SphereSmoothOffsets.Length; i++) *(float*)(_sphereSmoothBase + SphereSmoothOffsets[i]) = _sphereCur[i];
+        for (int i = 0; i < SphereSmoothOffsets.Length; i++)
+        {
+            if ((mask & (1 << i)) == 0) continue;
+            int* field = (int*)(_sphereSmoothBase + SphereSmoothOffsets[i]);
+            System.Threading.Interlocked.CompareExchange(ref *field, BitConverter.SingleToInt32Bits(_sphereCur[i]), _sphereSmoothWritten[i]);
+        }
     }
 
     private void sphere_probe_enter()

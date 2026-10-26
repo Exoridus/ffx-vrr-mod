@@ -162,9 +162,9 @@ public unsafe sealed partial class VrrModule
     private void battle_effects_begin_pass(bool presentation) { }
     private string _qualificationRefusal = "";
     private bool _filter_presentation_hold = true;
-    private void viewport_snapshot() { }
+    private void viewport_snapshot() => sphere_probe_enter();
     private void viewport_presentation_begin() { }
-    private void viewport_restore(bool presentation) { }
+    private void viewport_restore(bool presentation) => sphere_probe_exit(presentation);
     private void party_swap_collect() { }
     private void party_swap_end_pass(bool presentation) => DiagnosticCleanup?.Invoke();
     internal void BeginFrame() => render_scheduler_begin_frame();
@@ -306,6 +306,7 @@ internal static unsafe class FhUtil
 {
     internal static readonly List<(nint Address, object? Value)> Writes = [];
     public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
+    internal static nint SphereEngine;
     internal static nint PadRecordPointer;
     internal static int Overdrive, MenuPause, MainMenu;
     internal static int MenuReservation = -1;
@@ -315,7 +316,7 @@ internal static unsafe class FhUtil
         if (PadRecordPointer == 0 || rva < 0xf30288 || rva >= 0xf30488) throw new InvalidOperationException("Unmapped pad fixture");
         return (T*)(PadRecordPointer + rva - 0xf30288);
     }
-    public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
+    public static T get_at<T>(nint rva) => rva == 0x1F05834 ? (T)(object)SphereEngine : rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
         : rva == 0xf3c930 ? (T)(object)Overdrive
         : rva == 0xefbc38 ? (T)(object)MenuReservation
         : rva == 0x146a430 ? (T)(object)Dummy
