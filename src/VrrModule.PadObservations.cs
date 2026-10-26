@@ -36,8 +36,7 @@ public unsafe sealed partial class VrrModule
             : System.Threading.Volatile.Read(ref _padObservationFailed) != 0 ? "observer_failed"
             : !OwnsRenderPass || _presentationAdmission.Failure is not null ? "unowned_or_native"
             : !pad_input_presentation_ready() ? "input_group_unready"
-            : EngineSyncPaced || fmv_playing() ? "native_owner"
-            : FhUtil.get_at<int>(OverdriveActive) != 0 ? "overdrive" : null;
+            : pad_native_input_owner() ? "native_input_owner" : null;
         if (reason is not null) { _padTimeline.Reset(reason); return false; }
         long dropped = session!.DroppedEvents;
         if (!ReferenceEquals(_padObservationCapture, session))

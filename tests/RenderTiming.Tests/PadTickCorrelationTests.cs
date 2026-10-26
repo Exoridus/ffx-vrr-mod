@@ -52,6 +52,7 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
     [InlineData("movie")]
     [InlineData("sync")]
     [InlineData("overdrive")]
+    [InlineData("menu")]
     [InlineData("capture_off")]
     [InlineData("capture_changed")]
     [InlineData("capture_loss")]
@@ -69,6 +70,7 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
         if (condition == "movie") module.NativeMovie = true;
         if (condition == "sync") module.NativeSync = true;
         if (condition == "overdrive") FhUtil.Overdrive = 1;
+        if (condition == "menu") FhUtil.MenuPause = 1;
         if (condition == "capture_off") module.CaptureLoops(false);
         if (condition == "capture_changed") module.CaptureLoops(true);
         if (condition == "capture_loss") module.LosePadCaptureEvent();
@@ -83,7 +85,7 @@ public unsafe sealed class PadTickCorrelationTests : IDisposable
             Assert.Null(module.LastPadCandidateSequence(0));
             Assert.NotNull(module.PadTimelineBoundary);
         }
-        finally { FhUtil.Overdrive = 0; }
+        finally { FhUtil.Overdrive = FhUtil.MenuPause = 0; }
     }
     [Fact]
     public void Actual_poll_retains_both_bit_exact_port_samples_without_writing_native_memory()

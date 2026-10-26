@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "2312204ab532e204f9115e2b2dc9289422bdac9432d20a6989d8912a19e3d9be",
+  "canonical_contract_snapshot_sha256": "cc928c86e3e7970b2da5e49e0352e33c99affe55d15a53dbb991547c7bcc5090",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -553,13 +553,13 @@
     },
     {
       "path": "src/VrrModule.PadLatch.cs",
-      "sha256": "9dd71208d2727b7647984ef77b4fa3e9345812cabbc99a85fd24db9160091cec",
-      "lf_sha256": "9dd71208d2727b7647984ef77b4fa3e9345812cabbc99a85fd24db9160091cec"
+      "sha256": "63da2694b5cd81dff658ad1edbe01b3aac4af9eb31e0ef69484ff57ab9c2d9ca",
+      "lf_sha256": "63da2694b5cd81dff658ad1edbe01b3aac4af9eb31e0ef69484ff57ab9c2d9ca"
     },
     {
       "path": "src/VrrModule.PadObservations.cs",
-      "sha256": "5251d600fdd5ce0a935ef18d3480365cca75925d7072e950cd91f41caa34cb60",
-      "lf_sha256": "5251d600fdd5ce0a935ef18d3480365cca75925d7072e950cd91f41caa34cb60"
+      "sha256": "00241921197488ab3ff23e0e2387b58d2086ddf9289b914e7c91c7776d142b2d",
+      "lf_sha256": "00241921197488ab3ff23e0e2387b58d2086ddf9289b914e7c91c7776d142b2d"
     },
     {
       "path": "src/VrrModule.ParticleKernels.cs",
@@ -623,8 +623,8 @@
     },
     {
       "path": "src/VrrModule.RenderScheduler.cs",
-      "sha256": "e5b2362da25a33a749f799bbbdfe17c8c589582e397e3deb72b52204b3f40933",
-      "lf_sha256": "e5b2362da25a33a749f799bbbdfe17c8c589582e397e3deb72b52204b3f40933"
+      "sha256": "85aa6b358bc45b1dd26149f1a94435d8204d178b88c16280aa53c788a89b73e0",
+      "lf_sha256": "85aa6b358bc45b1dd26149f1a94435d8204d178b88c16280aa53c788a89b73e0"
     },
     {
       "path": "src/VrrModule.SimulationPass.cs",
@@ -823,13 +823,18 @@
     },
     {
       "path": "tests/RenderTiming.Tests/PadHistoryReaderTests.cs",
-      "sha256": "8711a67e6ee8d4452f651b40a194793eb8334e8665248d830a8963295f89564f",
-      "lf_sha256": "8711a67e6ee8d4452f651b40a194793eb8334e8665248d830a8963295f89564f"
+      "sha256": "b802b38a964ecea2547c94f6ca62a78fec6461b64ab89dde0d6ecac6be61dca7",
+      "lf_sha256": "b802b38a964ecea2547c94f6ca62a78fec6461b64ab89dde0d6ecac6be61dca7"
     },
     {
       "path": "tests/RenderTiming.Tests/PadLatchOwnershipTests.cs",
-      "sha256": "4f929cca8835bdd3173a203419db3729e44e4e48f3ac307afa261ac308602f0d",
-      "lf_sha256": "4f929cca8835bdd3173a203419db3729e44e4e48f3ac307afa261ac308602f0d"
+      "sha256": "42cadd33f06488c819cbb4067da85e31476d76cd4b372956e9c8530a5579352a",
+      "lf_sha256": "42cadd33f06488c819cbb4067da85e31476d76cd4b372956e9c8530a5579352a"
+    },
+    {
+      "path": "tests/RenderTiming.Tests/PadNativeOwnerTests.cs",
+      "sha256": "9012a2b8121d17eff6fa936480d2312cfdd2b13d8d58e16176c11da6d24e5691",
+      "lf_sha256": "9012a2b8121d17eff6fa936480d2312cfdd2b13d8d58e16176c11da6d24e5691"
     },
     {
       "path": "tests/RenderTiming.Tests/PadObservationTests.cs",
@@ -843,8 +848,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/PadTickCorrelationTests.cs",
-      "sha256": "61a91f49feaef3e211dbbe6993d37a80b1b0cc730604841398f07eabc19d9afa",
-      "lf_sha256": "61a91f49feaef3e211dbbe6993d37a80b1b0cc730604841398f07eabc19d9afa"
+      "sha256": "e85414680560f52a76ff36ad97e1f32ec3fb88920050d726d61832f3624dbddc",
+      "lf_sha256": "e85414680560f52a76ff36ad97e1f32ec3fb88920050d726d61832f3624dbddc"
     },
     {
       "path": "tests/RenderTiming.Tests/PresentationAdmissionTests.cs",
@@ -868,8 +873,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
-      "sha256": "f4f96c5af139402f46253136fa1cee1f9cea92aadacb460415ae81307d9e1b21",
-      "lf_sha256": "6ad532e616357141fdcd202adca4aa131085729bec56b01f2b5603808d4b7d37"
+      "sha256": "ac0377b0853e7cf21e0461bbe6df09b51c40e7fd73801dc816bcefffcc8f5d21",
+      "lf_sha256": "3a13db9b393a5967a66070f135ab69a37e1f7b7ec1a74db83f873e6e58b9536e"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",

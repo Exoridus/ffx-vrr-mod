@@ -227,6 +227,12 @@ public unsafe sealed partial class VrrModule
     {
         CodeChecks.Add((rva, pattern));
         if (rva == RejectedPadCodeSite) return false;
+        if (rva == 0x420b89)
+        {
+            string[] tokens = pattern.Split(' ');
+            return MenuPauseEntry.Length == tokens.Length && tokens.Select((token, index) =>
+                token == "??" || MenuPauseEntry[index] == Convert.ToByte(token, 16)).All(match => match);
+        }
         if (PadHistoryEntries.TryGetValue(rva, out byte[]? entry))
             return entry.AsSpan().SequenceEqual(Convert.FromHexString(pattern.Replace(" ", "")));
         return rva != 0x488ec0 || PadGetterCodeMatches;
@@ -234,7 +240,8 @@ public unsafe sealed partial class VrrModule
     private bool fx_operand_is(nint rva, nint expected)
     {
         OperandChecks.Add((rva, expected));
-        return rva != RejectedPadOperandSite && (rva != 0x488ecd || PadGetterOperandMatches);
+        return rva != RejectedPadOperandSite && (rva != 0x488ecd || PadGetterOperandMatches)
+            && (rva != 0x420b8b || (MenuPauseEntry.Length >= 6 && BitConverter.ToUInt32(MenuPauseEntry, 2) == 0x01340828));
     }
     private bool fx_call_is(nint rva, nint expected) { CallChecks.Add((rva, expected)); return !RejectPadOverdriveCall; }
 }

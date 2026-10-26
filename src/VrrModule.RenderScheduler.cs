@@ -72,6 +72,7 @@ public unsafe sealed partial class VrrModule
     private string _render_gate_reason()
         => _presentationAdmission.Failure ?? (EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
             : !pad_input_presentation_ready() ? "pad_history_not_installed"
+            : pad_native_input_owner() ? "native_input_owner"
             : !_fieldPauseInstalled ? "field_pause_not_installed"
             : filter_needs_native_clock() ? "screen_filter" : _qualificationRefusal);
 
@@ -92,8 +93,8 @@ public unsafe sealed partial class VrrModule
             return;
         }
         // Recorded syncdata and movie playback keep their existing clock owner until adapted.
-        _render_frame_enabled = _presentationAdmission.Failure is null && render_image_admission_ready() && !EngineSyncPaced && !fmv_playing()
-            && pad_input_presentation_ready() && field_particle_presentation_ready() && !filter_needs_native_clock();
+        _render_frame_enabled = _presentationAdmission.Failure is null && render_image_admission_ready()
+            && pad_input_presentation_ready() && !pad_native_input_owner() && field_particle_presentation_ready() && !filter_needs_native_clock();
         if (_render_frame_enabled) _render_frame_enabled = render_image_admission_begin();
         if (!_render_frame_enabled && !_render_native_owner_reported)
             diagnostic_event("native_clock_owner", new { syncdata = EngineSyncPaced, movie = fmv_playing() });
@@ -174,8 +175,8 @@ public unsafe sealed partial class VrrModule
     {
         if (!IsOwnedRenderLoop) return RenderClockAction.Native;
         _render_clock_seen = true;
-        if (_render_frame_enabled && (_presentationAdmission.Failure is not null || !render_image_admission_ready() || EngineSyncPaced || fmv_playing()
-            || !pad_input_presentation_ready() || !field_particle_presentation_ready() || filter_needs_native_clock()))
+        if (_render_frame_enabled && (_presentationAdmission.Failure is not null || !render_image_admission_ready()
+            || !pad_input_presentation_ready() || pad_native_input_owner() || !field_particle_presentation_ready() || filter_needs_native_clock()))
         {
             _render_frame_enabled = false;
             RenderPassContext.IsActive = false;
@@ -231,7 +232,7 @@ public unsafe sealed partial class VrrModule
             new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0))
                 .chain_from(h_advance_vblank).fnptr!(1f / TargetFramerate);
             // The native clock can select syncdata while fetching its next record.
-            if (EngineSyncPaced || fmv_playing())
+            if (pad_native_input_owner())
             {
                 _render_frame_enabled = false;
                 RenderPassContext.IsActive = false;

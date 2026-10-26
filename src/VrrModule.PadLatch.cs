@@ -14,6 +14,7 @@ public unsafe sealed partial class VrrModule
     private const nint PadRecords = 0xF30288, PadRecordBaseSite = 0x488EC0;
     // Overdrive windows poll and push independently on every pass for timed presses and stick rotation.
     private const nint OverdriveActive = 0xF3C930, OverdriveLatchSite = 0x49AE52;
+    private const nint PadMenuPause = 0xF40828, PadMenuPauseSite = 0x420B89;
     private const nint PadPressedHistory = 0x488E80, PadReleasedHistory = 0x488EA0,
         PadRepeatHistory = 0x488E50, PadRepeat2History = 0x488E30;
 
@@ -29,6 +30,11 @@ public unsafe sealed partial class VrrModule
 
     private bool pad_input_presentation_ready() => _pad_latch_installed && _pad_history_readers_ready;
 
+    // Timed and clock-bypassing input paths retain native publication and real-time repeat.
+    private bool pad_native_input_owner()
+        => EngineSyncPaced || fmv_playing() || FhUtil.get_at<int>(PadMenuPause) != 0
+            || FhUtil.get_at<int>(OverdriveActive) != 0;
+
     private bool init_pad_latch_hook()
     {
         _pad_latch_installed = _pad_history_readers_ready = false;
@@ -39,6 +45,8 @@ public unsafe sealed partial class VrrModule
             || !fx_code_matches(OverdriveLatchSite, "83 3D ?? ?? ?? ?? 00 74 14 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? E8")
             || !fx_operand_is(OverdriveLatchSite + 2, OverdriveActive)
             || !fx_call_is(OverdriveLatchSite + 0x13, PadLatch)
+            || !fx_code_matches(PadMenuPauseSite, "83 3D ?? ?? ?? ?? 00 75 11")
+            || !fx_operand_is(PadMenuPauseSite + 2, PadMenuPause)
             || !fx_code_matches(PadPressedHistory, "55 8B EC FF 75 10 FF 75 0C FF 75 08 E8 EF FC FF FF 66 8B 40 06 83 C4 0C 5D C3")
             || !fx_code_matches(PadReleasedHistory, "55 8B EC FF 75 10 FF 75 0C FF 75 08 E8 CF FC FF FF 66 8B 40 08 83 C4 0C 5D C3")
             || !fx_code_matches(PadRepeatHistory, "55 8B EC FF 75 10 FF 75 0C FF 75 08 E8 1F FD FF FF 66 8B 40 0A 83 C4 0C 5D C3")
@@ -66,7 +74,7 @@ public unsafe sealed partial class VrrModule
     {
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0))
             .chain_from(h_pad_pressed_history).fnptr!(port, pad, history);
-        return _pad_history_readers_ready && IsOwnedPresentationPass && FhUtil.get_at<int>(OverdriveActive) == 0 ? (ushort)0 : value;
+        return _pad_history_readers_ready && IsOwnedPresentationPass && !pad_native_input_owner() ? (ushort)0 : value;
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -74,7 +82,7 @@ public unsafe sealed partial class VrrModule
     {
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadReleasedHistory, 0))
             .chain_from(h_pad_released_history).fnptr!(port, pad, history);
-        return _pad_history_readers_ready && IsOwnedPresentationPass && FhUtil.get_at<int>(OverdriveActive) == 0 ? (ushort)0 : value;
+        return _pad_history_readers_ready && IsOwnedPresentationPass && !pad_native_input_owner() ? (ushort)0 : value;
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -82,7 +90,7 @@ public unsafe sealed partial class VrrModule
     {
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeatHistory, 0))
             .chain_from(h_pad_repeat_history).fnptr!(port, pad, history);
-        return _pad_history_readers_ready && IsOwnedPresentationPass && FhUtil.get_at<int>(OverdriveActive) == 0 ? (ushort)0 : value;
+        return _pad_history_readers_ready && IsOwnedPresentationPass && !pad_native_input_owner() ? (ushort)0 : value;
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -90,7 +98,7 @@ public unsafe sealed partial class VrrModule
     {
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeat2History, 0))
             .chain_from(h_pad_repeat2_history).fnptr!(port, pad, history);
-        return _pad_history_readers_ready && IsOwnedPresentationPass && FhUtil.get_at<int>(OverdriveActive) == 0 ? (ushort)0 : value;
+        return _pad_history_readers_ready && IsOwnedPresentationPass && !pad_native_input_owner() ? (ushort)0 : value;
     }
 
     private void pad_latch_original()
@@ -100,7 +108,7 @@ public unsafe sealed partial class VrrModule
     private void h_pad_latch()
     {
         _pad_latch_calls++;
-        if (!_pad_latch_installed || !OwnsRenderPass || FhUtil.get_at<int>(OverdriveActive) != 0)
+        if (!_pad_latch_installed || !OwnsRenderPass || pad_native_input_owner())
         {
             pad_latch_original();
             return;
@@ -116,7 +124,7 @@ public unsafe sealed partial class VrrModule
         if (!_pad_latch_installed || !IsOwnedRenderLoop) return;
         bool pending = _pad_latch_pending;
         _pad_latch_pending = false;
-        if (presentation)
+        if (presentation && !pad_native_input_owner())
         {
             if (pending) _pad_latch_skipped++;
         }

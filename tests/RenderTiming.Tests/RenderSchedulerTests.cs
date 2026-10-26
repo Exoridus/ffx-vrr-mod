@@ -300,14 +300,15 @@ internal static unsafe class FhUtil
     internal static readonly List<(nint Address, object? Value)> Writes = [];
     public static void set_at<T>(nint rva, T value) => Writes.Add((rva, value));
     internal static nint PadRecordPointer;
-    internal static int Overdrive;
+    internal static int Overdrive, MenuPause;
     public static T* ptr_at<T>(nint rva) where T : unmanaged
     {
         if (PadRecordPointer == 0 || rva < 0xf30288 || rva >= 0xf30488) throw new InvalidOperationException("Unmapped pad fixture");
         return (T*)(PadRecordPointer + rva - 0xf30288);
     }
     public static T get_at<T>(nint rva) => rva == EngineAddresses.PlayerChrs ? (T)(object)NativeActorPool.Pointer
-        : rva == 0xf3c930 ? (T)(object)Overdrive : default!;
+        : rva == 0xf3c930 ? (T)(object)Overdrive
+        : rva == 0xf40828 ? (T)(object)MenuPause : default!;
 }
 internal static partial class EngineAddresses
 {
