@@ -143,6 +143,10 @@ internal enum HookSiteId
     VideoOverridePhyFMVPlayerManagerInitialize,
     VideoOverridePhyFMVPlayerManagerPlayStart,
     DiagnosticBindingsPadPollObservation,
+    PadLatchPressedHistory,
+    PadLatchReleasedHistory,
+    PadLatchRepeatHistory,
+    PadLatchRepeat2History,
 }
 
 internal static class HookSites

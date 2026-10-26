@@ -71,6 +71,7 @@ public unsafe sealed partial class VrrModule
 
     private string _render_gate_reason()
         => _presentationAdmission.Failure ?? (EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
+            : !pad_input_presentation_ready() ? "pad_history_not_installed"
             : !_fieldPauseInstalled ? "field_pause_not_installed"
             : filter_needs_native_clock() ? "screen_filter" : _qualificationRefusal);
 
@@ -92,7 +93,7 @@ public unsafe sealed partial class VrrModule
         }
         // Recorded syncdata and movie playback keep their existing clock owner until adapted.
         _render_frame_enabled = _presentationAdmission.Failure is null && render_image_admission_ready() && !EngineSyncPaced && !fmv_playing()
-            && field_particle_presentation_ready() && !filter_needs_native_clock();
+            && pad_input_presentation_ready() && field_particle_presentation_ready() && !filter_needs_native_clock();
         if (_render_frame_enabled) _render_frame_enabled = render_image_admission_begin();
         if (!_render_frame_enabled && !_render_native_owner_reported)
             diagnostic_event("native_clock_owner", new { syncdata = EngineSyncPaced, movie = fmv_playing() });
@@ -143,6 +144,11 @@ public unsafe sealed partial class VrrModule
         pad_latch_end_pass();
         render_restore_particles(_render_particle_pause_before);
         _render_particle_pause_before = null;
+        double? tickDeadlineSeconds = null;
+        if (_diagnostics?.IsCapturing == true && _render_clock_seen && _render_simulation_pass
+            && OwnsRenderPass && _presentationAdmission.Failure is null
+            && _simulationClock.TryGetStepDeadline(_render_plan.Steps - _render_steps_remaining, out double deadline))
+            tickDeadlineSeconds = deadline;
         if (_render_clock_seen && _render_simulation_pass)
         {
             _simulation_ticks++;
@@ -154,7 +160,7 @@ public unsafe sealed partial class VrrModule
         diagnostic_event("render_pass", new { simulation = _render_simulation_pass, clock_seen = _render_clock_seen,
             remaining = _render_steps_remaining, alpha = _render_plan.Alpha, simulation_ticks = _simulation_ticks,
             additional_images = _additional_images, discarded_steps = _simulation_debt_dropped,
-            native_clock_owner = !_render_frame_enabled });
+            native_clock_owner = !_render_frame_enabled, tick_deadline_seconds = tickDeadlineSeconds });
         RenderPassContext.IsPresentation = false;
         battle_effects_end_pass();
         _render_inside_loop = false;
@@ -165,7 +171,7 @@ public unsafe sealed partial class VrrModule
         if (!IsOwnedRenderLoop) return RenderClockAction.Native;
         _render_clock_seen = true;
         if (_render_frame_enabled && (_presentationAdmission.Failure is not null || !render_image_admission_ready() || EngineSyncPaced || fmv_playing()
-            || !field_particle_presentation_ready() || filter_needs_native_clock()))
+            || !pad_input_presentation_ready() || !field_particle_presentation_ready() || filter_needs_native_clock()))
         {
             _render_frame_enabled = false;
             RenderPassContext.IsActive = false;

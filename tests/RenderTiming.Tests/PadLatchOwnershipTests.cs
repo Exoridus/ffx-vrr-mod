@@ -7,7 +7,7 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
 {
     private readonly byte[] _records = GC.AllocateArray<byte>(0x200, pinned: true);
     private readonly VrrModule _module = new();
-    private static readonly int[] EdgeOffsets = [6, 8, 10, 28];
+
 
     public PadLatchOwnershipTests()
     {
@@ -46,7 +46,7 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Foreign_decision_cannot_consume_pending_or_mask_edges(bool presentation)
+    public void Foreign_decision_cannot_consume_pending_or_change_history(bool presentation)
     {
         _module.CallPad();
         Assert.True(_module.PadState.Pending);
@@ -75,16 +75,16 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
     }
 
     [Fact]
-    public void Foreign_cleanup_cannot_restore_owner_mask()
+    public void Foreign_cleanup_preserves_owner_history()
     {
         byte[] before = (byte[])_records.Clone();
         _module.DecidePad(true);
         var state = _module.PadState;
-        byte[] masked = (byte[])_records.Clone();
-        Assert.True(state.Masked);
+        byte[] afterDecision = (byte[])_records.Clone();
+        Assert.Equal(before, afterDecision);
         Foreign(_module.EndPad);
         Assert.Equal(state, _module.PadState);
-        Assert.Equal(masked, _records);
+        Assert.Equal(afterDecision, _records);
         _module.EndPad();
         Assert.Equal(before, _records);
     }
@@ -92,7 +92,7 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Owner_decision_publishes_simulation_or_masks_only_presentation_edges(bool presentation)
+    public void Owner_decision_publishes_only_simulation_and_preserves_history(bool presentation)
     {
         byte[] before = (byte[])_records.Clone();
         _module.CallPad();
@@ -101,11 +101,9 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
         _module.DecidePad(presentation);
         Assert.False(_module.PadState.Pending);
         Assert.Equal(presentation ? 0 : 1, NativeClock.PadCalls);
-        for (int i = 0; i < _records.Length; i++)
-            Assert.Equal(presentation && IsEdgeByte(i) ? (byte)0 : before[i], _records[i]);
+        Assert.Equal(before, _records);
         _module.EndPad();
         Assert.Equal(before, _records);
-        Assert.False(_module.PadState.Masked);
     }
 
     [Theory]
@@ -149,14 +147,13 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Owner_cleanup_restores_mask_after_frame_or_readiness_revocation(bool disarm)
+    public void Owner_cleanup_preserves_history_after_frame_or_readiness_revocation(bool disarm)
     {
         byte[] before = (byte[])_records.Clone();
         _module.DecidePad(true);
-        Assert.True(_module.PadState.Masked);
+        Assert.Equal(before, _records);
         _module.RevokePadFrame(disarm);
         _module.EndPad();
-        Assert.False(_module.PadState.Masked);
         Assert.Equal(before, _records);
     }
 
@@ -171,17 +168,17 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
     }
 
     [Fact]
-    public void Restore_uses_original_slots_and_keeps_nonzero_intervening_edges()
+    public void Cleanup_preserves_native_push_and_cleared_edges()
     {
         byte[] before = (byte[])_records.Clone();
         _module.DecidePad(true);
         int edge = 0x20 + 6;
-        _records[edge] = 0x34;
-        _records[edge + 1] = 0x12;
+        _records[edge] = 0;
+        _records[edge + 1] = 0;
         _records[0x9c] = 2;
         _module.EndPad();
-        before[edge] = 0x34;
-        before[edge + 1] = 0x12;
+        before[edge] = 0;
+        before[edge + 1] = 0;
         before[0x9c] = 2;
         Assert.Equal(before, _records);
     }
@@ -194,13 +191,6 @@ public unsafe sealed class PadLatchOwnershipTests : IDisposable
         _module.EndPad();
         Assert.Equal(1, NativeClock.PadCalls);
         Assert.Equal(1, _module.PadState.Late);
-    }
-
-    private static bool IsEdgeByte(int offset)
-    {
-        int port = offset / 0x100;
-        int slot = port == 0 ? 0x20 : 0x60;
-        return EdgeOffsets.Any(edge => offset % 0x100 == slot + edge || offset % 0x100 == slot + edge + 1);
     }
 
     private static void Foreign(Action action)
@@ -218,29 +208,35 @@ public unsafe sealed partial class VrrModule
     internal void ConfigurePad(bool clockSeen, bool presentation, bool armed = true, bool frame = true, bool inside = true)
     {
         SetHookScope(armed, frame, inside, presentation);
-        _pad_latch_installed = true;
+        _pad_latch_installed = _pad_history_readers_ready = true;
         _render_clock_seen = clockSeen;
     }
-    internal (bool Pending, bool Masked, long Skipped, long Deferred, long Late, long Masks) PadState
-        => (_pad_latch_pending, _pad_edges_masked, _pad_latch_skipped, _pad_latch_deferred, _pad_latch_late, _pad_edge_masks);
+    internal (bool Pending, long Skipped, long Deferred, long Late) PadState
+        => (_pad_latch_pending, _pad_latch_skipped, _pad_latch_deferred, _pad_latch_late);
     internal void CallPad() => h_pad_latch();
     internal void DecidePad(bool presentation) => pad_latch_pass_decided(presentation);
     internal void EndPad() => pad_latch_end_pass();
     internal void RevokePadFrame(bool disarm) { _render_frame_enabled = false; if (disarm) _render_mode_ready = false; }
     internal bool PadGetterCodeMatches = true, PadGetterOperandMatches = true;
+    internal nint? RejectedPadCodeSite, RejectedPadOperandSite;
+    internal bool RejectPadOverdriveCall;
+    internal readonly List<(nint Rva, nint Expected)> CallChecks = [];
     internal readonly List<(nint Rva, string Pattern)> CodeChecks = [];
     internal readonly List<(nint Rva, nint Expected)> OperandChecks = [];
     private bool fx_code_matches(nint rva, string pattern)
     {
         CodeChecks.Add((rva, pattern));
+        if (rva == RejectedPadCodeSite) return false;
+        if (PadHistoryEntries.TryGetValue(rva, out byte[]? entry))
+            return entry.AsSpan().SequenceEqual(Convert.FromHexString(pattern.Replace(" ", "")));
         return rva != 0x488ec0 || PadGetterCodeMatches;
     }
     private bool fx_operand_is(nint rva, nint expected)
     {
         OperandChecks.Add((rva, expected));
-        return rva != 0x488ecd || PadGetterOperandMatches;
+        return rva != RejectedPadOperandSite && (rva != 0x488ecd || PadGetterOperandMatches);
     }
-    private bool fx_call_is(nint rva, nint expected) => true;
+    private bool fx_call_is(nint rva, nint expected) { CallChecks.Add((rva, expected)); return !RejectPadOverdriveCall; }
 }
 
 internal static partial class NativeClock

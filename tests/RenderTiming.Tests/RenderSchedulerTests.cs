@@ -126,6 +126,7 @@ public sealed class RenderSchedulerCollection;
 
 public unsafe sealed partial class VrrModule
 {
+    public VrrModule() { _pad_latch_installed = _pad_history_readers_ready = true; }
     internal VrrModule EnableAdapter() { IndependentPresentationEnabled = true; return this; }
     private static uint _vsync_interval_target;
     internal int SharedTextureObservers, IndependentSwapchainHooks;
@@ -266,6 +267,14 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
             _ = location;
             string method = typeof(T).Name switch
             {
+                "d_pad_history" => location.Rva switch
+                {
+                    0x488e80 => nameof(NativeClock.PressedHistory),
+                    0x488ea0 => nameof(NativeClock.ReleasedHistory),
+                    0x488e50 => nameof(NativeClock.RepeatHistory),
+                    0x488e30 => nameof(NativeClock.Repeat2History),
+                    _ => throw new InvalidOperationException("Unknown pad history accessor"),
+                },
                 "d_effect_process" => nameof(NativeClock.Effect),
                 "d_eternal_run" => nameof(NativeClock.Eternal),
                 "d_render_exec" => nameof(NativeClock.Exec),
@@ -278,7 +287,7 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
             return (T)Delegate.CreateDelegate(typeof(T), typeof(NativeClock).GetMethod(method)!);
         }
     }
-    public bool hook(object owner, T callback) { NativeClock.Hooks.Add(typeof(T).Name); return true; }
+    public bool hook(object owner, T callback) { NativeClock.HistoryHookAction?.Invoke(); NativeClock.HistoryHookRegistrations.Add((location.Rva, callback)); NativeClock.Hooks.Add(typeof(T).Name); return true; }
     public FhCallHandle<T> chain_from(T callback) => this;
 }
 internal static partial class NativeClock

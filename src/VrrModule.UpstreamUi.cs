@@ -110,6 +110,14 @@ public unsafe sealed partial class VrrModule
         return 0;
     }
 
+    private static readonly int[] SpherePadEdgeOffsets = [0x6, 0x8, 0xa, 0x1c];
+
+    private static byte* sphere_pad_slot(int port)
+    {
+        byte* record = FhUtil.ptr_at<byte>(PadRecords + port * 0x100);
+        return record + (record[0x9c] & 3) * 0x20;
+    }
+
     private readonly ushort[] _sphere_carried_edges = new ushort[2 * 4];
     private bool _sphere_edges_carried;
 
@@ -126,8 +134,8 @@ public unsafe sealed partial class VrrModule
             sphere_smooth(false);
             for (int port = 0; port < 2; port++)
             {
-                byte* slot = pad_current_slot(port);
-                for (int i = 0; i < PadEdgeOffsets.Length; i++) _sphere_carried_edges[port * 4 + i] |= *(ushort*)(slot + PadEdgeOffsets[i]);
+                byte* slot = sphere_pad_slot(port);
+                for (int i = 0; i < SpherePadEdgeOffsets.Length; i++) _sphere_carried_edges[port * 4 + i] |= *(ushort*)(slot + SpherePadEdgeOffsets[i]);
             }
             _sphere_edges_carried = true;
             _sphereSkipped++;
@@ -140,10 +148,10 @@ public unsafe sealed partial class VrrModule
         Span<ushort> own = stackalloc ushort[2 * 4];
         for (int port = 0; port < 2; port++)
         {
-            byte* slot = pad_current_slot(port);
-            for (int i = 0; i < PadEdgeOffsets.Length; i++)
+            byte* slot = sphere_pad_slot(port);
+            for (int i = 0; i < SpherePadEdgeOffsets.Length; i++)
             {
-                ushort* word = (ushort*)(slot + PadEdgeOffsets[i]);
+                ushort* word = (ushort*)(slot + SpherePadEdgeOffsets[i]);
                 own[port * 4 + i] = *word;
                 *word |= _sphere_carried_edges[port * 4 + i];
             }
@@ -151,8 +159,8 @@ public unsafe sealed partial class VrrModule
         original.fnptr!();
         for (int port = 0; port < 2; port++)
         {
-            byte* slot = pad_current_slot(port);
-            for (int i = 0; i < PadEdgeOffsets.Length; i++) *(ushort*)(slot + PadEdgeOffsets[i]) = own[port * 4 + i];
+            byte* slot = sphere_pad_slot(port);
+            for (int i = 0; i < SpherePadEdgeOffsets.Length; i++) *(ushort*)(slot + SpherePadEdgeOffsets[i]) = own[port * 4 + i];
         }
         Array.Clear(_sphere_carried_edges);
         _sphere_edges_carried = false;
