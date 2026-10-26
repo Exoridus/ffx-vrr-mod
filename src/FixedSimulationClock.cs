@@ -16,6 +16,8 @@ public sealed class FixedSimulationClock(int frequency = 60)
     private double _previousSpeed = double.NaN;
     private double _deadlineFirst, _deadlineSpacing;
     private int _deadlineCount;
+    /// <summary>Whether the latest interval has a stable model time mapping, including zero-step images.</summary>
+    public bool HasMappedInterval { get; private set; }
 
     public void Reset()
     {
@@ -23,6 +25,7 @@ public sealed class FixedSimulationClock(int frequency = 60)
         _accumulator = 0;
         _previousSpeed = double.NaN;
         _deadlineCount = 0;
+        HasMappedInterval = false;
     }
 
     /// <summary>
@@ -41,6 +44,7 @@ public sealed class FixedSimulationClock(int frequency = 60)
     public SimulationFramePlan Plan(double now, double speed = 1)
     {
         _deadlineCount = 0;
+        HasMappedInterval = false;
         double previous = _previous;
         double accumulatorBefore = _accumulator;
         speed = double.IsFinite(speed) ? Math.Clamp(speed, 0, 8) : 1;
@@ -62,7 +66,7 @@ public sealed class FixedSimulationClock(int frequency = 60)
         int due = Math.Max(0, (int)Math.Floor((_accumulator + 1e-9) / _stepSeconds));
         // Retain any epsilon-borrowed time so image partitions cannot manufacture ticks.
         _accumulator -= due * _stepSeconds;
-        if (!reset && stableSpeed && speed > 0 && previous >= 0 && now >= 0 && due > 0)
+        if (!reset && stableSpeed && speed > 0 && previous >= 0 && now >= 0)
         {
             _deadlineFirst = previous + (_stepSeconds - accumulatorBefore) / speed;
             _deadlineSpacing = _stepSeconds / speed;
@@ -74,6 +78,7 @@ public sealed class FixedSimulationClock(int frequency = 60)
                 last = deadline;
                 if (i == due - 1) _deadlineCount = due;
             }
+            HasMappedInterval = due == 0 || _deadlineCount == due;
         }
         return new(due, (float)Math.Clamp(_accumulator / _stepSeconds, 0, 1), reset, lost);
     }

@@ -316,4 +316,4 @@ internal static partial class EngineAddresses
 
 internal sealed class TestRateSetting { internal int Value; internal int get() => Value; }
 
-internal sealed class TestDiagnostics { internal bool IsCapturing { get; set; } }
+internal sealed class TestDiagnostics { internal bool IsCapturing { get; set; } internal long DroppedEvents { get; set; } }

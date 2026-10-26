@@ -18,6 +18,7 @@
     <Compile Include="../../src/VrrModule.Qualification.cs" Link="VrrModule.Qualification.cs" />
     <Compile Include="../../src/ParticlePresentationCapture.cs" Link="ParticlePresentationCapture.cs" />
     <Compile Include="../../src/FixedSimulationClock.cs" Link="FixedSimulationClock.cs" />
+    <Compile Include="../../src/PadObservationTimeline.cs" Link="PadObservationTimeline.cs" />
     <Compile Include="../../src/VrrConfig.cs" Link="VrrConfig.cs" />
     <Compile Include="../../src/VrrModule.BattlePresentation.cs" Link="VrrModule.BattlePresentation.cs" />
     <Compile Include="../../src/BattleEffectState.cs" Link="BattleEffectState.cs" />

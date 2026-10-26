@@ -85,7 +85,7 @@ public unsafe sealed partial class VrrModule
         finally
         {
             long? nativeEnd = nativeStart.HasValue ? Stopwatch.GetTimestamp() : null;
-            render_scheduler_exit_loop();
+            render_scheduler_exit_loop(nativeReturned);
             diagnostic_raw(4, delta);
             if (_diagnostics?.IsCapturing == true)
                 diagnostic_event("loop_exit", diagnostic_view(nativeStart, nativeEnd, nativeStart.HasValue ? nativeReturned : null));

@@ -108,6 +108,7 @@ public unsafe sealed partial class VrrModule
         if (_render_scheduler_active && _render_plan_pending)
         {
             _simulationClock.Reset();
+            reset_pad_observation_timeline("unconsumed_plan");
             RenderPassContext.ResetHistory();
             reset_render_camera();
             reset_render_actors();
@@ -135,9 +136,10 @@ public unsafe sealed partial class VrrModule
         party_swap_collect();
     }
 
-    private void render_scheduler_exit_loop()
+    private void render_scheduler_exit_loop(bool nativeReturned = true)
     {
         if (!_render_inside_loop) return;
+        if (!nativeReturned) reset_pad_observation_timeline("native_loop_exception");
         // A draw callback can derive this global from exec zero; do not carry that pause into simulation.
         viewport_restore(RenderPassContext.IsPresentation);
         party_swap_end_pass(RenderPassContext.IsPresentation);
@@ -149,6 +151,7 @@ public unsafe sealed partial class VrrModule
             && OwnsRenderPass && _presentationAdmission.Failure is null
             && _simulationClock.TryGetStepDeadline(_render_plan.Steps - _render_steps_remaining, out double deadline))
             tickDeadlineSeconds = deadline;
+        object? padTickCorrelation = nativeReturned ? pad_observations_pass_completed(tickDeadlineSeconds) : null;
         if (_render_clock_seen && _render_simulation_pass)
         {
             _simulation_ticks++;
@@ -160,7 +163,8 @@ public unsafe sealed partial class VrrModule
         diagnostic_event("render_pass", new { simulation = _render_simulation_pass, clock_seen = _render_clock_seen,
             remaining = _render_steps_remaining, alpha = _render_plan.Alpha, simulation_ticks = _simulation_ticks,
             additional_images = _additional_images, discarded_steps = _simulation_debt_dropped,
-            native_clock_owner = !_render_frame_enabled, tick_deadline_seconds = tickDeadlineSeconds });
+            native_clock_owner = !_render_frame_enabled, tick_deadline_seconds = tickDeadlineSeconds,
+            pad_tick_correlation = padTickCorrelation });
         RenderPassContext.IsPresentation = false;
         battle_effects_end_pass();
         _render_inside_loop = false;

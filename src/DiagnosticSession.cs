@@ -25,6 +25,7 @@ internal sealed class DiagnosticSession : IDisposable
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
     internal string Path { get; }
+    internal long DroppedEvents => Interlocked.Read(ref _dropped);
     internal string? Failure => Volatile.Read(ref _failure);
     internal bool Saturated => Volatile.Read(ref _budgetReached) != 0;
     internal bool IsCapturing => !Volatile.Read(ref _closed) && !Saturated && Failure is null;
