@@ -72,6 +72,7 @@ public unsafe sealed partial class VrrModule
             return;
         }
 
+        diagnostic_cooperation_readiness();
         long previous = _diagnosticLoopId;
         _diagnosticLoopId = System.Threading.Interlocked.Increment(ref _diagnosticLoopCounter);
         _load_passes++;
@@ -81,6 +82,8 @@ public unsafe sealed partial class VrrModule
         bool successful = false;
         try
         {
+            cooperative_tick_enter_loop(snapshotScope);
+            pad_replay_enter_loop(snapshotScope);
             if (snapshotScope.Owned) render_scheduler_enter_loop(delta);
             diagnostic_raw(3, delta);
             bool measure = _diagnostics?.IsCapturing == true;
@@ -92,24 +95,36 @@ public unsafe sealed partial class VrrModule
         }
         finally
         {
+            long? nativeEnd = nativeStart.HasValue ? Stopwatch.GetTimestamp() : null;
             try
             {
-                long? nativeEnd = nativeStart.HasValue ? Stopwatch.GetTimestamp() : null;
-                if (snapshotScope.Owned) render_scheduler_exit_loop(nativeReturned);
-                diagnostic_raw(4, delta);
-                if (_diagnostics?.IsCapturing == true)
-                    diagnostic_event("loop_exit", diagnostic_view(nativeStart, nativeEnd, nativeStart.HasValue ? nativeReturned : null));
-                successful = nativeReturned;
-            }
-            catch when (!nativeReturned)
-            {
-                // Cleanup must not replace the exception already propagating from entry or native code.
+                if (!nativeReturned) cooperative_tick_clock_completed(false);
+                cooperative_tick_exit_loop(snapshotScope);
             }
             finally
             {
-                try { pad_snapshot_exit_loop(snapshotScope, successful); }
-                catch when (!successful) { }
-                finally { _diagnosticLoopId = previous; }
+                try { pad_replay_exit_loop(snapshotScope); }
+                finally
+                {
+                    try
+                    {
+                        if (snapshotScope.Owned) render_scheduler_exit_loop(nativeReturned);
+                        diagnostic_raw(4, delta);
+                        if (_diagnostics?.IsCapturing == true)
+                            diagnostic_event("loop_exit", diagnostic_view(nativeStart, nativeEnd, nativeStart.HasValue ? nativeReturned : null));
+                        successful = nativeReturned;
+                    }
+                    catch when (!nativeReturned)
+                    {
+                        // Cleanup must not replace the exception already propagating from entry or native code.
+                    }
+                    finally
+                    {
+                        try { pad_snapshot_exit_loop(snapshotScope, successful); }
+                        catch when (!successful) { }
+                        finally { _diagnosticLoopId = previous; }
+                    }
+                }
             }
         }
     }

@@ -245,7 +245,8 @@ internal static unsafe class NativePadObservation
     internal static readonly List<(nint Address, int Length, long Start, long End)> Reads = [];
     internal static int? FailedPort;
     internal static bool ThrowOnCopy;
-    internal static void Reset() { Reads.Clear(); FailedPort = null; ThrowOnCopy = false; }
+    internal static Action? AfterCopy;
+    internal static void Reset() { Reads.Clear(); FailedPort = null; ThrowOnCopy = false; AfterCopy = null; }
     internal static bool Copy(nint address, Span<byte> target)
     {
         long start = Stopwatch.GetTimestamp();
@@ -255,6 +256,7 @@ internal static unsafe class NativePadObservation
             if (ThrowOnCopy) throw new InvalidOperationException("observation fixture");
             if (FailedPort == (int)((address - FhUtil.PadRecordPointer - 0x80) / 0x100)) return false;
             new ReadOnlySpan<byte>((void*)address, 32).CopyTo(target);
+            AfterCopy?.Invoke();
             return true;
         }
         finally { Reads.Add((address, target.Length, start, Stopwatch.GetTimestamp())); }

@@ -36,5 +36,8 @@
     <Compile Include="../../src/VrrModule.PadSnapshot.cs" Link="VrrModule.PadSnapshot.cs" />
     <Compile Include="../../src/VrrModule.DiagnosticBindings.cs" Link="VrrModule.DiagnosticBindings.cs" />
     <Compile Include="../../src/VrrModule.PadObservations.cs" Link="VrrModule.PadObservations.cs" />
+    <Compile Include="../../src/VrrModule.PadReplay.cs" Link="VrrModule.PadReplay.cs" />
+    <Compile Include="../../src/VrrModule.InputCooperation.cs" Link="VrrModule.InputCooperation.cs" />
+    <Compile Include="../../src/VrrModule.CooperativeTicks.cs" Link="VrrModule.CooperativeTicks.cs" />
   </ItemGroup>
 </Project>

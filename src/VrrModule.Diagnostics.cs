@@ -112,6 +112,8 @@ public unsafe sealed partial class VrrModule
             };
             if (_config.NativePhaseProbe)
             {
+                if (!IndependentPresentationEnabled)
+                    init_diagnostic_cooperation(FhApi.Mods.get_modules().Select(context => (object)context.Module));
                 init_diagnostic_bindings();
                 init_farplane_diagnostics();
                 init_menu_water_diagnostics();

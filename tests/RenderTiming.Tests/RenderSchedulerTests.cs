@@ -126,7 +126,7 @@ public sealed class RenderSchedulerCollection;
 
 public unsafe sealed partial class VrrModule
 {
-    public VrrModule() { _pad_latch_installed = _pad_history_readers_ready = true; SeedSyntheticSnapshotBaseline(); ArmSyntheticRuntimeForTest(); }
+    public VrrModule() { bind_cooperative_ticks([]); _pad_latch_installed = _pad_history_readers_ready = true; SeedSyntheticSnapshotBaseline(); ArmSyntheticRuntimeForTest(); }
     private void ArmSyntheticRuntimeForTest()
     {
         // Synthetic fixture activation does not qualify native startup.

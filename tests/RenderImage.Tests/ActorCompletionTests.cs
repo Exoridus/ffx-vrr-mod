@@ -160,6 +160,82 @@ public sealed class ActorCompletionTests
         Assert.Equal(world, f.Module.ActorLoanWorld);
         Assert.Equal(bone, f.Module.ActorLoanBone);
     }
+    [Theory]
+    [InlineData("initialize", "begin")]
+    [InlineData("initialize", "presentation")]
+    [InlineData("initialize", "restore")]
+    [InlineData("initialize", "reset")]
+    [InlineData("initialize", "replay")]
+    [InlineData("initialize", "complete")]
+    [InlineData("initialize", "capture")]
+    [InlineData("finalize", "restore")]
+    [InlineData("reset", "restore")]
+    public void Observed_graphics_lifetime_change_retains_native_loans_even_at_the_same_scheduler(string lifecycle, string operation)
+    {
+        using var f = new BridgeFixture();
+        f.Init();
+        SeedPairedHistory(f.Module);
+        f.Module.SeedActorLoan();
+        byte[] world = f.Module.ActorLoanWorld;
+        var bone = f.Module.ActorLoanBone;
+        if (lifecycle == "initialize") Assert.Equal(0u, f.Initialize());
+        if (lifecycle == "finalize") Assert.Equal(0u, f.FinalizeGraphics());
+        if (lifecycle == "reset") f.ResetGraphics();
+        switch (operation)
+        {
+            case "begin": f.Module.ActorBegin(); break;
+            case "presentation": f.Module.ActorPresentation(); break;
+            case "restore": f.Module.ActorRestore(); break;
+            case "reset": f.Module.ActorReset(); break;
+            case "replay": f.Module.ActorReplay(); break;
+            case "complete": f.Module.ActorComplete(); break;
+            case "capture": f.Module.ActorCaptureLoan(); Assert.Equal(1, BridgeNative.ActorInstances); break;
+        }
+        Assert.Equal("actor_graphics_lifetime_changed", f.Module.Failure);
+        Assert.False(f.Module.ActorSampling);
+        Assert.False(f.Module.ActorActive);
+        Assert.False(f.Module.HasActorPair);
+        Assert.Equal(world, f.Module.ActorLoanWorld);
+        Assert.Equal(bone, f.Module.ActorLoanBone);
+        Assert.Equal(1, f.Module.ActorLoans);
+        f.SetActorFreeCount(8);
+        f.Module.ActorBegin(); f.Module.ActorRestore(); f.Module.ActorReset();
+        Assert.Equal(world, f.Module.ActorLoanWorld);
+        Assert.Equal(bone, f.Module.ActorLoanBone);
+        Assert.Equal(2, f.Module.RestoreActorLoanIntoCopies());
+    }
+    [Fact]
+    public void Lifecycle_change_inside_native_actor_setter_refuses_post_return_capture()
+    {
+        using var f = new BridgeFixture();
+        f.Init();
+        SeedPairedHistory(f.Module);
+        f.Module.SeedActorLoan();
+        BridgeNative.OnActorInstance = (_, _) => Assert.Equal(0u, f.Initialize());
+        f.Module.ActorCaptureLoan();
+        Assert.Equal(1, BridgeNative.ActorInstances);
+        Assert.Equal("actor_graphics_lifetime_changed", f.Module.Failure);
+        Assert.False(f.Module.ActorSampling);
+        Assert.False(f.Module.ActorActive);
+        Assert.False(f.Module.HasActorPair);
+        Assert.False(f.Module.ActorHasCanonicalWorld);
+        Assert.Equal(1, f.Module.ActorLoans);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Empty_preinitialization_cleanup_does_not_bind_a_resource_epoch(bool reset)
+    {
+        using var f = new BridgeFixture();
+        if (reset) f.Module.ActorReset();
+        else f.Module.ActorRestore();
+        f.Init();
+        f.Module.ActorBegin();
+        Assert.Null(f.Module.Failure);
+        Assert.True(f.Module.ActorSampling);
+        Assert.True(f.Module.ActorActive);
+    }
     private static void SeedPairedHistory(VrrModule module)
     {
         module.ActorBegin();

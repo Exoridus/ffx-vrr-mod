@@ -18,6 +18,7 @@ public unsafe sealed partial class VrrModule
     private int _renderActorCallbacks;
     // shortcut: Refused loans stay retained until a qualified quiescent recovery boundary is implemented.
     private bool _renderActorCompletionRefused;
+    private long? _renderActorGraphicsEpoch;
 
     private object render_actors_counters()
     {
@@ -91,11 +92,28 @@ public unsafe sealed partial class VrrModule
     {
         lock (_renderActorLock)
         {
-            if (_renderActorCompletionRefused) return;
+            if (!render_actor_lifetime_valid(bind: true)) return;
             render_actors_restore();
+            if (!render_actor_lifetime_valid()) return;
             _renderActorGeneration++;
             _renderActorHistory.BeginSimulation();
             _renderActorsActive = _renderActorsSampling = true;
+        }
+    }
+
+    private bool render_actor_lifetime_valid(bool bind = false)
+    {
+        if (_renderActorCompletionRefused) return false;
+        lock (_graphicsLifetimeGate)
+        {
+            if (_renderActorGraphicsEpoch is null && !bind) return true;
+            if (_graphicsActive != 0 || (_renderActorGraphicsEpoch is { } epoch && epoch != _graphicsEpoch))
+            {
+                refuse_render_actor_completion("actor_graphics_lifetime_changed");
+                return false;
+            }
+            _renderActorGraphicsEpoch ??= _graphicsEpoch;
+            return true;
         }
     }
 
@@ -120,7 +138,7 @@ public unsafe sealed partial class VrrModule
     {
         lock (_renderActorLock)
         {
-            if (_renderActorCompletionRefused) return;
+            if (!render_actor_lifetime_valid()) return;
             if (System.Threading.Volatile.Read(ref _renderActorCallbacks) != 0)
             {
                 refuse_render_actor_completion("actor_callbacks_outstanding");
@@ -132,11 +150,13 @@ public unsafe sealed partial class VrrModule
                 refuse_render_actor_completion("actor_jobs_unconfirmed");
                 return;
             }
+            if (!render_actor_lifetime_valid()) return;
             _renderActorHistory.CompleteSimulation();
             _renderActorsSampling = false;
             foreach (var key in _renderActorStates.Where(pair => pair.Value.Generation != _renderActorGeneration).Select(pair => pair.Key).ToArray())
             {
                 restore_render_actor(key, _renderActorStates[key]);
+                if (!render_actor_lifetime_valid()) return;
                 _renderActorStates.Remove(key);
             }
         }
@@ -146,8 +166,9 @@ public unsafe sealed partial class VrrModule
     {
         lock (_renderActorLock)
         {
-            if (_renderActorCompletionRefused) return;
+            if (!render_actor_lifetime_valid(bind: true)) return;
             render_actors_restore();
+            if (!render_actor_lifetime_valid()) return;
             render_camera_set_presentation_alpha(alpha);
             _renderActorsActive = true;
             _renderActorsSampling = false;
@@ -159,7 +180,7 @@ public unsafe sealed partial class VrrModule
     {
         lock (_renderActorLock)
         {
-            if (_renderActorCompletionRefused) return;
+            if (!render_actor_lifetime_valid()) return;
             foreach (var pair in _renderActorStates) restore_render_actor(pair.Key, pair.Value);
         }
     }
@@ -168,10 +189,12 @@ public unsafe sealed partial class VrrModule
     {
         lock (_renderActorLock)
         {
-            if (_renderActorCompletionRefused) return;
+            if (!render_actor_lifetime_valid()) return;
             render_actors_restore();
+            if (!render_actor_lifetime_valid()) return;
             _renderActorHistory.Reset();
             _renderActorStates.Clear();
+            _renderActorGraphicsEpoch = null;
             _renderActorsActive = _renderActorsSampling = false;
         }
     }
@@ -239,7 +262,7 @@ public unsafe sealed partial class VrrModule
     {
         var original = new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0))
             .chain_from(h_render_actor_instance).fnptr!;
-        if (_renderActorCompletionRefused || !_renderActorsBound || !_renderActorsActive || _renderActorSubmittingGroup == 0)
+        if (!_renderActorsBound || !_renderActorsActive || _renderActorSubmittingGroup == 0 || !render_actor_lifetime_valid())
         {
             original(instance, matrix);
             return;
@@ -255,6 +278,7 @@ public unsafe sealed partial class VrrModule
             || state.RenderedBones.Length != boneCount)
             _renderActorStates[instance] = state = new(identity, boneCount);
         restore_render_actor(instance, state);
+        if (!render_actor_lifetime_valid()) { original(instance, matrix); return; }
         var palette = new Span<Matrix4x4>((void*)(nint)identity.Palette, boneCount);
         Matrix4x4 canonical = *matrix;
         diagnostic_actor_pose(instance, canonical, palette, rendered: false);
@@ -265,7 +289,7 @@ public unsafe sealed partial class VrrModule
             state.Generation = _renderActorGeneration;
         }
         original(instance, matrix);
-        if (_renderActorCompletionRefused) return;
+        if (!render_actor_lifetime_valid()) return;
         if (_renderActorsSampling)
         {
             new ReadOnlySpan<byte>((void*)(nint)identity.World, 48).CopyTo(state.CanonicalWorld);
@@ -289,8 +313,9 @@ public unsafe sealed partial class VrrModule
         new ReadOnlySpan<byte>((void*)(nint)identity.World, 48).CopyTo(canonicalWorld);
         // The native setter copies this input synchronously; no stack pointer reaches the draw.
         original(instance, &renderedRoot);
+        if (!render_actor_lifetime_valid()) return;
         state.Write.Record(canonicalWorld, new ReadOnlySpan<byte>((void*)(nint)identity.World, 48), palette, state.RenderedBones);
-        if (_renderActorCompletionRefused) return;
+        if (!render_actor_lifetime_valid()) return;
         _renderActorBlends++;
         for (int i = 0; i < palette.Length; i++)
             if (!RenderCameraWrite.BitwiseEqual(palette[i], state.RenderedBones[i])) _renderActorBoneBlends++;
@@ -300,11 +325,12 @@ public unsafe sealed partial class VrrModule
 
     private void replay_render_actors()
     {
-        if (_renderActorCompletionRefused || !_renderActorsBound) return;
+        if (!render_actor_lifetime_valid() || !_renderActorsBound) return;
         var original = new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0))
             .chain_from(h_render_actor_instance).fnptr!;
         foreach (var pair in _renderActorStates)
         {
+            if (!render_actor_lifetime_valid()) return;
             var state = pair.Value;
             if (!state.HasCanonicalWorld
                 || !try_render_actor_layout(pair.Key, (nint)state.Identity.Group, out var identity, out int count)
@@ -316,8 +342,9 @@ public unsafe sealed partial class VrrModule
                     _renderCameraAlpha, out var root, state.RenderedBones)) continue;
             // Render-only paths may reuse an instance without resubmitting its world matrix.
             original(pair.Key, &root);
+            if (!render_actor_lifetime_valid()) return;
             state.Write.Record(state.CanonicalWorld, world, palette, state.RenderedBones);
-            if (_renderActorCompletionRefused) return;
+            if (!render_actor_lifetime_valid()) return;
             state.RenderedBones.CopyTo(palette);
             diagnostic_actor_pose(pair.Key, root, palette, rendered: true);
             _renderActorReplays++;
@@ -342,9 +369,10 @@ public unsafe sealed partial class VrrModule
 
     private void restore_render_actor(nint instance, RenderActorNativeState state)
     {
-        if (_renderActorCompletionRefused) return;
+        if (!render_actor_lifetime_valid()) return;
         if (!try_render_actor_layout(instance, (nint)state.Identity.Group, out var identity, out int count)
             || identity != state.Identity || count != state.RenderedBones.Length) return;
+        if (!render_actor_lifetime_valid()) return;
         if (state.Write.Restore(new Span<byte>((void*)(nint)identity.World, 48),
                 new Span<Matrix4x4>((void*)(nint)identity.Palette, count)) > 0) _renderActorRestores++;
     }

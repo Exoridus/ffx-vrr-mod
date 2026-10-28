@@ -95,6 +95,16 @@ public unsafe sealed partial class VrrModule
         Assert.Equal(Matrix4x4.CreateTranslation(1, 2, 3), bones[0]);
         return result;
     }
+    internal void ActorCaptureLoan()
+    {
+        _renderActorsBound = true;
+        _renderActorSubmittingGroup = FhUtil.Base + 0x814000;
+        Matrix4x4* matrix = (Matrix4x4*)(FhUtil.Base + 0x815000);
+        *matrix = Matrix4x4.Identity;
+        try { h_render_actor_instance(FhUtil.Base + 0x810000, matrix); }
+        finally { _renderActorSubmittingGroup = 0; }
+    }
+    internal bool ActorHasCanonicalWorld => _renderActorStates.Values.Single().HasCanonicalWorld;
     internal void ActorReset() => reset_render_actors();
     internal void ActorRestore() => render_actors_restore();
     internal void ActorPresentation() => render_actors_begin_presentation(.5f);

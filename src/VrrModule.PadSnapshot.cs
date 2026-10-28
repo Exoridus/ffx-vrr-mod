@@ -50,8 +50,8 @@ public unsafe sealed partial class VrrModule
         return true;
     }
 
-    private bool pad_snapshot_guards()
-        => pad_snapshot_binding_ready() && pad_input_presentation_ready() && !pad_native_input_owner()
+    private bool pad_snapshot_guards(bool allowNativeInputOwner = false)
+        => pad_snapshot_binding_ready() && pad_input_presentation_ready() && (allowNativeInputOwner || !pad_native_input_owner())
             && _presentationAdmission.Failure is null
             && pad_snapshot_read<uint>(PadSnapshotNamesReset, out uint names) && names == 0
             && pad_snapshot_read<uint>(PadSnapshotPress, out uint press) && (press & 0x10) == 0
@@ -61,11 +61,11 @@ public unsafe sealed partial class VrrModule
             && pad_snapshot_read<byte>(PadSnapshotByteLatch, out byte byteLatch) && byteLatch == 0
             && pad_snapshot_read<uint>(PadSnapshotDwordLatch, out uint dwordLatch) && dwordLatch == 0;
 
-    private bool pad_snapshot_presentation_ready()
+    private bool pad_snapshot_presentation_ready(bool allowNativeInputOwner = false)
     {
         lock (_padSnapshotGate)
             return _padSnapshotInstalled && _padSnapshotBaseline
-                && _padSnapshotBaselineEpoch == RenderPassContext.HistoryEpoch && pad_snapshot_guards();
+                && _padSnapshotBaselineEpoch == RenderPassContext.HistoryEpoch && pad_snapshot_guards(allowNativeInputOwner);
     }
 
     private PadSnapshotScope pad_snapshot_enter_loop()
@@ -204,6 +204,7 @@ public unsafe sealed partial class VrrModule
 
     private void pad_snapshot_invoke(nuint returnAddress, d_render_void original)
     {
+        if (_padReplayLoan is not null) pad_replay_before_snapshot();
         bool owner = false, tracked = false;
         lock (_padSnapshotGate)
         {
@@ -271,5 +272,6 @@ public unsafe sealed partial class VrrModule
                 }
             }
         }
+        cooperative_tick_snapshot_completed(returnAddress, tracked);
     }
 }

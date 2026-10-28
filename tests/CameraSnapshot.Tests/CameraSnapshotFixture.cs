@@ -76,6 +76,13 @@ public unsafe sealed partial class VrrModule
     internal int FinalizeCamera(int viewport = 0) => h_render_camera_finalize(viewport);
     internal void RestoreCamera() => restore_render_camera();
     private bool pad_native_input_owner() => NativeOwner;
+    private object? _padReplayLoan => null;
+    private void pad_replay_before_snapshot() { }
+    private bool cooperative_ticks_ready() => true;
+    private bool _padPublicationNativeFallback => false;
+    private void pad_native_clock_invoke(float delta) => CameraNative.Resolve<d_advance_vblank>(EngineAddresses.AdvanceVBlankCounters)(delta);
+    private void cooperative_tick_clock_completed(bool successful) { }
+    private void cooperative_tick_snapshot_completed(nuint returnAddress, bool tracked) { }
     private bool pad_input_presentation_ready() => true;
     private bool pad_observation_binding_ready() => true;
     private bool fmv_playing() => NativeOwner;

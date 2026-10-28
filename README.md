@@ -41,6 +41,21 @@ entry. Fahrenheit and other mods remain installed. Each download has a `.sha256`
 with `Get-FileHash`.
 
 Use windowed or borderless mode with MSAA off. Do not combine with another frame-rate mod.
+For shared hooks, place `fhvrr` **last (bottom)** in `fahrenheit/mods/loadorder`,
+after `fhparry`, `fhqol` and other mods. With official alpha12's startup hook
+registration, the last registered hook runs first, so VRR surrounds the other
+hooks and can forward through Fahrenheit's normal chain. Keep that order after
+updates. It is a setup requirement for the independent-presentation path under
+development, not proof that high render FPS are ready; that path remains disabled.
+
+Ordinary hooks can add work before or after their next-chain call. Simulation
+work must remain on simulation ticks rather than extra rendered images. VRR
+holds some native update calls on extra images, so hooks inside those calls also
+run at the simulation rate. Parry and QoL use small optional interfaces for their
+timing and focus-input decisions. Mods that replace the same timing/input policy,
+change hook chains after startup, call the continuation repeatedly or omit it
+need separate compatibility work. Corrected60 startup checks in both Parry/QoL
+orders do not establish active high-FPS compatibility with arbitrary mods.
 
 ## Settings
 

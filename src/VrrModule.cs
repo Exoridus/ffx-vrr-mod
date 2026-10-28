@@ -177,6 +177,12 @@ public unsafe sealed partial class VrrModule : FhModule
             ok &= init_lens_sprite_hook();
             ok &= init_particle_uv_hooks();
             ok &= init_cross_fade_hook();
+            if (IndependentPresentationEnabled)
+            {
+                var participants = FhApi.Mods.get_modules().Select(context => (object)context.Module).ToArray();
+                ok &= bind_pad_input_policy(participants);
+                ok &= bind_cooperative_ticks(participants);
+            }
             ok &= init_pad_latch_hook();
             ok &= init_viewport_rollback();
             ok &= init_upstream_ui_hooks();

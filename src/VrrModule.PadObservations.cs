@@ -14,6 +14,8 @@ public unsafe sealed partial class VrrModule
     private double? _padPreparedDeadline;
     private bool _padNativePublicationObserved, _padPublicationSeen;
     private int _padPublicationDepth;
+    private long _padNativeLatchReturns;
+    private string? _padPublicationCallerKind;
 
     private bool init_pad_observations()
     {
@@ -42,6 +44,7 @@ public unsafe sealed partial class VrrModule
             _padNativePublicationObserved = _padPublicationSeen = false;
             _padPreparedTick = null;
             _padPreparedDeadline = null;
+            _padReplayRequested = null;
             _padTimeline.Reset(reason);
         }
     }
@@ -98,6 +101,10 @@ public unsafe sealed partial class VrrModule
             return;
         }
 
+        if (_padReplayLoan is not null || _padReplayRequested is not null)
+        {
+            lock (_padObservationGate) pad_replay_cancel("pad_replay_new_native_poll");
+        }
         try
         {
             new FhCallHandle<d_pad_port_poll>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr!(port, pad, buffer);
@@ -156,9 +163,13 @@ public unsafe sealed partial class VrrModule
         {
             lock (_padObservationGate)
             {
-                _padNativePublicationObserved = _padPublicationSeen = false;
+                _padNativePublicationObserved = _padPublicationSeen = _padReplayApplied = false;
+                _padPublicationCallerKind = null;
+                _padPreparedPolicyGeneration = null;
+                _padPublicationNativeFallback = false;
                 _padPreparedTick = null;
                 _padPreparedDeadline = null;
+                _padReplayRequested = null;
                 if (System.Threading.Volatile.Read(ref _padPublicationDepth) != 0)
                 {
                     reset_pad_observation_timeline("publication_in_flight");
@@ -171,8 +182,15 @@ public unsafe sealed partial class VrrModule
                     return;
                 }
                 if (deadlineSeconds is null) return;
+                if (_qolInputPolicy is not null)
+                {
+                    if (!pad_input_policy(out long generation, out bool neutralize) || neutralize) return;
+                    _padPreparedPolicyGeneration = generation;
+                }
                 _padPreparedTick = _padTimeline.Correlate(deadlineSeconds.Value);
                 _padPreparedDeadline = deadlineSeconds;
+                _padPreparedObservations = _padTimeline.LatestObserved();
+                _padPreparedPollSequence = System.Threading.Interlocked.Read(ref _padObservationSequence);
             }
         }
         catch (Exception error) { stop_pad_observations(error); }
@@ -193,18 +211,37 @@ public unsafe sealed partial class VrrModule
                     prepared = _padPreparedTick;
                     if (prepared is not null)
                     {
-                        bool caller = returnAddress == (nuint)FhUtil.ptr_at<byte>(PadLatchPublicationReturn)
-                            && returnAddress <= uint.MaxValue && returnSlot <= nuint.MaxValue - sizeof(uint)
+                        bool slot = returnAddress <= uint.MaxValue && returnSlot <= nuint.MaxValue - sizeof(uint)
                             && MemoryProbe.IsReadable((nint)returnSlot, sizeof(uint)) && *(uint*)returnSlot == returnAddress;
+                        bool direct = slot && returnAddress == (nuint)FhUtil.ptr_at<byte>(PadLatchPublicationReturn);
+                        bool cooperative = slot && !direct && pad_qol_expected_publication();
+                        bool caller = direct || cooperative;
+                        _padPublicationCallerKind = direct ? "direct_native" : cooperative ? "cooperative_qol_clock" : null;
                         observed = _padTimeline.LatestObserved();
                         string? reason = depth != 1 || _padPublicationSeen ? "publication_reentry_or_duplicate"
                             : !caller ? "publication_caller_unmatched" : pad_publication_check(prepared, observed);
                         _padPublicationSeen = true;
-                        if (reason is not null) { reset_pad_observation_timeline(reason); prepared = null; }
+                        if (reason is not null)
+                        {
+                            if (_padReplayLoan is not null) pad_replay_cancel(reason);
+                            reset_pad_observation_timeline(reason);
+                            prepared = null;
+                        }
+                        else if (_padInputPolicyBound && _padReplayScope.Root && !pad_replay_begin(prepared))
+                        {
+                            pad_replay_cancel("pad_replay_acquisition_failed");
+                            prepared = null;
+                        }
                     }
                 }
             }
-            catch (Exception error) { stop_pad_observations(error); prepared = null; }
+            catch (Exception error)
+            {
+                if (_padReplayLoan is not null) pad_replay_cancel("pad_replay_observation_failed");
+                stop_pad_observations(error);
+                prepared = null;
+            }
+            long before = System.Threading.Interlocked.Read(ref _padNativeLatchReturns);
             try { h_pad_latch(); }
             catch { reset_pad_observation_timeline("native_publication_exception"); throw; }
             if (prepared is null) return;
@@ -212,18 +249,35 @@ public unsafe sealed partial class VrrModule
             {
                 lock (_padObservationGate)
                 {
-                    string? reason = pad_publication_check(prepared, observed);
-                    if (reason is not null) reset_pad_observation_timeline(reason);
-                    else _padNativePublicationObserved = true;
+                    if (_padInputPolicyBound && _padReplayScope.Root && _qolInputPolicy is not null
+                        && _padReplayRequested is not null && !_qolPublicationObserved)
+                        pad_input_cooperation_refuse("qol_publication_missing_before");
+                    string? reason = System.Threading.Interlocked.Read(ref _padNativeLatchReturns) != before + 1
+                        ? "publication_continuation_not_once" : pad_publication_check(prepared, observed);
+                    if (reason is not null)
+                    {
+                        if (_padReplayLoan is not null) pad_replay_cancel(reason);
+                        reset_pad_observation_timeline(reason);
+                    }
+                    else
+                    {
+                        _padNativePublicationObserved = true;
+                        _padReplayApplied = _padReplayLoan is { } loan && ReferenceEquals(loan.Tick, prepared);
+                    }
                 }
             }
-            catch (Exception error) { stop_pad_observations(error); }
+            catch (Exception error)
+            {
+                if (_padReplayLoan is not null) pad_replay_cancel("pad_replay_observation_failed");
+                stop_pad_observations(error);
+            }
         }
         finally { System.Threading.Interlocked.Decrement(ref _padPublicationDepth); }
     }
 
     private string? pad_publication_check(PadTickCorrelation prepared, PadObservedSample?[] observed)
     {
+        if (!pad_replay_policy_unchanged()) return "publication_focus_policy_changed";
         if (!ReferenceEquals(prepared, _padPreparedTick) || prepared.Epoch != _padTimeline.Epoch
             || !RuntimeEffectsArmed || !OwnsRenderPass || !_render_clock_seen || !_render_simulation_pass
             || !pad_observation_context(false) || _padPreparedDeadline != render_simulation_tick_deadline())
@@ -245,8 +299,9 @@ public unsafe sealed partial class VrrModule
                 || (candidate.RawWords[7] & 0xffff0000u) != (words[7] & 0xffff0000u)
                 || ((words[0] >> 8) & 0xff) != 1 || ((words[7] >> 16) & 0xff) == 0)
                 return "publication_metadata_changed";
+            var expected = _padReplayLoan is { } loan && ReferenceEquals(loan.Tick, prepared) ? loan.Selected[port] : words;
             // QoL can neutralize these bytes without changing status or repeat settings.
-            if (!live.Slice(1, 4).SequenceEqual(words.AsSpan(1, 4)) || live[6] != words[6])
+            if (!pad_replay_payload_equal(live, expected))
                 return "publication_payload_changed";
         }
         return null;
@@ -260,10 +315,13 @@ public unsafe sealed partial class VrrModule
             {
                 var result = _padPreparedTick;
                 bool publicationObserved = _padNativePublicationObserved;
+                bool replayApplied = _padReplayApplied;
+                _padReplayApplied = false;
                 double? preparedDeadline = _padPreparedDeadline;
                 _padNativePublicationObserved = _padPublicationSeen = false;
                 _padPreparedTick = null;
                 _padPreparedDeadline = null;
+                _padReplayRequested = null;
                 if (!pad_observation_context(false)) return null;
                 if (!_render_clock_seen || !_simulationClock.HasMappedInterval)
                 {
@@ -272,8 +330,8 @@ public unsafe sealed partial class VrrModule
                 }
                 if (deadlineSeconds is null || preparedDeadline != deadlineSeconds
                     || result is null || result.Epoch != _padTimeline.Epoch) return null;
-                return new { status = "candidate_only", native_input_applied = false, native_continuity_proven = false,
-                    native_publication_observed = publicationObserved,
+                return new { status = replayApplied ? "observed_state_applied" : "candidate_only", native_input_applied = replayApplied, native_continuity_proven = false,
+                    native_publication_observed = publicationObserved, publication_caller_kind = _padPublicationCallerKind,
                     epoch = result.Epoch, boundary = result.Boundary,
                     observations = result.Observations, latest = result.Latest };
             }

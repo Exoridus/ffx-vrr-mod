@@ -77,7 +77,7 @@ public unsafe sealed partial class VrrModule
 
     // Timed and clock-bypassing input paths retain native publication and real-time repeat.
     private bool pad_native_input_owner()
-        => EngineSyncPaced || fmv_playing() || FhUtil.get_at<int>(PadMenuReservation) != -1
+        => EngineSyncPaced || fmv_playing() || pad_qol_native_owner() || FhUtil.get_at<int>(PadMenuReservation) != -1
             || FhUtil.get_at<int>(PadMainMenu) != 0
             || FhUtil.get_at<int>(PadMenuPause) != 0
             || FhUtil.get_at<int>(OverdriveActive) != 0 || FhUtil.get_at<byte>(PadDummyActive) != 0;
@@ -216,6 +216,8 @@ public unsafe sealed partial class VrrModule
     {
         lock (_padObservationGate)
         {
+            if (_padPublicationDepth == 0 && _padReplayLoan is not null)
+                pad_replay_cancel("pad_replay_uncaptured_publication");
             if (_padPublicationDepth == 0 && _padPreparedTick is not null)
             {
                 if (_padPublicationSeen) reset_pad_observation_timeline("publication_uncaptured_duplicate");
@@ -223,6 +225,7 @@ public unsafe sealed partial class VrrModule
             }
         }
         new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).chain_from(_padLatchEntry!).fnptr!();
+        System.Threading.Interlocked.Increment(ref _padNativeLatchReturns);
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

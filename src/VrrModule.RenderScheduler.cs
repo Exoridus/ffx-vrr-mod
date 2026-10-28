@@ -72,6 +72,7 @@ public unsafe sealed partial class VrrModule
 
     private string _render_gate_reason()
         => _presentationAdmission.Failure ?? (EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
+            : IndependentPresentationEnabled && !cooperative_ticks_ready() ? "cooperative_ticks_unready"
             : !pad_observation_binding_ready() ? "pad_observer_not_installed"
             : !pad_input_presentation_ready() ? "pad_history_not_installed"
             : pad_native_input_owner() ? "native_input_owner"
@@ -82,9 +83,9 @@ public unsafe sealed partial class VrrModule
     private bool filter_needs_native_clock()
         => !_filter_presentation_hold && FhUtil.get_at<int>(EngineAddresses.FilterActiveMask) != 0;
 
-    private bool render_scheduler_frame_eligible()
-        => _presentationAdmission.Failure is null && render_image_admission_ready()
-            && pad_observation_binding_ready() && pad_input_presentation_ready() && !pad_native_input_owner()
+    private bool render_scheduler_frame_eligible(bool allowNativeInputOwner = false)
+        => _presentationAdmission.Failure is null && cooperative_ticks_ready() && render_image_admission_ready()
+            && pad_observation_binding_ready() && pad_input_presentation_ready() && (allowNativeInputOwner || !pad_native_input_owner())
             && field_particle_presentation_ready() && !filter_needs_native_clock();
 
     private void render_scheduler_begin_frame()
@@ -203,8 +204,15 @@ public unsafe sealed partial class VrrModule
         _render_clock_seen = true;
         double speed = _render_input_delta > 0 && float.IsFinite(nativeDelta) ? nativeDelta / _render_input_delta : 1;
         _render_clock_speed = double.IsFinite(speed) ? Math.Clamp(speed, 0, 8) : 1;
-        bool snapshotRejected = _render_frame_enabled && _render_snapshot_ready_at_frame && !pad_snapshot_presentation_ready();
-        if (_render_frame_enabled && (snapshotRejected || !render_scheduler_frame_eligible()))
+        bool nativeInputOwner = _render_frame_enabled && pad_native_input_owner();
+        if (nativeInputOwner && (RenderPassContext.IsPresentation || _padSnapshotHeld || _padReplayLoan is not null))
+        {
+            _presentationAdmission.Refuse("render_clock_native_owner_after_presentation");
+            return RenderClockAction.Presentation;
+        }
+        bool snapshotRejected = _render_frame_enabled && _render_snapshot_ready_at_frame
+            && !pad_snapshot_presentation_ready(allowNativeInputOwner: nativeInputOwner);
+        if (_render_frame_enabled && (snapshotRejected || !render_scheduler_frame_eligible(allowNativeInputOwner: nativeInputOwner)))
         {
             _presentationAdmission.Refuse(snapshotRejected ? "pad_snapshot_clock_readiness_lost" : "render_clock_readiness_lost");
             _render_frame_enabled = false;
@@ -215,6 +223,11 @@ public unsafe sealed partial class VrrModule
             RenderPassContext.ResetHistory();
             reset_render_camera();
             reset_render_actors();
+        }
+        else if (nativeInputOwner)
+        {
+
+            render_scheduler_native_input_handover();
         }
         if (_render_plan_pending)
         {
@@ -266,26 +279,32 @@ public unsafe sealed partial class VrrModule
         {
             decide_frame_advance();
             advance_overlay_spawn_clock();
-            new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0))
-                .chain_from(h_advance_vblank).fnptr!(1f / TargetFramerate);
+            pad_native_clock_invoke(1f / TargetFramerate);
             // The native clock can select syncdata while fetching its next record.
-            if (pad_native_input_owner())
+            if (pad_native_input_owner() || _padPublicationNativeFallback)
             {
-                _render_frame_enabled = false;
-                RenderPassContext.IsActive = false;
-                RenderPassContext.SetPass(1, false);
-                _simulationClock.Reset();
-                _render_plan = new(1, 1, true, 0);
-                render_camera_set_presentation_alpha(1);
-                RenderPassContext.ResetHistory();
-                reset_render_camera();
-                reset_render_actors();
+                render_scheduler_native_input_handover();
+
                 return RenderClockAction.Advanced;
             }
         }
         // The runner consumes this value after the clock; intermediate catch-up passes omit draw.
         FhUtil.set_at(EngineAddresses.ElapsedFrameCountFrameSkip, Math.Max(1, _render_steps_remaining));
         return _render_simulation_pass ? RenderClockAction.Advanced : RenderClockAction.Presentation;
+    }
+
+    private void render_scheduler_native_input_handover()
+    {
+        _render_frame_enabled = _render_plan_pending = false;
+        RenderPassContext.IsActive = false;
+        RenderPassContext.SetPass(1, false);
+        _simulationClock.Reset();
+        _render_plan = new(1, 1, true, 0);
+        _render_steps_remaining = 1;
+        render_camera_set_presentation_alpha(1);
+        RenderPassContext.ResetHistory();
+        reset_render_camera();
+        reset_render_actors();
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint d_render_exec();

@@ -41,7 +41,11 @@ public unsafe sealed partial class VrrModule
 
         bool completed = false;
         try { advance_vblank(arg1); completed = true; }
-        finally { pad_snapshot_clock_completed(completed); }
+        finally
+        {
+            try { pad_snapshot_clock_completed(completed); }
+            finally { cooperative_tick_clock_completed(completed); }
+        }
     }
 
     private void advance_vblank(float arg1)
@@ -58,8 +62,7 @@ public unsafe sealed partial class VrrModule
             decide_frame_advance();
             advance_overlay_spawn_clock();
 
-            new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0))
-                .chain_from(h_advance_vblank).fnptr!(arg1);
+            pad_native_clock_invoke(arg1);
         }
 
         // Between the original's write of the multi-pass counter and Sg_MainLoop's decrement of it,
