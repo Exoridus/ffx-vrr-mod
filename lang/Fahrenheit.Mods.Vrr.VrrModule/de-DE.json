@@ -1,10 +1,10 @@
 {
-  "name": "Bildrate",
-  "desc": "Rechnet die auf 30 Hz festgelegten Systeme der Engine auf die Rate um, mit der das Spiel wirklich läuft.",
-  "fhvrr.fps_overlay.name": "FPS-Anzeige",
-  "fhvrr.fps_overlay.desc": "Zeigt oben rechts Render-FPS / Simulationstakte pro Sekunde in einer kompakten Zeile. Unabhängig vom Diagnosefenster.",
-  "fhvrr.max_framerate.desc": "Live-Limit des unabhängigen VRR-Renderpfads. 0 ist unbegrenzt, sonst mindestens 30, z. B. 144. Der VRR-Pfad muss dafür aktiv und unterstützt sein. Native Videos behalten höchstens 60 Render-FPS.",
-  "fhvrr.simulation_framerate.desc": "30, 60 oder 120 Simulationstakte pro Sekunde; Standard 60. Ein Wechsel gilt nach Neustart. Native Videos behalten ihre Medienzeit. Ein vorhandener TargetFramerateOverride in der JSON hat Vorrang.",
-  "fhvrr.max_framerate.name": "Maximale Render-FPS (0 = unbegrenzt)",
-  "fhvrr.simulation_framerate.name": "Simulation / Engine-Cutscenes (Neustart)"
+  "name": "Frame Rate",
+  "desc": "Retimes the engine's 30 Hz-bound systems for the rate the game actually runs at.",
+  "fhvrr.fps_overlay.name": "FPS overlay",
+  "fhvrr.fps_overlay.desc": "Shows render FPS / simulation passes per second in one compact line at the top right. Independent of the diagnostic window.",
+  "fhvrr.max_framerate.desc": "Live cap for independent VRR rendering. 0 is unlimited; nonzero values are at least 30, e.g. 144. Requires an active supported VRR path. Native movies retain at most 60 render FPS.",
+  "fhvrr.simulation_framerate.desc": "30, 60 or 120 simulation ticks per second; default 60. Changes apply after restart. Movies retain their media clock. A JSON TargetFramerateOverride takes precedence.",
+  "fhvrr.max_framerate.name": "Maximum render FPS (0 = unlimited)",
+  "fhvrr.simulation_framerate.name": "Simulation / engine cutscenes (restart)"
 }
