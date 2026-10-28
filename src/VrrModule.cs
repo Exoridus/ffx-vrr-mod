@@ -142,6 +142,7 @@ public unsafe sealed partial class VrrModule : FhModule
             begin_startup_preparation();
             bool ok = init_startup_hook();
             init_diagnostics();
+            ok &= init_pad_observations();
 
             if (_config.Present)
             {

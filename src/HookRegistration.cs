@@ -40,7 +40,7 @@ internal static partial class HookSites
         HookSiteId.DeviceLockFairnessPhyreDeviceLockRelease => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "DeviceLockFairnessPhyreDeviceLockRelease", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", [], [], "", ""),
         HookSiteId.DeviceLockFairnessPhyreDeviceLockTelemetry => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "DeviceLockFairnessPhyreDeviceLockTelemetry", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", [], [], "", ""),
         HookSiteId.DiagnosticBindingsMainLoop => D(site, HookFamily.Diagnostics, HookPurpose.NativeTimingCorrection, "DiagnosticBindingsMainLoop", "NativePhaseProbe && DiagnosticSession && !IndependentPresentationEnabled", "Runs scheduler loop entry/exit as well as diagnostic observation.", [], [], "main_loop_callback", "diagnostic_loop"),
-        HookSiteId.DiagnosticBindingsPadPollObservation => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "DiagnosticBindingsPadPollObservation", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
+        HookSiteId.DiagnosticBindingsPadPollObservation => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "DiagnosticBindingsPadPollObservation", "IndependentPresentationEnabled || (NativePhaseProbe && DiagnosticSession)", "Observes native calls and retains bounded input candidates without publishing input.", ["clock.pass_scope"], [], "", ""),
         HookSiteId.DiagnosticsViewCommit => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "DiagnosticsViewCommit", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
         HookSiteId.DiagnosticsViewportFinalize => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "DiagnosticsViewportFinalize", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
         HookSiteId.DxgiClearState => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "DxgiClearState", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", [], [], "", ""),
@@ -468,7 +468,7 @@ internal sealed partial class HookRegistrationPlan
             || !independent && site is (HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation
                 or HookSiteId.GraphicsLifetimeGraphicsInitializeObservation or HookSiteId.GraphicsLifetimeGraphicsResetObservation
                 or HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion);
-        if (site == HookSiteId.TimingChSetMotionSpeed) deferred = false;
+        if (site == HookSiteId.TimingChSetMotionSpeed || independent && site == HookSiteId.DiagnosticBindingsPadPollObservation) deferred = false;
         return new(site, enabled, Required: !deferred, Deferred: deferred, ExpectedTargets: targets);
     }
 
@@ -499,7 +499,7 @@ internal sealed partial class HookRegistrationPlan
             HookSiteId.DeviceLockFairnessPhyreDeviceLockRelease => independent,
             HookSiteId.DeviceLockFairnessPhyreDeviceLockTelemetry => independent,
             HookSiteId.DiagnosticBindingsMainLoop => config.NativePhaseProbe && diagnostics && !independent,
-            HookSiteId.DiagnosticBindingsPadPollObservation => config.NativePhaseProbe && diagnostics,
+            HookSiteId.DiagnosticBindingsPadPollObservation => independent || config.NativePhaseProbe && diagnostics,
             HookSiteId.DiagnosticsViewCommit => config.NativePhaseProbe && diagnostics,
             HookSiteId.DiagnosticsViewportFinalize => config.NativePhaseProbe && diagnostics,
             HookSiteId.DxgiClearState => independent,

@@ -186,9 +186,10 @@ public unsafe sealed partial class VrrModule
     internal void BeginFrame() => render_scheduler_begin_frame();
     internal void RefusePresentation(string reason) => _presentationAdmission.Refuse(reason);
     internal void EndPass() => render_scheduler_exit_loop();
-    internal void ArmScheduler() => _render_mode_ready = true;
+    internal void ArmScheduler() { _padObservationInstalled = true; _render_mode_ready = true; }
     internal void SetHookScope(bool armed, bool frame, bool inside, bool presentation)
     {
+        _padObservationInstalled = true;
         _render_mode_ready = armed;
         _render_scheduler_active = true;
         _render_frame_enabled = frame;
@@ -224,7 +225,7 @@ public unsafe sealed partial class VrrModule
     private bool ensure_test_hook_registration()
     {
         if (_hookRegistration is not null) return true;
-        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, ParticleTimeline = _config.ParticleTimeline, EffectHold = _config.EffectHold };
+        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, NativePhaseProbe = _config.NativePhaseProbe, ParticleTimeline = _config.ParticleTimeline, EffectHold = _config.EffectHold };
         var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
             .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null));
         return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
@@ -256,6 +257,7 @@ public unsafe sealed partial class VrrModule
     private void advance_overlay_spawn_clock() { if (_advance_frame) OverlayTicks++; }
     internal void PreparePass()
     {
+        _padObservationInstalled = true;
         if (SyntheticSnapshotReady) SeedSyntheticSnapshotBaseline();
         _render_mode_ready = true;
         _render_scheduler_active = _render_frame_enabled = _render_mode_ready;

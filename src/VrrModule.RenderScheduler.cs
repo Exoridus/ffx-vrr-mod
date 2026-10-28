@@ -72,6 +72,7 @@ public unsafe sealed partial class VrrModule
 
     private string _render_gate_reason()
         => _presentationAdmission.Failure ?? (EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
+            : !pad_observation_binding_ready() ? "pad_observer_not_installed"
             : !pad_input_presentation_ready() ? "pad_history_not_installed"
             : pad_native_input_owner() ? "native_input_owner"
             : !_fieldPauseInstalled ? "field_pause_not_installed"
@@ -83,7 +84,7 @@ public unsafe sealed partial class VrrModule
 
     private bool render_scheduler_frame_eligible()
         => _presentationAdmission.Failure is null && render_image_admission_ready()
-            && pad_input_presentation_ready() && !pad_native_input_owner()
+            && pad_observation_binding_ready() && pad_input_presentation_ready() && !pad_native_input_owner()
             && field_particle_presentation_ready() && !filter_needs_native_clock();
 
     private void render_scheduler_begin_frame()
@@ -170,7 +171,7 @@ public unsafe sealed partial class VrrModule
         render_restore_particles(_render_particle_pause_before);
         _render_particle_pause_before = null;
         double? tickDeadlineSeconds = null;
-        if (nativeReturned && _diagnostics?.IsCapturing == true && _render_clock_seen && _render_simulation_pass
+        if (nativeReturned && (IndependentPresentationEnabled || _diagnostics?.IsCapturing == true) && _render_clock_seen && _render_simulation_pass
             && OwnsRenderPass && _presentationAdmission.Failure is null
             && _simulationClock.TryGetStepDeadline(_render_plan.Steps - _render_steps_remaining, out double deadline))
             tickDeadlineSeconds = deadline;

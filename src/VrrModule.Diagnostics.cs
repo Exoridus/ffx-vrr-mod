@@ -113,7 +113,6 @@ public unsafe sealed partial class VrrModule
             if (_config.NativePhaseProbe)
             {
                 init_diagnostic_bindings();
-                init_pad_observations();
                 init_farplane_diagnostics();
                 init_menu_water_diagnostics();
                 diagnostic_hook(HookSiteId.DiagnosticsViewportFinalize, "viewport_finalize", DiagnosticFinalize, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x20, 0xc7, 0x05],

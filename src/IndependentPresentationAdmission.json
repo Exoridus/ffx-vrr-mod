@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "49a0b144c8b6f101e606aaa49e17ff8cc9f222e6a4bd14e72fa3d96dd80d0240",
+  "canonical_contract_snapshot_sha256": "b7d98785a92ddec4444fe78fd1d1629290b84cbcebc6bdedeff01f7298f53b14",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -238,8 +238,8 @@
     },
     {
       "path": "src/HookRegistration.cs",
-      "sha256": "78989d50474375d4b22960624ee3cdb59fafb86ad3de203d49190b4e84dd69e3",
-      "lf_sha256": "78989d50474375d4b22960624ee3cdb59fafb86ad3de203d49190b4e84dd69e3"
+      "sha256": "1f7d5cfc9486c1b47bfee804c8aa5b61ef9f2647a3e38a320e407dbd809a8e42",
+      "lf_sha256": "1f7d5cfc9486c1b47bfee804c8aa5b61ef9f2647a3e38a320e407dbd809a8e42"
     },
     {
       "path": "src/HookSites.cs",
@@ -468,8 +468,8 @@
     },
     {
       "path": "src/VrrModule.Diagnostics.cs",
-      "sha256": "083d78cf87ad288a304bad89080929768cbd7ae11e805f7c8b85dc2595fda454",
-      "lf_sha256": "083d78cf87ad288a304bad89080929768cbd7ae11e805f7c8b85dc2595fda454"
+      "sha256": "d44307b16d44bed140b67e2b9d3e2ef937c5c615c9b6801a1de66a80d915e032",
+      "lf_sha256": "d44307b16d44bed140b67e2b9d3e2ef937c5c615c9b6801a1de66a80d915e032"
     },
     {
       "path": "src/VrrModule.DreamOverlay.cs",
@@ -628,8 +628,8 @@
     },
     {
       "path": "src/VrrModule.PadObservations.cs",
-      "sha256": "dd37b254f4ef62f1bb601e26dd014acf3f9ebafcea411b02166c891f35a3969e",
-      "lf_sha256": "dd37b254f4ef62f1bb601e26dd014acf3f9ebafcea411b02166c891f35a3969e"
+      "sha256": "0c655dd70fbb5f3c7d366f0ee44bdf1bba407b1a593a447e2a8309be744383ed",
+      "lf_sha256": "0c655dd70fbb5f3c7d366f0ee44bdf1bba407b1a593a447e2a8309be744383ed"
     },
     {
       "path": "src/VrrModule.PadSnapshot.cs",
@@ -698,8 +698,8 @@
     },
     {
       "path": "src/VrrModule.RenderScheduler.cs",
-      "sha256": "0550c7b502d522fa0ecc9e8b18d86bbce3e9eaeff98683f222ffea2d1c8a997b",
-      "lf_sha256": "0550c7b502d522fa0ecc9e8b18d86bbce3e9eaeff98683f222ffea2d1c8a997b"
+      "sha256": "e29bbed2081410d06f28d26aafef02d104961be791083014964364a04f6bc9b9",
+      "lf_sha256": "e29bbed2081410d06f28d26aafef02d104961be791083014964364a04f6bc9b9"
     },
     {
       "path": "src/VrrModule.SimulationPass.cs",
@@ -783,8 +783,8 @@
     },
     {
       "path": "src/VrrModule.cs",
-      "sha256": "695ba5d460d8a59325f5b6769110ed3fc314d9048d80a96427c259228b85f774",
-      "lf_sha256": "695ba5d460d8a59325f5b6769110ed3fc314d9048d80a96427c259228b85f774"
+      "sha256": "a9c9f959c27d1f0ffa23cc86f637fba1cee795b87a7ef6ac25d3015c88cdceb8",
+      "lf_sha256": "a9c9f959c27d1f0ffa23cc86f637fba1cee795b87a7ef6ac25d3015c88cdceb8"
     },
     {
       "path": "src/native/presentation/fhpresent.c",
@@ -823,8 +823,8 @@
     },
     {
       "path": "tests/CameraSnapshot.Tests/CameraSnapshotFixture.cs",
-      "sha256": "8a943aba0fcc208856e184e7cb6e4982c73f0d4157287aca857a4f61ff38786c",
-      "lf_sha256": "8a943aba0fcc208856e184e7cb6e4982c73f0d4157287aca857a4f61ff38786c"
+      "sha256": "1e960c18f9aecbee4999fd4bb1f60c42f62a36c3afd29665708d8bc345d3c24c",
+      "lf_sha256": "1e960c18f9aecbee4999fd4bb1f60c42f62a36c3afd29665708d8bc345d3c24c"
     },
     {
       "path": "tests/Dxgi.Tests/Dxgi.Tests.csproj",
@@ -923,8 +923,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/DiagnosticLoopTimingTests.cs",
-      "sha256": "b62522ffb77f6b47747e40f5cc4338c66446620ed1c8a2c28f195ffdadef60e8",
-      "lf_sha256": "b62522ffb77f6b47747e40f5cc4338c66446620ed1c8a2c28f195ffdadef60e8"
+      "sha256": "c1fbc15d9f2808dc9ccea0b58099aaec82dfacfdd532c855dc5ddac5e60d6d2c",
+      "lf_sha256": "c1fbc15d9f2808dc9ccea0b58099aaec82dfacfdd532c855dc5ddac5e60d6d2c"
     },
     {
       "path": "tests/RenderTiming.Tests/FailedLoopCommitTests.cs",
@@ -992,6 +992,11 @@
       "lf_sha256": "76521ab467d0c526c7224c12aba29b52548d75f8d3c9d43e00b4ecd479290292"
     },
     {
+      "path": "tests/RenderTiming.Tests/PadCoreObservationTests.cs",
+      "sha256": "3f14fbf5c9199d3dcdd562bf2c3f36bf448447ce0e2b18d17c5fa2390942d870",
+      "lf_sha256": "3f14fbf5c9199d3dcdd562bf2c3f36bf448447ce0e2b18d17c5fa2390942d870"
+    },
+    {
       "path": "tests/RenderTiming.Tests/PadHistoryReaderTests.cs",
       "sha256": "dc3deb28169589e1c1a2a80ce66df55ee260fad08e00c18c3f4b665b8a28e29c",
       "lf_sha256": "dc3deb28169589e1c1a2a80ce66df55ee260fad08e00c18c3f4b665b8a28e29c"
@@ -1053,8 +1058,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
-      "sha256": "7b5d699b266de73cdeecd3cc7cf8a50dda7b0ced51858733ff95fce660cdb4a5",
-      "lf_sha256": "48dd5622c9950b93bf3eabd8ab61853ba38d4eba5773aa65bf815babec1ea8d2"
+      "sha256": "f7ddb699057e46fe67e47571f43d36440b3e4035b958bd750a4754a3e3fc71da",
+      "lf_sha256": "31edd1ecb6d1590a120b919b13657e836ca15b3f93b8f7c6da8108bfd563c9f6"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",

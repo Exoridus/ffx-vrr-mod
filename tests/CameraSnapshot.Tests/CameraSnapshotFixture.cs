@@ -77,6 +77,7 @@ public unsafe sealed partial class VrrModule
     internal void RestoreCamera() => restore_render_camera();
     private bool pad_native_input_owner() => NativeOwner;
     private bool pad_input_presentation_ready() => true;
+    private bool pad_observation_binding_ready() => true;
     private bool fmv_playing() => NativeOwner;
     private bool render_image_admission_ready() => true;
     private bool render_image_admission_begin() => true;
