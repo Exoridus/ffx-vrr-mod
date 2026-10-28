@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading;
 
 namespace Fahrenheit.Mods.Vrr;
@@ -101,6 +102,31 @@ public unsafe sealed partial class VrrModule
         }
     }
 
+    private void diagnostic_graphics_lifecycle(string stage, bool? normalReturn = null, uint? nativeResult = null)
+    {
+        if (!_config.NativePhaseProbe || _diagnostics?.IsCapturing != true) return;
+        try
+        {
+            long started = Stopwatch.GetTimestamp();
+            long epoch;
+            int active;
+            bool ready;
+            lock (_graphicsLifetimeGate) { epoch = _graphicsEpoch; active = _graphicsActive; ready = _graphicsReady; }
+            Span<byte> bytes = stackalloc byte[4];
+            uint? initialized = MemoryProbe.TryCopy((nint)FhUtil.ptr_at<byte>(0x8cb45c), bytes)
+                ? MemoryMarshal.Read<uint>(bytes) : null;
+            uint? scheduler = MemoryProbe.TryCopy((nint)FhUtil.ptr_at<byte>(0x8dede4), bytes)
+                ? MemoryMarshal.Read<uint>(bytes) : null;
+            int? free = scheduler is { } manager && manager != 0
+                && MemoryProbe.TryCopy(unchecked((nint)(nuint)manager) + 0x1f8, bytes)
+                ? MemoryMarshal.Read<int>(bytes) : null;
+            diagnostic_event("graphics_lifecycle", new { stage, normal_return = normalReturn, native_result = nativeResult,
+                initialized, scheduler, group0_free_count = free, epoch, active, ready, snapshot_atomic = false,
+                sample_start_ticks = started, sample_end_ticks = Stopwatch.GetTimestamp() });
+        }
+        catch (Exception) { /* Observation must not replace a native result or exception. */ }
+    }
+
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_graphics_initialize()
     {
@@ -108,6 +134,7 @@ public unsafe sealed partial class VrrModule
             return HookSites.Native(() => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsInitialize, 0)).chain_from(h_graphics_initialize).fnptr)();
 
         GraphicsObservation observation = graphics_lifecycle_enter(true);
+        diagnostic_graphics_lifecycle("initialize_enter");
         bool normal = false;
         uint result = 0;
         try
@@ -117,7 +144,11 @@ public unsafe sealed partial class VrrModule
             normal = true;
             return result;
         }
-        finally { graphics_lifecycle_complete(observation, normal && result == 0 && graphics_initialized()); }
+        finally
+        {
+            graphics_lifecycle_complete(observation, normal && result == 0 && graphics_initialized());
+            diagnostic_graphics_lifecycle("initialize_exit", normal, normal ? result : null);
+        }
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -127,12 +158,21 @@ public unsafe sealed partial class VrrModule
             return HookSites.Native(() => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0)).chain_from(h_graphics_finalize).fnptr)();
 
         GraphicsObservation observation = graphics_lifecycle_enter(false);
+        diagnostic_graphics_lifecycle("finalize_enter");
+        bool normal = false;
+        uint result = 0;
         try
         {
-            return new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0))
+            result = new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0))
                 .chain_from(h_graphics_finalize).fnptr!();
+            normal = true;
+            return result;
         }
-        finally { graphics_lifecycle_complete(observation, false); }
+        finally
+        {
+            graphics_lifecycle_complete(observation, false);
+            diagnostic_graphics_lifecycle("finalize_exit", normal, normal ? result : null);
+        }
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -145,12 +185,19 @@ public unsafe sealed partial class VrrModule
         }
 
         GraphicsObservation observation = graphics_lifecycle_enter(false);
+        diagnostic_graphics_lifecycle("reset_enter");
+        bool normal = false;
         try
         {
             new FhCallHandle<d_graphics_reset>(new FhCallLocation(GraphicsReset, 0))
                 .chain_from(h_graphics_reset).fnptr!();
+            normal = true;
         }
-        finally { graphics_lifecycle_complete(observation, false); }
+        finally
+        {
+            graphics_lifecycle_complete(observation, false);
+            diagnostic_graphics_lifecycle("reset_exit", normal);
+        }
     }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -174,16 +221,23 @@ public unsafe sealed partial class VrrModule
         bool nested = _renderImageOrdinaryDepth.Value++ != 0;
         if (nested && _presenter_active && RenderSchedulerReady)
             refuse_independent_presentation("render_image_nested_ordinary");
+        bool normal = false;
+        uint result = 0;
         try
         {
-            uint result = new FhCallHandle<d_graphics_result>(new FhCallLocation(RenderImageOrdinary, 0))
+            result = new FhCallHandle<d_graphics_result>(new FhCallLocation(RenderImageOrdinary, 0))
                 .chain_from(h_render_image_ordinary).fnptr!();
+            normal = true;
             lock (_graphicsLifetimeGate)
                 if (qualifiedAtEntry && !nested && frame is { Valid: true, Admitted: true, AnimationComplete: true }
                     && ReferenceEquals(frame, _renderImageFrame.Value) && frame.OrdinaryVersion == version
                     && frame.AdmissionEpoch == epoch && graphics_epoch_ready(epoch)) frame.OrdinaryComplete = true;
             return result;
         }
-        finally { _renderImageOrdinaryDepth.Value--; }
+        finally
+        {
+            _renderImageOrdinaryDepth.Value--;
+            diagnostic_graphics_lifecycle("ordinary_exit", normal, normal ? result : null);
+        }
     }
 }

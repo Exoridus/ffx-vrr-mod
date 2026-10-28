@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "dca98adcd1105d39c0d5d510cab96d922d52ee8984cc9f2321b1966b1963fd0c",
+  "canonical_contract_snapshot_sha256": "49a0b144c8b6f101e606aaa49e17ff8cc9f222e6a4bd14e72fa3d96dd80d0240",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -238,8 +238,8 @@
     },
     {
       "path": "src/HookRegistration.cs",
-      "sha256": "eba9294be76367b815c1101b48a8108d7f062c2eebfb9858808b26242da5e51a",
-      "lf_sha256": "eba9294be76367b815c1101b48a8108d7f062c2eebfb9858808b26242da5e51a"
+      "sha256": "78989d50474375d4b22960624ee3cdb59fafb86ad3de203d49190b4e84dd69e3",
+      "lf_sha256": "78989d50474375d4b22960624ee3cdb59fafb86ad3de203d49190b4e84dd69e3"
     },
     {
       "path": "src/HookSites.cs",
@@ -543,8 +543,8 @@
     },
     {
       "path": "src/VrrModule.GraphicsLifetime.cs",
-      "sha256": "5e34aa0593d218de132c950708472b4e084e35f1ed54703227f643e7a288df23",
-      "lf_sha256": "5e34aa0593d218de132c950708472b4e084e35f1ed54703227f643e7a288df23"
+      "sha256": "e5b7ee9514d8d43a044f12550edf5d681b8c55e8151ccaec4bf1f46b203fb7ed",
+      "lf_sha256": "e5b7ee9514d8d43a044f12550edf5d681b8c55e8151ccaec4bf1f46b203fb7ed"
     },
     {
       "path": "src/VrrModule.HookRegistration.cs",
@@ -693,8 +693,8 @@
     },
     {
       "path": "src/VrrModule.RenderImages.cs",
-      "sha256": "eff4ccb557b12ee030d7d409b9c53f3754f8ba88b9578312b149cfd015e51468",
-      "lf_sha256": "eff4ccb557b12ee030d7d409b9c53f3754f8ba88b9578312b149cfd015e51468"
+      "sha256": "209c518379d34a2d44e620badb4997f6f981560a363edda56987c3ed2745c2ba",
+      "lf_sha256": "209c518379d34a2d44e620badb4997f6f981560a363edda56987c3ed2745c2ba"
     },
     {
       "path": "src/VrrModule.RenderScheduler.cs",
@@ -888,8 +888,8 @@
     },
     {
       "path": "tests/RenderImage.Tests/BridgeFixture.cs",
-      "sha256": "e4d8b86b2c55a9a93c700e49d31bc184c84b205c6b2074c8d9fca6fab44618a6",
-      "lf_sha256": "e4d8b86b2c55a9a93c700e49d31bc184c84b205c6b2074c8d9fca6fab44618a6"
+      "sha256": "2ea5cc3aa98bbc0e936cab609634d047851270eb26a77a8319f0ed51432fa819",
+      "lf_sha256": "2ea5cc3aa98bbc0e936cab609634d047851270eb26a77a8319f0ed51432fa819"
     },
     {
       "path": "tests/RenderImage.Tests/NativeImageEligibilityTests.cs",

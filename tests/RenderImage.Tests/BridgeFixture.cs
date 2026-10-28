@@ -33,6 +33,7 @@ public unsafe sealed partial class VrrModule
     private bool RenderSchedulerReady => ModeReady;
     internal string? Failure => _presentationAdmission.Failure;
     internal bool InitImages() => init_render_images();
+    internal bool QueueRequiredSentinel() => _hookRegistration!.Install(HookSiteId.ModuleFFXApplicationAnimate, 0x227c40, 0, () => true);
     internal bool AdmitReady() => render_image_admission_ready();
     internal bool MarkAdmitted() => render_image_admission_begin();
     internal void Animate(nint app) => render_image_animation_begin(app);
@@ -44,14 +45,25 @@ public unsafe sealed partial class VrrModule
     private bool ensure_test_hook_registration()
     {
         if (_hookRegistration is not null) return true;
-        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled };
+        VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, NativePhaseProbe = _config.NativePhaseProbe };
         var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
             .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null));
         return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
             out _hookRegistration, out _);
     }
 
-    private void diagnostic_event(string kind, object data) { }
+    private sealed class TestCapture { internal bool IsCapturing = true; }
+    private TestCapture? _diagnostics;
+    internal readonly List<System.Text.Json.JsonElement> GraphicsEvents = [];
+    internal void GraphicsCapture(bool capturing = true, bool probe = true)
+    {
+        _config.NativePhaseProbe = probe;
+        _diagnostics = new() { IsCapturing = capturing };
+    }
+    private void diagnostic_event(string kind, object data)
+    {
+        if (kind == "graphics_lifecycle") GraphicsEvents.Add(System.Text.Json.JsonSerializer.SerializeToElement(data));
+    }
     private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install)
         => ensure_test_hook_registration() && register_hook(site, name, rva, install);
     private void refuse_independent_presentation(string reason, Exception? error = null)
@@ -100,7 +112,7 @@ public unsafe sealed partial class VrrModule
     private float _renderCameraAlpha;
     private void render_camera_set_presentation_alpha(float alpha) => _renderCameraAlpha = alpha;
     private void diagnostic_actor_pose(nint actor, Matrix4x4 root, ReadOnlySpan<Matrix4x4> bones, bool rendered) { }
-    internal sealed class TestConfig { internal bool VrrEnabled = true; }
+    internal sealed class TestConfig { internal bool VrrEnabled = true; internal bool NativePhaseProbe; }
     internal sealed class TestLogger { internal void Error(string message) { } internal void Warning(string message) { } internal void Info(string message) { } }
 }
 
@@ -111,6 +123,7 @@ internal unsafe ref struct FhCallHandle<T>(FhCallLocation location) where T : De
     internal T? fnptr => BridgeNative.Initializing ? throw new InvalidOperationException("early fnptr") : _original;
     internal bool hook(VrrModule owner, T callback)
     {
+        if (location.Address == BridgeNative.ThrowHook) throw new InvalidOperationException("SDK hook failure");
         BridgeNative.Callbacks.Add(location.Address, callback);
         return location.Address != BridgeNative.FailHook;
     }
@@ -171,7 +184,7 @@ internal unsafe static class BridgeNative
 {
     internal static readonly Dictionary<nint, Delegate> Callbacks = [];
     internal static bool Initializing, NativeActionOriginal, NativeGraphicsOriginal;
-    internal static nint FailHook;
+    internal static nint FailHook, ThrowHook;
     internal static int Resolutions, Frames, Flips, Slots, Actions, ActorInstances;
     internal static Func<nint,uint>? OnFrame, OnFlip, OnSlot, OnAction;
     internal static Action<nint, nint>? OnActorInstance;
@@ -222,7 +235,7 @@ internal unsafe static class BridgeNative
     }
     internal static void Reset()
     {
-        Callbacks.Clear(); Initializing = NativeActionOriginal = NativeGraphicsOriginal = false; FailHook = 0;
+        Callbacks.Clear(); Initializing = NativeActionOriginal = NativeGraphicsOriginal = false; FailHook = ThrowHook = 0;
         Resolutions = Frames = Flips = Slots = Actions = ActorInstances = 0;
         OnFrame = OnFlip = OnSlot = OnAction = null;
         OnActorInstance = null;

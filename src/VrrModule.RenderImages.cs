@@ -56,7 +56,25 @@ public unsafe sealed partial class VrrModule
 
     private bool init_render_images()
     {
-        if (!IndependentPresentationEnabled) return true;
+        if (!IndependentPresentationEnabled)
+        {
+            if (!_config.NativePhaseProbe || _diagnostics?.IsCapturing != true) return true;
+            if (IntPtr.Size != 4 || !NativeBuild.TryValidate(out _) || !graphics_lifetime_bindings_valid())
+            {
+                _logger.Warning("[Vrr] Graphics observation refused: unsupported executable, pointer width or lifecycle bindings.");
+                return true;
+            }
+            try
+            {
+                if (!init_graphics_lifetime_hooks())
+                    _logger.Warning("[Vrr] Graphics observation is incomplete; independent image admission remains disabled.");
+            }
+            catch (Exception error)
+            {
+                _logger.Warning($"[Vrr] Graphics observation registration failed: {error.GetType().Name}: {error.Message}. Independent image admission remains disabled.");
+            }
+            return true;
+        }
         if (IntPtr.Size != 4 || !NativeBuild.TryValidate(out _))
         {
             _logger.Error("[Vrr] Image submission binding refused: unsupported executable or pointer width.");

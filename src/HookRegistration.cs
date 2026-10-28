@@ -74,10 +74,10 @@ internal static partial class HookSites
         HookSiteId.FrameSequencesOldFormatTextureAnimationAdvance => D(site, HookFamily.UiClocks, HookPurpose.NativeTimingCorrection, "FrameSequencesOldFormatTextureAnimationAdvance", "TextureAnimation", "Changes UI, movie or screen-sequence advancement.", [], [], "", ""),
         HookSiteId.GameOverGameoverVfxDataUpdate => D(site, HookFamily.GameState, HookPurpose.Observation, "GameOverGameoverVfxDataUpdate", "Diagnostics && EffectProbe", "Observes game-over VFX inputs, results and submissions while retaining bounded capture state.", [], [], "", ""),
         HookSiteId.GameOverGameoverVfxUpdate => D(site, HookFamily.GameState, HookPurpose.Observation, "GameOverGameoverVfxUpdate", "Diagnostics && EffectProbe", "Observes game-over VFX inputs, results and submissions while retaining bounded capture state.", [], [], "", ""),
-        HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", ["graphics.lifecycle_epoch"], [], "", ""),
-        HookSiteId.GraphicsLifetimeGraphicsInitializeObservation => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", ["graphics.lifecycle_epoch"], [], "", ""),
-        HookSiteId.GraphicsLifetimeGraphicsResetObservation => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", ["graphics.lifecycle_epoch"], [], "", ""),
-        HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", ["presentation.ordinary_completion"], [], "", ""),
+        HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled || (NativePhaseProbe && active JSON diagnostics)", "Owns presenter, graphics epoch or device resource lifecycle.", ["graphics.lifecycle_epoch"], [], "", ""),
+        HookSiteId.GraphicsLifetimeGraphicsInitializeObservation => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled || (NativePhaseProbe && active JSON diagnostics)", "Owns presenter, graphics epoch or device resource lifecycle.", ["graphics.lifecycle_epoch"], [], "", ""),
+        HookSiteId.GraphicsLifetimeGraphicsResetObservation => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled || (NativePhaseProbe && active JSON diagnostics)", "Owns presenter, graphics epoch or device resource lifecycle.", ["graphics.lifecycle_epoch"], [], "", ""),
+        HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "independent.graphics", "IndependentPresentationEnabled || (NativePhaseProbe && active JSON diagnostics)", "Owns presenter, graphics epoch or device resource lifecycle.", ["presentation.ordinary_completion"], [], "", ""),
         HookSiteId.IdleSwayChIdleSway => D(site, HookFamily.ActorMotion, HookPurpose.NativeTimingCorrection, "IdleSwayChIdleSway", "IdleSway", "Changes actor motion advancement or frame counters.", [], [], "", ""),
         HookSiteId.LensSpriteKeLnsShpUpdate => D(site, HookFamily.SpriteClocks, HookPurpose.NativeTimingCorrection, "LensSpriteKeLnsShpUpdate", "LensSpriteClock", "Tracks sprite phase and particle object lifecycle.", [], [], "", ""),
         HookSiteId.MenuWaterDiagnosticsWaterAssetLoad => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "MenuWaterDiagnosticsWaterAssetLoad", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
@@ -464,7 +464,10 @@ internal sealed partial class HookRegistrationPlan
             || site.ToString().StartsWith("FieldParticlePause", StringComparison.Ordinal)
             || site.ToString().StartsWith("Dxgi", StringComparison.Ordinal)
             || site is HookSiteId.TextureDrawIndexed or HookSiteId.TextureDrawPlain
-            || site == HookSiteId.TimingChCalcMain && !config.CharacterDelta && !config.Buoyancy;
+            || site == HookSiteId.TimingChCalcMain && !config.CharacterDelta && !config.Buoyancy
+            || !independent && site is (HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation
+                or HookSiteId.GraphicsLifetimeGraphicsInitializeObservation or HookSiteId.GraphicsLifetimeGraphicsResetObservation
+                or HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion);
         if (site == HookSiteId.TimingChSetMotionSpeed) deferred = false;
         return new(site, enabled, Required: !deferred, Deferred: deferred, ExpectedTargets: targets);
     }
@@ -530,10 +533,10 @@ internal sealed partial class HookRegistrationPlan
             HookSiteId.FrameSequencesOldFormatTextureAnimationAdvance => config.TextureAnimation,
             HookSiteId.GameOverGameoverVfxDataUpdate => config.Diagnostics && config.EffectProbe,
             HookSiteId.GameOverGameoverVfxUpdate => config.Diagnostics && config.EffectProbe,
-            HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation => independent,
-            HookSiteId.GraphicsLifetimeGraphicsInitializeObservation => independent,
-            HookSiteId.GraphicsLifetimeGraphicsResetObservation => independent,
-            HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion => independent,
+            HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation => independent || config.NativePhaseProbe && diagnostics,
+            HookSiteId.GraphicsLifetimeGraphicsInitializeObservation => independent || config.NativePhaseProbe && diagnostics,
+            HookSiteId.GraphicsLifetimeGraphicsResetObservation => independent || config.NativePhaseProbe && diagnostics,
+            HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion => independent || config.NativePhaseProbe && diagnostics,
             HookSiteId.IdleSwayChIdleSway => config.IdleSway,
             HookSiteId.LensSpriteKeLnsShpUpdate => config.LensSpriteClock,
             HookSiteId.MenuWaterDiagnosticsWaterAssetLoad => config.NativePhaseProbe && diagnostics,
