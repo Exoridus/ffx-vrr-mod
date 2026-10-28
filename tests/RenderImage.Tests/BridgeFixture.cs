@@ -56,7 +56,37 @@ public unsafe sealed partial class VrrModule
         => ensure_test_hook_registration() && register_hook(site, name, rva, install);
     private void refuse_independent_presentation(string reason, Exception? error = null)
         => _presentationAdmission.Refuse(reason);
-    internal object ActorGate => _renderActorLock;
+    internal void SeedActorLoan()
+    {
+        nint instance = FhUtil.Base + 0x810000, mesh = FhUtil.Base + 0x811000;
+        nint world = FhUtil.Base + 0x812000, palette = FhUtil.Base + 0x813000;
+        *(nint*)instance = mesh; *(nint*)(instance + 4) = world; *(nint*)(instance + 0xc) = palette;
+        *(uint*)(mesh + 0x18) = 1;
+        var identity = new RenderActorIdentity((long)(FhUtil.Base + 0x814000), (long)mesh, (long)palette, (long)world);
+        var state = new RenderActorNativeState(identity, 1);
+        byte[] canonical = Enumerable.Repeat((byte)0x11, 48).ToArray();
+        byte[] written = Enumerable.Repeat((byte)0x22, 48).ToArray();
+        var canonicalBone = Matrix4x4.CreateTranslation(1, 2, 3);
+        var writtenBone = Matrix4x4.CreateTranslation(4, 5, 6);
+        state.Write.Record(canonical, written, [canonicalBone], [writtenBone]);
+        written.CopyTo(new Span<byte>((void*)world, 48)); *(Matrix4x4*)palette = writtenBone;
+        _renderActorStates[instance] = state;
+    }
+    internal byte[] ActorLoanWorld => new ReadOnlySpan<byte>((void*)(FhUtil.Base + 0x812000), 48).ToArray();
+    internal Matrix4x4 ActorLoanBone => *(Matrix4x4*)(FhUtil.Base + 0x813000);
+    internal int ActorLoans => _renderActorStates.Count;
+    internal int RestoreActorLoanIntoCopies()
+    {
+        byte[] world = ActorLoanWorld; Matrix4x4[] bones = [ActorLoanBone];
+        int result = _renderActorStates.Values.Single().Write.Restore(world, bones);
+        Assert.Equal(Enumerable.Repeat((byte)0x11, 48), world);
+        Assert.Equal(Matrix4x4.CreateTranslation(1, 2, 3), bones[0]);
+        return result;
+    }
+    internal void ActorReset() => reset_render_actors();
+    internal void ActorRestore() => render_actors_restore();
+    internal void ActorPresentation() => render_actors_begin_presentation(.5f);
+    internal void ActorReplay() => replay_render_actors();    internal object ActorGate => _renderActorLock;
     internal int ActorCallbacks => Volatile.Read(ref _renderActorCallbacks);
     internal bool ActorSampling => _renderActorsSampling;
     internal bool ActorActive => _renderActorsActive;
@@ -206,6 +236,11 @@ internal unsafe static class BridgeNative
 internal unsafe sealed class BridgeFixture : IDisposable
 {
     internal readonly VrrModule Module = new();
+    internal nint ActorScheduler => FhUtil.Base + 0x800000;
+    internal nint ActorSchedulerSlot => FhUtil.Base + 0x8dede4;
+    internal nint ActorFreeCountAddress => ActorScheduler + 0x1f8;
+    internal void SetActorScheduler(nint pointer) => *(nint*)ActorSchedulerSlot = pointer;
+    internal void SetActorFreeCount(int count) => *(int*)ActorFreeCountAddress = count;
     internal nint Application => FhUtil.Base + 0x780000;
     internal nint Renderer => Application + 0x124;
     internal nint RenderThread => FhUtil.Base + 0x8c96f8;
@@ -216,6 +251,7 @@ internal unsafe sealed class BridgeFixture : IDisposable
         BridgeNative.Reset();
         FhUtil.Base = Marshal.AllocHGlobal(0x900000);
         new Span<byte>((void*)FhUtil.Base, 0x900000).Clear();
+        SetActorScheduler(ActorScheduler); SetActorFreeCount(8);
         Bytes(0x8cb45c, [1,0,0,0]);
         Bytes(0x227940, [0x55,0x8b,0xec,0x6a,0xff]);
         Bytes(0x1b6af0, [0x55,0x8b,0xec,0x83,0xec,8,0x56,0x8b,0xf1,0xf6,0x46,4,1]);

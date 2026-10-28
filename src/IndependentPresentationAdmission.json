@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "84a87bf4e535b0718e65976da102b02b0e1896980e12472d80103892e3f69316",
+  "canonical_contract_snapshot_sha256": "c78e2caad4cd243c4533720e94c55c1c94e6b1e7fad2c69225638fb16472f3e6",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -683,8 +683,8 @@
     },
     {
       "path": "src/VrrModule.RenderActors.cs",
-      "sha256": "cd00208c096b29ff9bba6e98229daa41d9f6b90921ac17577c565710d3b9b78f",
-      "lf_sha256": "cd00208c096b29ff9bba6e98229daa41d9f6b90921ac17577c565710d3b9b78f"
+      "sha256": "251af89db3f4cecd708c384b3bf4a91fb888b2c3700eb5d6e6de7a9c0008d37f",
+      "lf_sha256": "251af89db3f4cecd708c384b3bf4a91fb888b2c3700eb5d6e6de7a9c0008d37f"
     },
     {
       "path": "src/VrrModule.RenderCamera.cs",
@@ -883,13 +883,13 @@
     },
     {
       "path": "tests/RenderImage.Tests/ActorCompletionTests.cs",
-      "sha256": "451e9ff2d11be769ce2379ef5cd7f5bc620c3f464a822042f5b70ef37ae5f3c8",
-      "lf_sha256": "451e9ff2d11be769ce2379ef5cd7f5bc620c3f464a822042f5b70ef37ae5f3c8"
+      "sha256": "2d52b80385c6ca58ce035db4d760cb28c9feac2fdb0477bae8454840dc27ec4e",
+      "lf_sha256": "2d52b80385c6ca58ce035db4d760cb28c9feac2fdb0477bae8454840dc27ec4e"
     },
     {
       "path": "tests/RenderImage.Tests/BridgeFixture.cs",
-      "sha256": "6182eec6c49b782703b066c144e76171e2f7bc2b741e2a443fd0778385482084",
-      "lf_sha256": "6182eec6c49b782703b066c144e76171e2f7bc2b741e2a443fd0778385482084"
+      "sha256": "e4d8b86b2c55a9a93c700e49d31bc184c84b205c6b2074c8d9fca6fab44618a6",
+      "lf_sha256": "e4d8b86b2c55a9a93c700e49d31bc184c84b205c6b2074c8d9fca6fab44618a6"
     },
     {
       "path": "tests/RenderImage.Tests/NativeImageEligibilityTests.cs",
