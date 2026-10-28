@@ -25,11 +25,13 @@ internal static unsafe class MemoryProbe
     /// <summary>
     ///     True when every byte of [address, address + length) lies in one committed region whose
     ///     protection allows reads. Null, the first 64 KiB, a reserved or free region, a guard page
-    ///     and PAGE_NOACCESS all read as false.
+    ///     and PAGE_NOACCESS all read as false. Empty, negative-length and wrapping ranges are rejected.
     /// </summary>
     public static bool IsReadable(nint address, int length)
     {
-        if (address <= 0x10000) return false;
+        nuint start = (nuint)address;
+        if (length <= 0 || start <= 0x10000 || (nuint)length > nuint.MaxValue - start) return false;
+        nuint end = start + (nuint)length;
 
         // The particle qualification asks this tens of thousands of times per frame about the same few
         // heap regions; a system call each made field scenes cost milliseconds per pass. A readable
@@ -39,7 +41,7 @@ internal static unsafe class MemoryProbe
         nuint[] misses = _missPage ??= new nuint[CacheSlots];
         if (_cacheEpoch != epoch) { _cacheCount = 0; _missCount = 0; _cacheEpoch = epoch; }
         for (int i = 0; i < _cacheCount; i++)
-            if ((nuint)address >= bases[i] && (nuint)address + (nuint)length <= ends[i]) return true;
+            if (start >= bases[i] && end <= ends[i]) return true;
         // Unreadable answers are asked again just as often, and each one was a VirtualQuery under the
         // address-space lock the loader needs: scene transitions slowed down by seconds.
         nuint page = (nuint)address & ~(nuint)0xFFF;
@@ -63,7 +65,7 @@ internal static unsafe class MemoryProbe
             misses[_missCount < CacheSlots ? _missCount++ : (_missNext++ % CacheSlots)] = page;
             return false;
         }
-        if ((nuint)address + (nuint)length > region_end) return false;
+        if (end > region_end) return false;
         int slot = _cacheCount < CacheSlots ? _cacheCount++ : (_cacheNext++ % CacheSlots);
         bases[slot] = (nuint)info.BaseAddress;
         ends[slot] = region_end;
