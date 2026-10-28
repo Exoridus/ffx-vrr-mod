@@ -170,11 +170,7 @@ public unsafe sealed partial class VrrModule
         pad_latch_end_pass();
         render_restore_particles(_render_particle_pause_before);
         _render_particle_pause_before = null;
-        double? tickDeadlineSeconds = null;
-        if (nativeReturned && (IndependentPresentationEnabled || _diagnostics?.IsCapturing == true) && _render_clock_seen && _render_simulation_pass
-            && OwnsRenderPass && _presentationAdmission.Failure is null
-            && _simulationClock.TryGetStepDeadline(_render_plan.Steps - _render_steps_remaining, out double deadline))
-            tickDeadlineSeconds = deadline;
+        double? tickDeadlineSeconds = nativeReturned ? render_simulation_tick_deadline() : null;
         object? padTickCorrelation = nativeReturned ? pad_observations_pass_completed(tickDeadlineSeconds) : null;
         if (nativeReturned && _render_clock_seen && _render_simulation_pass)
         {
@@ -194,6 +190,12 @@ public unsafe sealed partial class VrrModule
         battle_effects_end_pass();
         _render_inside_loop = false;
     }
+
+    private double? render_simulation_tick_deadline()
+        => (IndependentPresentationEnabled || _diagnostics?.IsCapturing == true) && _render_clock_seen && _render_simulation_pass
+            && OwnsRenderPass && _presentationAdmission.Failure is null
+            && _simulationClock.TryGetStepDeadline(_render_plan.Steps - _render_steps_remaining, out double deadline)
+            ? deadline : null;
 
     private RenderClockAction render_scheduler_clock(float nativeDelta)
     {
@@ -241,6 +243,7 @@ public unsafe sealed partial class VrrModule
         _render_simulation_pass = !_render_frame_enabled || _render_steps_remaining > 0;
         RenderPassContext.IsPresentation = !_render_simulation_pass;
         if (RenderPassContext.IsPresentation) viewport_presentation_begin();
+        pad_observations_prepare_tick(render_simulation_tick_deadline());
         pad_latch_pass_decided(RenderPassContext.IsPresentation);
         battle_effects_begin_pass(RenderPassContext.IsPresentation);
         RenderPassContext.SetPass(_render_frame_enabled ? _render_plan.Alpha : 1, _render_frame_enabled && (!_render_simulation_pass || _render_steps_remaining <= 1));

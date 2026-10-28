@@ -102,6 +102,7 @@ public unsafe sealed partial class VrrModule
     private void pad_latch_pass_decided(bool presentation) { }
     private void battle_effects_begin_pass(bool presentation) { }
     private void battle_effects_end_pass() { }
+    private void pad_observations_prepare_tick(double? deadline) { }
     private object? pad_observations_pass_completed(double? deadline) => null;
     private void advance_overlay_spawn_clock() { }
     private void sample_frame_skip() { }

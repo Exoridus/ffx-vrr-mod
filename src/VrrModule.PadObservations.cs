@@ -10,6 +10,8 @@ public unsafe sealed partial class VrrModule
     private long _padObservedDropped;
     private long _padObservationSequence;
     private int _padObservationFailed;
+    private PadTickCorrelation? _padPreparedTick;
+    private double? _padPreparedDeadline;
 
     private bool init_pad_observations()
     {
@@ -33,7 +35,12 @@ public unsafe sealed partial class VrrModule
 
     private void reset_pad_observation_timeline(string reason)
     {
-        lock (_padObservationGate) _padTimeline.Reset(reason);
+        lock (_padObservationGate)
+        {
+            _padPreparedTick = null;
+            _padPreparedDeadline = null;
+            _padTimeline.Reset(reason);
+        }
     }
 
     // Active candidate epochs belong to the module; telemetry sessions cannot invalidate them.
@@ -140,20 +147,46 @@ public unsafe sealed partial class VrrModule
         catch (Exception error) { stop_pad_observations(error); }
     }
 
+    private void pad_observations_prepare_tick(double? deadlineSeconds)
+    {
+        try
+        {
+            lock (_padObservationGate)
+            {
+                _padPreparedTick = null;
+                _padPreparedDeadline = null;
+                if (!pad_observation_context(false)) return;
+                if (!_simulationClock.HasMappedInterval)
+                {
+                    _padTimeline.Reset("unmapped_clock");
+                    return;
+                }
+                if (deadlineSeconds is null) return;
+                _padPreparedTick = _padTimeline.Correlate(deadlineSeconds.Value);
+                _padPreparedDeadline = deadlineSeconds;
+            }
+        }
+        catch (Exception error) { stop_pad_observations(error); }
+    }
+
     private object? pad_observations_pass_completed(double? deadlineSeconds)
     {
         try
         {
             lock (_padObservationGate)
             {
+                var result = _padPreparedTick;
+                double? preparedDeadline = _padPreparedDeadline;
+                _padPreparedTick = null;
+                _padPreparedDeadline = null;
                 if (!pad_observation_context(false)) return null;
                 if (!_render_clock_seen || !_simulationClock.HasMappedInterval)
                 {
                     _padTimeline.Reset("unmapped_clock");
                     return null;
                 }
-                if (deadlineSeconds is null) return null;
-                var result = _padTimeline.Correlate(deadlineSeconds.Value);
+                if (deadlineSeconds is null || preparedDeadline != deadlineSeconds
+                    || result is null || result.Epoch != _padTimeline.Epoch) return null;
                 return new { status = "candidate_only", native_input_applied = false, native_continuity_proven = false,
                     epoch = result.Epoch, boundary = result.Boundary,
                     observations = result.Observations, latest = result.Latest };

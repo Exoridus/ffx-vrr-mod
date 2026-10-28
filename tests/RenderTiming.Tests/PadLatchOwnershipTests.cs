@@ -277,5 +277,6 @@ public unsafe sealed partial class VrrModule
 internal static partial class NativeClock
 {
     internal static int PadCalls;
-    public static void Pad() => Interlocked.Increment(ref PadCalls);
+    internal static Action? PadAction;
+    public static void Pad() { Interlocked.Increment(ref PadCalls); PadAction?.Invoke(); }
 }
