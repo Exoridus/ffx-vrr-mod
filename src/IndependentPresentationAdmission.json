@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "c78e2caad4cd243c4533720e94c55c1c94e6b1e7fad2c69225638fb16472f3e6",
+  "canonical_contract_snapshot_sha256": "dca98adcd1105d39c0d5d510cab96d922d52ee8984cc9f2321b1966b1963fd0c",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -143,8 +143,8 @@
     },
     {
       "path": "build/tests/ModBuild.Tests.csproj",
-      "sha256": "4f28d46f04249063fe16eb76e0f55f0bf79eef6662f3c3a88265b07a9c84c4e0",
-      "lf_sha256": "bec6e80c665828ec504a662ff080c6019e60f53771458d9049629954f732239b"
+      "sha256": "fcc395ebd520d890ebfc96bed1b073829d7004c45b96dd33143f91519797f37b",
+      "lf_sha256": "21e6a09fcd6bb4de5a676bd7e0f462db86d0278453f1d40cc91b42612f586c5b"
     },
     {
       "path": "build/tests/ModBuildCliTests.cs",
@@ -253,8 +253,8 @@
     },
     {
       "path": "src/MemoryProbe.cs",
-      "sha256": "64f5539015c8967a8f84382d9a021bababe1b0a50232aacbdcac007e2321b1ac",
-      "lf_sha256": "64f5539015c8967a8f84382d9a021bababe1b0a50232aacbdcac007e2321b1ac"
+      "sha256": "d6269d21fe07bfae4219ab8b67e3767cc5857ebd8b81eb0bd74c3e7821cbe24d",
+      "lf_sha256": "d6269d21fe07bfae4219ab8b67e3767cc5857ebd8b81eb0bd74c3e7821cbe24d"
     },
     {
       "path": "src/MenuWaterDiagnostic.cs",
