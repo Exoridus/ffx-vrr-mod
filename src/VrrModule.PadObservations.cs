@@ -2,7 +2,7 @@ namespace Fahrenheit.Mods.Vrr;
 
 public unsafe sealed partial class VrrModule
 {
-    private const nint DiagnosticPadPoll = 0x489a80;
+    private const nint DiagnosticPadPoll = 0x489050;
     private readonly PadObservationTimeline _padTimeline = new(Stopwatch.Frequency);
     private readonly object _padObservationGate = new();
     private object? _padObservationCapture;
@@ -17,10 +17,10 @@ public unsafe sealed partial class VrrModule
             && fx_operand_is(PadRecordBaseSite + 0xd, PadRecords);
         diagnostic_event("probe_binding", new { name = "pad_records", available });
         if (!available) return;
-        diagnostic_hook(HookSiteId.DiagnosticBindingsPadPollObservation, "pad_poll", DiagnosticPadPoll,
-            [0x56, 0x33, 0xf6, 0x6a, 0x00, 0x56, 0xe8, 0x85, 0xf3, 0xff, 0xff, 0x50, 0x6a, 0x00, 0x56,
-             0xe8, 0xbc, 0xf5, 0xff, 0xff, 0x46, 0x83, 0xc4, 0x14, 0x83, 0xfe, 0x02, 0x7c, 0xe6, 0x5e, 0xc3],
-            () => new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).hook(this, with_hook_continuation<d_render_void>(h_diag_pad_poll)));
+        // The outer two-port loop branches into its first five bytes, which an entry detour overwrites.
+        diagnostic_hook(HookSiteId.DiagnosticBindingsPadPollObservation, "pad_port_poll", DiagnosticPadPoll,
+            [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x8b, 0x4d, 0x08, 0x53, 0x56, 0x8b, 0x75, 0x0c, 0x57],
+            () => new FhCallHandle<d_pad_port_poll>(new FhCallLocation(DiagnosticPadPoll, 0)).hook(this, with_hook_continuation<d_pad_port_poll>(h_diag_pad_poll)));
     }
 
     private void reset_pad_observation_timeline(string reason)
@@ -62,23 +62,31 @@ public unsafe sealed partial class VrrModule
             diagnostic_event("pad_observation_stopped", new { error = $"{error.GetType().Name}: {error.Message}" });
     }
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void d_pad_port_poll(int port, int pad, nint buffer);
+
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    private void h_diag_pad_poll()
+    private void h_diag_pad_poll(int port, int pad, nint buffer)
     {
         if (!RuntimeEffectsArmed)
         {
-            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr)();
+            HookSites.Native(() => new FhCallHandle<d_pad_port_poll>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr)(port, pad, buffer);
             return;
         }
 
         try
         {
-            new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr!();
+            new FhCallHandle<d_pad_port_poll>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr!(port, pad, buffer);
         }
         catch { reset_pad_observation_timeline("native_poll_exception"); throw; }
         if (_diagnostics?.IsCapturing != true || System.Threading.Volatile.Read(ref _padObservationFailed) != 0)
         {
             reset_pad_observation_timeline("capture_inactive_or_failed");
+            return;
+        }
+        if (port is < 0 or > 1 || pad != 0)
+        {
+            reset_pad_observation_timeline("unsupported_pad_identity");
             return;
         }
         try
@@ -92,31 +100,20 @@ public unsafe sealed partial class VrrModule
                 eligible = pad_observation_context(true);
                 epoch = _padTimeline.Epoch;
             }
-            (long Start, long End, uint[]? Words) first = default, second = default;
             Span<byte> snapshot = stackalloc byte[32];
-            for (int port = 0; port < 2; port++)
-            {
-                if (_diagnostics?.IsCapturing != true || System.Threading.Volatile.Read(ref _padObservationFailed) != 0)
-                {
-                    reset_pad_observation_timeline("capture_inactive_or_failed");
-                    return;
-                }
-                long start = Stopwatch.GetTimestamp();
-                bool valid = MemoryProbe.TryCopy((nint)FhUtil.ptr_at<byte>(PadRecords + port * 0x100 + 0x80), snapshot);
-                long end = Stopwatch.GetTimestamp();
-                uint[]? words = valid ? MemoryMarshal.Cast<byte, uint>(snapshot).ToArray() : null;
-                if (port == 0) first = (start, end, words); else second = (start, end, words);
-                diagnostic_event("pad_observation", new { poll_sequence = sequence, port, stage = "post_poll",
-                    poll_returned_ticks = returned, observation_start_ticks = start, observation_end_ticks = end,
-                    valid, raw_words = words });
-            }
+            long start = Stopwatch.GetTimestamp();
+            bool valid = MemoryProbe.TryCopy((nint)FhUtil.ptr_at<byte>(PadRecords + port * 0x100 + 0x80), snapshot);
+            long end = Stopwatch.GetTimestamp();
+            uint[]? words = valid ? MemoryMarshal.Cast<byte, uint>(snapshot).ToArray() : null;
+            diagnostic_event("pad_observation", new { poll_sequence = sequence, port, pad, stage = "post_port_poll",
+                poll_returned_ticks = returned, observation_start_ticks = start, observation_end_ticks = end,
+                valid, raw_words = words });
             lock (_padObservationGate)
             {
                 if (!eligible || !pad_observation_context(false)) return;
                 if (epoch != _padTimeline.Epoch) { _padTimeline.Reset("interleaved_observation"); return; }
-                if (first.Words is null || second.Words is null) { _padTimeline.Reset("invalid_observation"); return; }
-                if (_padTimeline.Observe(sequence, 0, first.Start, first.End, first.Words))
-                    _padTimeline.Observe(sequence, 1, second.Start, second.End, second.Words);
+                if (words is null) { _padTimeline.Reset("invalid_observation"); return; }
+                _padTimeline.Observe(sequence, port, start, end, words);
             }
         }
         catch (Exception error) { stop_pad_observations(error); }

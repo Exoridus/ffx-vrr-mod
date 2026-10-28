@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "cbd527c4e2b807f12c5514405487a5fd37bf11a8b40ef6a91ff8556405fa33b3",
+  "canonical_contract_snapshot_sha256": "84a87bf4e535b0718e65976da102b02b0e1896980e12472d80103892e3f69316",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -628,8 +628,8 @@
     },
     {
       "path": "src/VrrModule.PadObservations.cs",
-      "sha256": "64565af63ec615a18b5bfe3d2369417b0a047a7b93db231806576d4b825ce6ed",
-      "lf_sha256": "64565af63ec615a18b5bfe3d2369417b0a047a7b93db231806576d4b825ce6ed"
+      "sha256": "dd37b254f4ef62f1bb601e26dd014acf3f9ebafcea411b02166c891f35a3969e",
+      "lf_sha256": "dd37b254f4ef62f1bb601e26dd014acf3f9ebafcea411b02166c891f35a3969e"
     },
     {
       "path": "src/VrrModule.PadSnapshot.cs",
@@ -923,8 +923,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/DiagnosticLoopTimingTests.cs",
-      "sha256": "997d78ef82666373c5796db032b7099345fa9314db3bf2ed8a3ba757cdba0a4c",
-      "lf_sha256": "997d78ef82666373c5796db032b7099345fa9314db3bf2ed8a3ba757cdba0a4c"
+      "sha256": "b62522ffb77f6b47747e40f5cc4338c66446620ed1c8a2c28f195ffdadef60e8",
+      "lf_sha256": "b62522ffb77f6b47747e40f5cc4338c66446620ed1c8a2c28f195ffdadef60e8"
     },
     {
       "path": "tests/RenderTiming.Tests/FailedLoopCommitTests.cs",
@@ -1008,8 +1008,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/PadObservationTests.cs",
-      "sha256": "e43f5bf69f9ab8550f8696753c0d20aeb95d54c1e8fc07c0bfc807d543263568",
-      "lf_sha256": "e43f5bf69f9ab8550f8696753c0d20aeb95d54c1e8fc07c0bfc807d543263568"
+      "sha256": "ed812360d2392b1adcbdb495a6106b548583fe48f2b766e775cb8554370351a3",
+      "lf_sha256": "ed812360d2392b1adcbdb495a6106b548583fe48f2b766e775cb8554370351a3"
     },
     {
       "path": "tests/RenderTiming.Tests/PadObservationTimelineTests.cs",
@@ -1053,8 +1053,8 @@
     },
     {
       "path": "tests/RenderTiming.Tests/RenderSchedulerTests.cs",
-      "sha256": "0c4a2bd37a5e85a611beaac8507182c0f056db0913747494434547660d40bf85",
-      "lf_sha256": "66a011d59ee2295df7f5c920017e9353c6447fc64e1daeb746e894d74613002f"
+      "sha256": "7b5d699b266de73cdeecd3cc7cf8a50dda7b0ced51858733ff95fce660cdb4a5",
+      "lf_sha256": "48dd5622c9950b93bf3eabd8ab61853ba38d4eba5773aa65bf815babec1ea8d2"
     },
     {
       "path": "tests/RenderTiming.Tests/RenderTiming.Tests.csproj",

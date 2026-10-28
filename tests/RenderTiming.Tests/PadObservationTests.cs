@@ -28,19 +28,18 @@ public unsafe sealed class PadObservationTests : IDisposable
     }
 
     [Fact]
-    public void Native_poll_returns_once_before_two_bounded_bit_exact_observations()
+    public void Native_port_polls_return_once_each_before_their_bit_exact_observations()
     {
-        long nativeEnd = 0;
+        var nativeEnds = new List<long>();
         NativeClock.PollAction = () =>
         {
-            Assert.Empty(NativePadObservation.Reads);
             for (int port = 0; port < 2; port++)
                 for (int i = 0; i < 8; i++)
                     BitConverter.TryWriteBytes(_records.AsSpan(port * 0x100 + 0x80 + i * 4, 4), 0x80000000u + (uint)(port * 16 + i));
-            nativeEnd = Stopwatch.GetTimestamp();
+            nativeEnds.Add(Stopwatch.GetTimestamp());
         };
         _module.CallPadPoll();
-        Assert.Equal(1, NativeClock.PollCalls);
+        Assert.Equal(2, NativeClock.PollCalls);
         Assert.Equal(2, NativePadObservation.Reads.Count);
         var events = _module.DiagnosticEvents.Where(e => e.Kind == "pad_observation").ToArray();
         Assert.Equal(2, events.Length);
@@ -50,17 +49,17 @@ public unsafe sealed class PadObservationTests : IDisposable
         {
             JsonElement data = JsonSerializer.SerializeToElement(events[port].Data);
             Assert.Equal(port, data.GetProperty("port").GetInt32());
-            Assert.Equal("post_poll", data.GetProperty("stage").GetString());
+            Assert.Equal("post_port_poll", data.GetProperty("stage").GetString());
             Assert.True(data.GetProperty("valid").GetBoolean());
             uint[] words = data.GetProperty("raw_words").EnumerateArray().Select(v => v.GetUInt32()).ToArray();
             Assert.Equal(Enumerable.Range(0, 8).Select(i => 0x80000000u + (uint)(port * 16 + i)), words);
             long currentSequence = data.GetProperty("poll_sequence").GetInt64();
             Assert.True(currentSequence > 0);
-            if (sequence.HasValue) Assert.Equal(sequence.Value, currentSequence);
+            if (sequence.HasValue) Assert.True(currentSequence > sequence.Value);
             sequence = currentSequence;
             long pollReturn = data.GetProperty("poll_returned_ticks").GetInt64();
-            Assert.True(pollReturn >= nativeEnd);
-            if (returned.HasValue) Assert.Equal(returned.Value, pollReturn);
+            Assert.True(pollReturn >= nativeEnds[port]);
+            if (returned.HasValue) Assert.True(pollReturn >= returned.Value);
             returned = pollReturn;
             long start = data.GetProperty("observation_start_ticks").GetInt64();
             long end = data.GetProperty("observation_end_ticks").GetInt64();
@@ -80,6 +79,25 @@ public unsafe sealed class PadObservationTests : IDisposable
     }
 
     [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 0)]
+    [InlineData(-1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(0, 1)]
+    public void Per_port_forwarding_preserves_arguments_and_samples_only_supported_identity(int port, int pad)
+    {
+        _module.CallPadPortPoll(port, pad, (nint)0x12345678);
+        Assert.Equal((port, pad, (nint)0x12345678), NativeClock.LastPollArguments);
+        Assert.Equal(1, NativeClock.PollCalls);
+        if (port is >= 0 and <= 1 && pad == 0)
+            Assert.Equal(FhUtil.PadRecordPointer + port * 0x100 + 0x80, Assert.Single(NativePadObservation.Reads).Address);
+        else
+        {
+            Assert.Empty(NativePadObservation.Reads);
+            Assert.Empty(_module.DiagnosticEvents);
+        }
+    }
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void Inactive_or_absent_capture_only_forwards_native_poll(bool absent)
@@ -87,7 +105,7 @@ public unsafe sealed class PadObservationTests : IDisposable
         if (absent) _module.RemovePadCapture();
         else _module.CaptureLoops(false);
         _module.CallPadPoll();
-        Assert.Equal(1, NativeClock.PollCalls);
+        Assert.Equal(2, NativeClock.PollCalls);
         Assert.Empty(NativePadObservation.Reads);
         Assert.Empty(_module.DiagnosticEvents);
     }
@@ -103,7 +121,7 @@ public unsafe sealed class PadObservationTests : IDisposable
         Assert.False(failed.GetProperty("valid").GetBoolean());
         Assert.Equal(JsonValueKind.Null, failed.GetProperty("raw_words").ValueKind);
         Assert.True(JsonSerializer.SerializeToElement(events[1].Data).GetProperty("valid").GetBoolean());
-        Assert.Equal(1, NativeClock.PollCalls);
+        Assert.Equal(2, NativeClock.PollCalls);
     }
 
     [Fact]
@@ -114,7 +132,7 @@ public unsafe sealed class PadObservationTests : IDisposable
         int reads = NativePadObservation.Reads.Count;
         Assert.Equal(1, reads);
         _module.CallPadPoll();
-        Assert.Equal(2, NativeClock.PollCalls);
+        Assert.Equal(4, NativeClock.PollCalls);
         Assert.Equal(reads, NativePadObservation.Reads.Count);
         Assert.Single(_module.DiagnosticEvents, e => e.Kind == "pad_observation_stopped");
         Assert.DoesNotContain(_module.DiagnosticEvents, e => e.Kind == "pad_observation");
@@ -146,7 +164,7 @@ public unsafe sealed class PadObservationTests : IDisposable
         Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
         Assert.Null(failure);
         Assert.NotEqual(caller, worker);
-        Assert.Equal(1, NativeClock.PollCalls);
+        Assert.Equal(2, NativeClock.PollCalls);
         Assert.Equal(2, _module.DiagnosticEvents.Count);
         Assert.All(_module.DiagnosticEvents, e => Assert.Equal(worker, e.Thread));
     }
@@ -159,8 +177,8 @@ public unsafe sealed class PadObservationTests : IDisposable
         var check = Assert.Single(_module.DiagnosticHookChecks);
         Assert.True(HookSites.IsDeclared(check.Site));
         Assert.Equal("DiagnosticBindingsPadPollObservation", check.Site.ToString());
-        Assert.Equal(0x489a80, check.Rva);
-        Assert.Equal(Convert.FromHexString("5633F66A0056E885F3FFFF506A0056E8BCF5FFFF4683C41483FE027CE65EC3"), check.Expected);
+        Assert.Equal(0x489050, check.Rva);
+        Assert.Equal(Convert.FromHexString("558BEC83EC088B4D0853568B750C57"), check.Expected);
         Assert.Single(NativeClock.Hooks);
         Assert.Contains(_module.CodeChecks, c => c.Rva == 0x488ec0 && c.Pattern == "55 8B EC 8B 45 08 03 45 0C C1 E0 08 05 ?? ?? ?? ?? 5D C3");
         Assert.Contains(_module.OperandChecks, c => c.Rva == 0x488ecd && c.Expected == 0xf30288);
@@ -203,13 +221,14 @@ public unsafe sealed class PadObservationTests : IDisposable
         Assert.Empty(NativeClock.Hooks);
     }
 
-    public static IEnumerable<object[]> GuardBytePositions() => Enumerable.Range(0, 31).Select(i => new object[] { i });
+    public static IEnumerable<object[]> GuardBytePositions() => Enumerable.Range(0, 15).Select(i => new object[] { i });
 }
 
 public unsafe sealed partial class VrrModule
 {
     internal void RemovePadCapture() => _diagnostics = null;
-    internal void CallPadPoll() => h_diag_pad_poll();
+    internal void CallPadPortPoll(int port, int pad, nint buffer) => h_diag_pad_poll(port, pad, buffer);
+    internal void CallPadPoll() { h_diag_pad_poll(0, 0, 0); h_diag_pad_poll(1, 0, 0); }
     internal void InitPadObservation() => init_pad_observations();
 }
 
@@ -217,7 +236,8 @@ internal static partial class NativeClock
 {
     internal static Action? PollAction;
     internal static int PollCalls;
-    public static void Poll() { Interlocked.Increment(ref PollCalls); PollAction?.Invoke(); }
+    internal static (int Port, int Pad, nint Buffer) LastPollArguments;
+    public static void Poll(int port, int pad, nint buffer) { LastPollArguments = (port, pad, buffer); Interlocked.Increment(ref PollCalls); PollAction?.Invoke(); }
 }
 
 internal static unsafe class NativePadObservation
