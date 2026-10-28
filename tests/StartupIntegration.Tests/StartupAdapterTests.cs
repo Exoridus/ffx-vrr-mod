@@ -206,6 +206,8 @@ public sealed class StartupAdapterTests
         Assert.Equal(new byte[] { 0xC1, 0xC2 }, image.State.General);
         Assert.Equal(new byte[] { 0xD1, 0xD2 }, image.State.Water);
         Assert.True(image.Module.RuntimeEffectsArmed);
+        image.Write(StartupImage.GeneralRva, [0xA1, 0xA2]);
+        image.Write(StartupImage.WaterRva, [0xB1, 0xB2]);
     }
 
     [Theory]

@@ -78,7 +78,7 @@ public unsafe sealed partial class VrrModule
         int phase = Math.Min(counter, current - 1);
         ushort rebased = (ushort)(phase * threshold / current);
         if (_patches.IsPreparing)
-            _patches.Write(EngineAddresses.DreamStarCounter, BitConverter.GetBytes(rebased));
+            _patches.Write(EngineAddresses.DreamStarCounter, BitConverter.GetBytes(rebased), skipRestoreIfChanged: true);
         else
             FhUtil.set_at(EngineAddresses.DreamStarCounter, rebased);
 

@@ -10,8 +10,8 @@ namespace Fahrenheit.Mods.Vrr;
 /// </summary>
 public sealed unsafe class PatchJournal
 {
-    private readonly List<(nint Address, byte[] Original, uint Protection)> _entries = new();
-    private readonly List<(nint Address, byte[] Original, byte[] Replacement)> _prepared = new();
+    private readonly List<(nint Address, byte[] Original, byte[] Replacement, uint Protection, bool SkipRestoreIfChanged)> _entries = new();
+    private readonly List<(nint Address, byte[] Original, byte[] Replacement, bool SkipRestoreIfChanged)> _prepared = new();
     private bool _preparing;
     private bool _commitStarted;
     internal bool IsPreparing => _preparing;
@@ -36,7 +36,7 @@ public sealed unsafe class PatchJournal
 
         _commitStarted = true;
         foreach (var patch in _prepared)
-            Apply(patch.Address, patch.Replacement);
+            Apply(patch.Address, patch.Replacement, patch.SkipRestoreIfChanged);
         _prepared.Clear();
         _preparing = false;
         _commitStarted = false;
@@ -64,17 +64,18 @@ public sealed unsafe class PatchJournal
         return false;
     }
 
-    public void Write(nint rva, ReadOnlySpan<byte> replacement)
+    /// <summary>Use skipRestoreIfChanged only for live values whose later progress must survive cleanup.</summary>
+    public void Write(nint rva, ReadOnlySpan<byte> replacement, bool skipRestoreIfChanged = false)
     {
         if (_commitStarted)
             throw new InvalidOperationException("Restore the failed prepared set before writing again.");
         nint address = (nint)FhUtil.ptr_at<byte>(rva);
         if (_preparing)
         {
-            _prepared.Add((address, ReadBytes(address, replacement.Length), replacement.ToArray()));
+            _prepared.Add((address, ReadBytes(address, replacement.Length), replacement.ToArray(), skipRestoreIfChanged));
             return;
         }
-        Apply(address, replacement);
+        Apply(address, replacement, skipRestoreIfChanged);
     }
 
     private static byte[] ReadBytes(nint address, int length)
@@ -85,7 +86,7 @@ public sealed unsafe class PatchJournal
         return bytes;
     }
 
-    private void Apply(nint address, ReadOnlySpan<byte> replacement)
+    private void Apply(nint address, ReadOnlySpan<byte> replacement, bool skipRestoreIfChanged)
     {
         byte[] original = new byte[replacement.Length];
         new Span<byte>((void*)address, replacement.Length).CopyTo(original);
@@ -94,7 +95,7 @@ public sealed unsafe class PatchJournal
         if (!VirtualProtect(address, (nuint)replacement.Length, PAGE_EXECUTE_READWRITE, out uint prev))
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), $"VirtualProtect failed at 0x{address:X8}");
 
-        _entries.Add((address, original, prev));
+        _entries.Add((address, original, replacement.ToArray(), prev, skipRestoreIfChanged));
         try
         {
             replacement.CopyTo(new Span<byte>((void*)address, replacement.Length));
@@ -108,12 +109,23 @@ public sealed unsafe class PatchJournal
         }
     }
 
-    /// <summary>Restores applied patches in reverse order, then discards unpublished work. Failures retain undo for retry.</summary>
+    /// <summary>
+    /// Restores applied patches in reverse order, refusing foreign bytes unless the entry is an explicitly mutable value.
+    /// Unreadable memory and restoration failures retain undo for retry. Callers must serialize access and keep memory quiescent.
+    /// </summary>
     public void RestoreAll()
     {
         for (int i = _entries.Count - 1; i >= 0; i--)
         {
-            (nint address, byte[] original, uint protection) = _entries[i];
+            (nint address, byte[] original, byte[] replacement, uint protection, bool skipRestoreIfChanged) = _entries[i];
+            byte[] current = ReadBytes(address, original.Length);
+            if (!current.AsSpan().SequenceEqual(replacement) && !current.AsSpan().SequenceEqual(original))
+            {
+                if (!skipRestoreIfChanged)
+                    throw new InvalidOperationException($"Patch bytes changed outside the journal at 0x{address:X8}.");
+                _entries.RemoveAt(i);
+                continue;
+            }
             if (!VirtualProtect(address, (nuint)original.Length, PAGE_EXECUTE_READWRITE, out _))
                 throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), $"VirtualProtect failed at 0x{address:X8}");
             try

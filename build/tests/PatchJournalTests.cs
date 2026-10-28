@@ -5,6 +5,155 @@ using Xunit;
 
 public unsafe sealed class PatchJournalTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitMutableValuesPreserveLaterNativeProgress(bool prepared)
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            if (prepared) journal.BeginPreparation();
+            journal.Write(page, [1], skipRestoreIfChanged: true);
+            if (prepared) journal.CommitPrepared();
+            *(byte*)page = 3;
+            journal.RestoreAll();
+            Assert.Equal((byte)3, *(byte*)page);
+            Assert.Equal(0, EntryCount(journal));
+        });
+    }
+
+    [Fact]
+    public void ExplicitMutableValueStillRestoresWhenUnchanged()
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            journal.Write(page, [1], skipRestoreIfChanged: true);
+            journal.RestoreAll();
+            Assert.Equal((byte)9, *(byte*)page);
+        });
+    }
+
+    [Fact]
+    public void MutableFlagDoesNotBypassPreparedBaselineValidation()
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            journal.BeginPreparation();
+            journal.Write(page, [1], skipRestoreIfChanged: true);
+            *(byte*)page = 2;
+            Assert.Throws<InvalidOperationException>(journal.CommitPrepared);
+            Assert.Equal((byte)2, *(byte*)page);
+            Assert.Equal(0, EntryCount(journal));
+            journal.RestoreAll();
+        });
+    }
+
+    [Fact]
+    public void MutableFlagDoesNotHideUnreadableMemoryOrDropUndo()
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            journal.Write(page, [1], skipRestoreIfChanged: true);
+            Assert.True(VirtualFree(page, 4096, 0x4000));
+            Assert.Throws<System.ComponentModel.Win32Exception>(journal.RestoreAll);
+            Assert.Equal(1, EntryCount(journal));
+        });
+    }
+
+    [Fact]
+    public void ForeignPatchBytesRefuseRestoreAndRetainUndo()
+    {
+        WithPage(page =>
+        {
+            new Span<byte>((void*)page, 2).Fill(9);
+            var journal = new PatchJournal();
+            journal.Write(page, [1, 2]);
+            new byte[] { 7, 8 }.CopyTo(new Span<byte>((void*)page, 2));
+            Assert.Throws<InvalidOperationException>(journal.RestoreAll);
+            Assert.Equal(new byte[] { 7, 8 }, new ReadOnlySpan<byte>((void*)page, 2).ToArray());
+            Assert.Equal(1, EntryCount(journal));
+            new byte[] { 1, 2 }.CopyTo(new Span<byte>((void*)page, 2));
+            journal.RestoreAll();
+            Assert.Equal(new byte[] { 9, 9 }, new ReadOnlySpan<byte>((void*)page, 2).ToArray());
+        });
+    }
+
+    [Fact]
+    public void ForeignLatestOverlapStopsBeforeUndoingOlderWrites()
+    {
+        WithPage(page =>
+        {
+            new Span<byte>((void*)page, 4).Fill(9);
+            var journal = new PatchJournal();
+            journal.Write(page, [1, 2, 3]);
+            journal.Write(page + 1, [4, 5, 6]);
+            *(byte*)(page + 1) = 7;
+            Assert.Throws<InvalidOperationException>(journal.RestoreAll);
+            Assert.Equal(new byte[] { 1, 7, 5, 6 }, new ReadOnlySpan<byte>((void*)page, 4).ToArray());
+            Assert.Equal(2, EntryCount(journal));
+            *(byte*)(page + 1) = 4;
+            journal.RestoreAll();
+            Assert.Equal(new byte[] { 9, 9, 9, 9 }, new ReadOnlySpan<byte>((void*)page, 4).ToArray());
+        });
+    }
+
+    [Fact]
+    public void ReplacementOwnershipUsesACopyOfTheCallerBytes()
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            byte[] replacement = [1];
+            journal.Write(page, replacement);
+            replacement[0] = 8;
+            journal.RestoreAll();
+            Assert.Equal((byte)9, *(byte*)page);
+        });
+    }
+
+    [Fact]
+    public void AlreadyRestoredBytesCanFinishUndoCleanup()
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            journal.Write(page, [1]);
+            *(byte*)page = 9;
+            journal.RestoreAll();
+            Assert.Equal((byte)9, *(byte*)page);
+            Assert.Equal(0, EntryCount(journal));
+        });
+    }
+
+    [Fact]
+    public void RecreatedZeroedMemoryIsNotAssumedToStillBelongToTheJournal()
+    {
+        WithPage(page =>
+        {
+            *(byte*)page = 9;
+            var journal = new PatchJournal();
+            journal.Write(page, [1]);
+            Assert.True(VirtualFree(page, 4096, 0x4000));
+            Assert.Equal(page, VirtualAlloc(page, 4096, 0x1000, 0x04));
+            Assert.Throws<InvalidOperationException>(journal.RestoreAll);
+            Assert.Equal((byte)0, *(byte*)page);
+            Assert.Equal(1, EntryCount(journal));
+            *(byte*)page = 1;
+            journal.RestoreAll();
+            Assert.Equal((byte)9, *(byte*)page);
+        });
+    }
+
     [Fact]
     public void RestoresOverlappingWritesInReverseOrder()
     {
@@ -39,6 +188,7 @@ public unsafe sealed class PatchJournalTests
             Assert.Throws<System.ComponentModel.Win32Exception>(journal.RestoreAll);
             Assert.Equal(2, EntryCount(journal));
             Assert.Equal(page, VirtualAlloc(page, 4096, 0x1000, 0x04));
+            *(byte*)page = 2;
             journal.RestoreAll();
             Assert.Equal((byte)9, *(byte*)page);
             Assert.Equal(0, EntryCount(journal));
@@ -137,6 +287,7 @@ public unsafe sealed class PatchJournalTests
                 Assert.Equal(2, EntryCount(journal));
                 Assert.Throws<InvalidOperationException>(() => journal.CommitPrepared());
                 Assert.Equal(page, VirtualAlloc(page, 4096, 0x1000, 0x04));
+                *(byte*)page = 2;
                 journal.RestoreAll();
                 Assert.Equal((byte)9, *(byte*)page);
                 Assert.Equal(0, EntryCount(journal));

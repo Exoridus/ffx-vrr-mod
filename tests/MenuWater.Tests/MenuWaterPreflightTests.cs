@@ -106,7 +106,7 @@ namespace Fahrenheit.Mods.Vrr
     internal sealed class PatchJournal
     {
         internal static int Writes;
-        internal void Write(nint rva, ReadOnlySpan<byte> bytes) => Writes++;
+        internal void Write(nint rva, ReadOnlySpan<byte> bytes, bool skipRestoreIfChanged = false) => Writes++;
         internal void RestoreAll() { }
     }
     internal unsafe static class FhUtil

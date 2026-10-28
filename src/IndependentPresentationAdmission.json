@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "policy": "independent_presentation_veto_only",
   "supported_build": "Steam 25501027",
-  "canonical_contract_snapshot_sha256": "b799e32edf8ddd1cc06c9b5b512bb4973b424c6470791b4bb140c814f9be9721",
+  "canonical_contract_snapshot_sha256": "cbd527c4e2b807f12c5514405487a5fd37bf11a8b40ef6a91ff8556405fa33b3",
   "required_contracts": [
     "clock.pass_scope",
     "clock.effective_exec",
@@ -157,6 +157,11 @@
       "lf_sha256": "faf90e45545938e1b27ac6d5b06d598a76a25774e6a8b46675128c9b0fe73f10"
     },
     {
+      "path": "build/tests/PatchJournalTests.cs",
+      "sha256": "ca054d73e92c353d8481768bc9895c622fd339a9c559912e98813391e513eafa",
+      "lf_sha256": "ca054d73e92c353d8481768bc9895c622fd339a9c559912e98813391e513eafa"
+    },
+    {
       "path": "src/BattleEffectPauseCode.cs",
       "sha256": "97dd82d197be8a0aafa8b2e1fdf3860b2465b03cbb2cbb26b84e4db58d16df9c",
       "lf_sha256": "97dd82d197be8a0aafa8b2e1fdf3860b2465b03cbb2cbb26b84e4db58d16df9c"
@@ -293,8 +298,8 @@
     },
     {
       "path": "src/PatchJournal.cs",
-      "sha256": "3cbc655358faa7732df207c87d8edff11db7e2472804149ba0e1a0d55769b4cf",
-      "lf_sha256": "3cbc655358faa7732df207c87d8edff11db7e2472804149ba0e1a0d55769b4cf"
+      "sha256": "c79f4f9caa377bc1e9db2437795cdcf480b5aea0d75f0c566e432022f2c94973",
+      "lf_sha256": "c79f4f9caa377bc1e9db2437795cdcf480b5aea0d75f0c566e432022f2c94973"
     },
     {
       "path": "src/PresentationAdmission.cs",
@@ -468,8 +473,8 @@
     },
     {
       "path": "src/VrrModule.DreamOverlay.cs",
-      "sha256": "d50522947e21ec3d6718a9e22a91b95e58dcda28b77b03c8b27d872c3c8a3735",
-      "lf_sha256": "20f464bbe6ab45c18351f03b5469fca0ee0861d45e038726b5e2b5e7f29e3041"
+      "sha256": "7d6c066878a821ced0ed5bff222f42e1af715e35e63734e4d26129c9384a874c",
+      "lf_sha256": "962d7d4abd5a6fe79d2d9950d0abdb26c70f02821cf735ed2fbde57afa30758d"
     },
     {
       "path": "src/VrrModule.Effects.cs",
@@ -573,8 +578,8 @@
     },
     {
       "path": "src/VrrModule.MenuWater.cs",
-      "sha256": "38b042178e428c2989eb255bb867a3edaf98a3c7a07222879870ee964d719528",
-      "lf_sha256": "38b042178e428c2989eb255bb867a3edaf98a3c7a07222879870ee964d719528"
+      "sha256": "afc6c728a8a527b30e1885f725baf2011aa69dacf029b638281f9d4dfc67a9b5",
+      "lf_sha256": "afc6c728a8a527b30e1885f725baf2011aa69dacf029b638281f9d4dfc67a9b5"
     },
     {
       "path": "src/VrrModule.MenuWaterDiagnostics.cs",
@@ -1083,8 +1088,8 @@
     },
     {
       "path": "tests/StartupIntegration.Tests/StartupAdapterTests.cs",
-      "sha256": "8af769cad3e1991d64ad04a1f51e1d0b84390323b9e199c7d2b436e00ff08630",
-      "lf_sha256": "8af769cad3e1991d64ad04a1f51e1d0b84390323b9e199c7d2b436e00ff08630"
+      "sha256": "db891563862468c17e9d806cccb5e54b97a23c42a7028089f6be7da49e1f17c7",
+      "lf_sha256": "db891563862468c17e9d806cccb5e54b97a23c42a7028089f6be7da49e1f17c7"
     },
     {
       "path": "tests/StartupIntegration.Tests/StartupBoundaryFixtures.cs",
@@ -1118,8 +1123,8 @@
     },
     {
       "path": "tests/Timing.Tests/TimingTests.cs",
-      "sha256": "0044c6c97794ff3c46e7b09906661cee2c9732370b77163cc2667392a1c6ac94",
-      "lf_sha256": "0044c6c97794ff3c46e7b09906661cee2c9732370b77163cc2667392a1c6ac94"
+      "sha256": "4a3380dbd209ffca7fd008d6d3a22fe0f378c7f0e58fde8671e20a46a45ceda0",
+      "lf_sha256": "4a3380dbd209ffca7fd008d6d3a22fe0f378c7f0e58fde8671e20a46a45ceda0"
     }
   ],
   "generator_inputs": [

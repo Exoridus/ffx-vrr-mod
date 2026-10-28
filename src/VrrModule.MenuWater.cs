@@ -59,7 +59,7 @@ public unsafe sealed partial class VrrModule
                 _expanded_menu_water_table = table;
                 foreach (var write in writes) _menu_water_patches.Write(write.Rva, write.Bytes);
                 _expanded_menu_water_active = true;
-                _menu_water_patches.Write(EngineAddresses.MenuWaterFrame, [0]);
+                _menu_water_patches.Write(EngineAddresses.MenuWaterFrame, [0], skipRestoreIfChanged: true);
                 _logger.Info("Expanded menu water loaded: 140 slots at 60 Hz. Native playback and visual quality require validation.");
                 return true;
             }

@@ -369,7 +369,7 @@ internal sealed class PatchJournal
         IsPreparing = false;
     }
 
-    public unsafe void Write(nint offset, byte[] value)
+    public unsafe void Write(nint offset, byte[] value, bool skipRestoreIfChanged = false)
     {
         if (IsPreparing)
         {
