@@ -282,6 +282,24 @@ public unsafe sealed class TimingTests : IDisposable
 
 public unsafe sealed partial class VrrModule
 {
+    public VrrModule() : this(true) { }
+
+    public VrrModule(bool armSyntheticRuntime)
+    {
+        if (armSyntheticRuntime) ArmSyntheticRuntimeForTest();
+    }
+
+    internal void ArmSyntheticRuntimeForTest()
+    {
+        // Synthetic fixture activation does not qualify native startup.
+        _startupActivation.Prepare(1);
+        if (!_startupActivation.Invoke(1, true, () => { }, () => true, () => { }))
+            throw new InvalidOperationException("Synthetic fixture activation failed.");
+    }
+
+    internal void StopSyntheticRuntimeForTest() => _startupActivation.Stop();
+
+
     internal readonly PatchJournal _patches = new();
     private readonly VrrConfig _config = new();
     private readonly Logger _logger = new();
@@ -328,19 +346,45 @@ internal unsafe static class FhUtil
 
 internal sealed class PatchJournal
 {
+    private readonly List<(nint Offset, byte[] Original, byte[] Replacement)> _prepared = [];
+    internal bool IsPreparing { get; private set; }
     public List<int> Values { get; } = [];
     public int LastValue => Values[^1];
+
+    internal void BeginPreparation() => IsPreparing = true;
+
+    internal unsafe void CommitPrepared()
+    {
+        foreach (var patch in _prepared)
+            if (!new ReadOnlySpan<byte>(FhUtil.ptr_at<byte>(patch.Offset), patch.Original.Length).SequenceEqual(patch.Original))
+                throw new InvalidOperationException("Prepared fixture baseline changed.");
+        IsPreparing = false;
+        foreach (var patch in _prepared) Write(patch.Offset, patch.Replacement);
+        _prepared.Clear();
+    }
+
+    internal void RestoreAll()
+    {
+        _prepared.Clear();
+        IsPreparing = false;
+    }
+
     public unsafe void Write(nint offset, byte[] value)
     {
+        if (IsPreparing)
+        {
+            _prepared.Add((offset, new ReadOnlySpan<byte>(FhUtil.ptr_at<byte>(offset), value.Length).ToArray(), value.ToArray()));
+            return;
+        }
         value.CopyTo(new Span<byte>(FhUtil.ptr_at<byte>(offset), value.Length));
-        Values.Add(value.Length == 1 ? value[0] : BitConverter.ToInt32(value));
+        Values.Add(value.Length switch { 1 => value[0], 2 => BitConverter.ToUInt16(value), _ => BitConverter.ToInt32(value) });
     }
 }
 
 internal readonly record struct FhCallLocation(nint Rva, int Unused);
 internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Delegate
 {
-    public T fnptr { get { _ = location; return (T)Delegate.CreateDelegate(typeof(T), typeof(NativeCalls).GetMethod(typeof(T).Name switch { "d_lens_shape_update" => nameof(NativeCalls.LensClock), "d_buoyancy_barrier" => nameof(NativeCalls.BuoyancyBarrier), "d_atel_wait_init" => nameof(NativeCalls.WaitInit), "d_atel_pop_int" => nameof(NativeCalls.PopInt), "d_atel_wait_exec" => nameof(NativeCalls.WaitExec), "d_fmv_initialize" => nameof(NativeCalls.InitializeMovie), "d_fmv_get_name" => nameof(NativeCalls.GetMovieName), "d_fmv_play_start" => nameof(NativeCalls.PlayMovie), "d_farplane_scene" => nameof(NativeCalls.FarplaneScene), "d_farplane_fmv_draw" => nameof(NativeCalls.FarplaneDraw), "d_farplane_clear_color" => nameof(NativeCalls.FarplaneColor), _ => nameof(NativeCalls.Rng) })!); } }
+    public T fnptr { get { _ = location; return (T)Delegate.CreateDelegate(typeof(T), typeof(NativeCalls).GetMethod(typeof(T).Name switch { "d_limit_timer" => nameof(NativeCalls.NativeLimitTimer), "d_lens_shape_update" => nameof(NativeCalls.LensClock), "d_buoyancy_barrier" => nameof(NativeCalls.BuoyancyBarrier), "d_atel_wait_init" => nameof(NativeCalls.WaitInit), "d_atel_pop_int" => nameof(NativeCalls.PopInt), "d_atel_wait_exec" => nameof(NativeCalls.WaitExec), "d_fmv_initialize" => nameof(NativeCalls.InitializeMovie), "d_fmv_get_name" => nameof(NativeCalls.GetMovieName), "d_fmv_play_start" => nameof(NativeCalls.PlayMovie), "d_farplane_scene" => nameof(NativeCalls.FarplaneScene), "d_farplane_fmv_draw" => nameof(NativeCalls.FarplaneDraw), "d_farplane_clear_color" => nameof(NativeCalls.FarplaneColor), _ => nameof(NativeCalls.Rng) })!); } }
     public bool hook(object owner, T callback) => true;
     public FhCallHandle<T> chain_from(T callback) => this;
 }

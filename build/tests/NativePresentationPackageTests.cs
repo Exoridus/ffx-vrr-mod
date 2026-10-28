@@ -16,13 +16,13 @@ public sealed class NativePresentationPackageTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "fhpresent.dll"), "reviewed helper fixture");
         _record = new()
         {
-            ["workflow"] = "prepare-presentation", ["architecture"] = "x86", ["abi"] = 1,
+            ["workflow"] = "prepare-presentation", ["architecture"] = "x86", ["abi"] = 2, ["symbol_count"] = 5,
             ["native_caller_test"] = "passed", ["managed_x86_probe"] = "passed", ["native_hook_runtime"] = "not_tested",
             ["input_sha256"] = new Dictionary<string, string>
             {
-                ["src/native/presentation/fhpresent.c"] = "4D4A32B9BDB9513F839A7ABFEFA8374D880E414ADA1CFAD25C021D49DBA09ED3",
-                ["src/native/presentation/fhpresent.def"] = "4847EAF52A2D0ED6B930DA8D30031E39689E1AA1323BB20BCDD6D86D9832B599",
-                ["src/NativeSnapshotBridge.cs"] = "8B6DA7A180920CDA2E2588551051BAFE809E20E8EA28E162F9BC8E9EA57E2083"
+                ["src/native/presentation/fhpresent.c"] = "EC01EC9EB988E0B970A268E3716907052517880E8926F3CABBCF5A989B59E4E9",
+                ["src/native/presentation/fhpresent.def"] = "D2299E0309C51B5B5B8745DF1CC343F20AB1B9C056CC12705FED3634CA093E8B",
+                ["src/NativeSnapshotBridge.cs"] = "DB8E0777766DD654BAEE0042A83B671A36B446BFEE6F7DBA3B7A2B329D642A8C"
             },
             ["output_sha256"] = new Dictionary<string, string>
             {
@@ -48,7 +48,8 @@ public sealed class NativePresentationPackageTests : IDisposable
     [Theory]
     [InlineData("workflow", "other")]
     [InlineData("architecture", "x64")]
-    [InlineData("abi", 2)]
+    [InlineData("abi", 1)]
+    [InlineData("symbol_count", 3)]
     [InlineData("native_caller_test", "not_run")]
     [InlineData("managed_x86_probe", "not_run")]
     public void RejectsDifferentRecipeOrUntestedAbi(string field, object value)
@@ -65,10 +66,13 @@ public sealed class NativePresentationPackageTests : IDisposable
         Assert.Throws<InvalidDataException>(() => ModPackage.Validate(_root, "fhvrr", "1.2.3"));
     }
 
-    [Fact]
-    public void RejectsUnreviewedNativeSource()
+    [Theory]
+    [InlineData("src/native/presentation/fhpresent.c")]
+    [InlineData("src/native/presentation/fhpresent.def")]
+    [InlineData("src/NativeSnapshotBridge.cs")]
+    public void RejectsUnreviewedNativeSource(string source)
     {
-        ((Dictionary<string, string>)_record["input_sha256"])["src/native/presentation/fhpresent.c"] = new string('0', 64);
+        ((Dictionary<string, string>)_record["input_sha256"])[source] = new string('0', 64);
         Save();
         Assert.Throws<InvalidDataException>(() => ModPackage.Validate(_root, "fhvrr", "1.2.3"));
     }

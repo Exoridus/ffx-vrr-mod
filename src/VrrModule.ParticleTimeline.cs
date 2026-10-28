@@ -91,6 +91,7 @@ public unsafe sealed partial class VrrModule
 
     private int _timeline_step;
     private bool _timeline_divisor_refused;
+    private bool _timeline_manager_rebase_pending;
 
     /// <summary>
     ///     Called once per presented frame from <c>apply_rate_patches</c>, and a compare and a return
@@ -111,6 +112,14 @@ public unsafe sealed partial class VrrModule
     private void patch_particle_timeline()
     {
         if (!_config.ParticleTimeline) return;
+
+        // Prepared image clocks must reach live managers before evaluating a later rate request.
+        if (_timeline_manager_rebase_pending && !_patches.IsPreparing)
+        {
+            if (!RuntimeEffectsArmed) return;
+            retime_running_managers(_timeline_step);
+            _timeline_manager_rebase_pending = false;
+        }
 
         // The step must divide the vanilla one exactly, and that is not a preference.
         //
@@ -185,7 +194,10 @@ public unsafe sealed partial class VrrModule
         }
 
         _timeline_step = step;
-        retime_running_managers(step);
+        if (_patches.IsPreparing || !RuntimeEffectsArmed)
+            _timeline_manager_rebase_pending = true;
+        else
+            retime_running_managers(step);
     }
 
     /// <summary>

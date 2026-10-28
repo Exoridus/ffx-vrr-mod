@@ -28,7 +28,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.LensSpriteKeLnsShpUpdate, "KeLnsShp_Update", EngineAddresses.KeLnsShpUpdate,
             () => new FhCallHandle<d_lens_shape_update>(new FhCallLocation(EngineAddresses.KeLnsShpUpdate, 0))
-                .hook(this, h_lens_shape_update));
+                .hook(this, with_hook_continuation<d_lens_shape_update>(h_lens_shape_update)));
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -54,6 +54,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_lens_shape_update(nint work)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_lens_shape_update>(new FhCallLocation(EngineAddresses.KeLnsShpUpdate, 0)).chain_from(h_lens_shape_update).fnptr)(work);
+            return;
+        }
+
         _lens_sprite_calls++;
 
         // Cancelling the increment still consumes duration debt; this leaf has no geometry to retain.

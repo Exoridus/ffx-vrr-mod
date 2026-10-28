@@ -57,13 +57,13 @@ public unsafe sealed partial class VrrModule
         _particle_lifecycle_result = false;
         if (!particle_lifecycle_bindings_match()) return false;
         bool ok = hook_or_log(HookSiteId.ParticleSpriteClockParticleObjectCreation, "particle object creation", 0x316770,
-            () => new FhCallHandle<d_pilot_create>(new FhCallLocation(0x316770, 0)).hook(this, h_particle_pilot_create));
+            () => new FhCallHandle<d_pilot_create>(new FhCallLocation(0x316770, 0)).hook(this, with_hook_continuation<d_pilot_create>(h_particle_pilot_create)));
         ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleObjectDeletion, "particle object deletion", 0x3168f0,
-            () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x3168f0, 0)).hook(this, h_particle_pilot_delete));
+            () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x3168f0, 0)).hook(this, with_hook_continuation<d_pilot_object>(h_particle_pilot_delete)));
         ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleObjectLoopReset, "particle object loop reset", 0x312d20,
-            () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x312d20, 0)).hook(this, h_particle_pilot_reset));
+            () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x312d20, 0)).hook(this, with_hook_continuation<d_pilot_object>(h_particle_pilot_reset)));
         ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleManagerFree, "particle manager free", 0x311f20,
-            () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x311f20, 0)).hook(this, h_particle_pilot_free));
+            () => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x311f20, 0)).hook(this, with_hook_continuation<d_pilot_object>(h_particle_pilot_free)));
         _particle_lifecycle_result = ok;
         return ok;
     }
@@ -73,9 +73,9 @@ public unsafe sealed partial class VrrModule
         if (!_config.ParticleSpriteClock) return true;
         if (!preflight_particle_sprite_clock() || !init_particle_lifecycle()) return false;
         bool ok = hook_or_log(HookSiteId.ParticleSpriteClockParticleShapeSpriteClock, "particle Shape sprite clock", ParticleShape,
-            () => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShape, 0)).hook(this, h_particle_shape));
+            () => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShape, 0)).hook(this, with_hook_continuation<d_particle_sprite_draw>(h_particle_shape)));
         ok &= hook_or_log(HookSiteId.ParticleSpriteClockParticleShapeXSpriteClock, "particle ShapeX sprite clock", ParticleShapeX,
-            () => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShapeX, 0)).hook(this, h_particle_shape_x));
+            () => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShapeX, 0)).hook(this, with_hook_continuation<d_particle_sprite_draw>(h_particle_shape_x)));
         _particle_sprite_installed = ok;
         return ok;
     }
@@ -126,6 +126,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_shape(nint obj, nint operand, nint program)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShape, 0)).chain_from(h_particle_shape).fnptr)(obj, operand, program);
+            return;
+        }
+
         var original = _particle_shape_original ??= new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShape, 0))
             .chain_from(h_particle_shape).fnptr!;
         particle_sprite_draw(obj, operand, program, 12, original);
@@ -134,6 +140,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_shape_x(nint obj, nint operand, nint program)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShapeX, 0)).chain_from(h_particle_shape_x).fnptr)(obj, operand, program);
+            return;
+        }
+
         var original = _particle_shape_x_original ??= new FhCallHandle<d_particle_sprite_draw>(new FhCallLocation(ParticleShapeX, 0))
             .chain_from(h_particle_shape_x).fnptr!;
         particle_sprite_draw(obj, operand, program, 16, original);

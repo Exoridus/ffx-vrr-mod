@@ -33,6 +33,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_advance_vblank(float arg1)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0)).chain_from(h_advance_vblank).fnptr)(arg1);
+            return;
+        }
+
         bool completed = false;
         try { advance_vblank(arg1); completed = true; }
         finally { pad_snapshot_clock_completed(completed); }

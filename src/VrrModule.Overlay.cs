@@ -20,6 +20,7 @@ public unsafe sealed partial class VrrModule
 
     public override void render_imgui()
     {
+        if (!RuntimeEffectsArmed) return;
         if (!_initialized) return;
         presenter_overlay_begin();
         render_fps_overlay();

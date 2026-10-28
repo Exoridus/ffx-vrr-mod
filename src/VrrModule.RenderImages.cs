@@ -81,13 +81,13 @@ public unsafe sealed partial class VrrModule
             return false;
         }
         bool ok = hook_or_log(HookSiteId.RenderImagesPApplicationFrame, "PApplication frame", RenderImageFrame,
-            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFrame, 0)).hook(this, h_render_image_frame));
+            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFrame, 0)).hook(this, with_hook_continuation<d_render_image_native>(h_render_image_frame)));
         ok &= hook_or_log(HookSiteId.RenderImagesRendererFlipIdentity, "renderer flip identity", RenderImageFlip,
-            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFlip, 0)).hook(this, h_render_image_flip));
+            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFlip, 0)).hook(this, with_hook_continuation<d_render_image_native>(h_render_image_flip)));
         ok &= hook_or_log(HookSiteId.RenderImagesRenderFlipSlot, "render flip slot", RenderImageSlot,
-            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageSlot, 0)).hook(this, h_render_image_slot));
+            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageSlot, 0)).hook(this, with_hook_continuation<d_render_image_native>(h_render_image_slot)));
         ok &= hook_or_log(HookSiteId.RenderImagesRenderFlipAction, "render flip action", RenderImageAction,
-            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageAction, 0)).hook(this, h_render_image_action));
+            () => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageAction, 0)).hook(this, with_hook_continuation<d_render_image_native>(h_render_image_action)));
         ok &= init_graphics_lifetime_hooks();
         _renderImagesInstalled = ok;
         return ok;
@@ -204,6 +204,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_render_image_frame(nint application)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFrame, 0)).chain_from(h_render_image_frame).fnptr)(application);
+
         RenderImageFrameScope? previous = _renderImageFrame.Value;
         bool valid = render_image_pointer_is(application, (nint)FhUtil.ptr_at<byte>(0x70d998))
             && render_image_pointer_is(application + 0x124, (nint)FhUtil.ptr_at<byte>(0x7363f8));
@@ -241,6 +244,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_render_image_flip(nint renderer)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageFlip, 0)).chain_from(h_render_image_flip).fnptr)(renderer);
+
         RenderImageReservation? previous = _renderImageReservation.Value;
         if (previous is not null) render_image_refuse_association("render_image_nested_flip");
         RenderImageFrameScope? frame = _renderImageFrame.Value;
@@ -282,6 +288,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_render_image_slot(nint thread)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageSlot, 0)).chain_from(h_render_image_slot).fnptr)(thread);
+
         RenderImageReservation? reservation = _renderImageReservation.Value;
         bool publish;
         lock (_renderImageQueueLock)
@@ -314,6 +323,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_render_image_action(nint context)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_render_image_native>(new FhCallLocation(RenderImageAction, 0)).chain_from(h_render_image_action).fnptr)(context);
+
         RenderImageActionScope? previous = _renderImageAction.Value;
         int thread = Environment.CurrentManagedThreadId;
         Interlocked.CompareExchange(ref _renderImageConsumerThread, thread, 0);

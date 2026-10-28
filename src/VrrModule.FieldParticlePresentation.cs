@@ -61,7 +61,7 @@ public unsafe sealed partial class VrrModule
         _fieldBackend = new(() => new FhCallHandle<d_field_backend>(new FhCallLocation(0x2453d0, 0)).fnptr!);
         _fieldLevel = new(() => new FhCallHandle<d_field_level>(new FhCallLocation(0x241da0, 0)).fnptr!);
         _fieldPresentationInstalled = hook_or_log(HookSiteId.FieldParticlePresentationFieldParticleProducerDispatcher, "field particle producer dispatcher", 0x317010,
-            () => new FhCallHandle<d_field_dispatch>(new FhCallLocation(0x317010, 0)).hook(this, h_field_particle_dispatch));
+            () => new FhCallHandle<d_field_dispatch>(new FhCallLocation(0x317010, 0)).hook(this, with_hook_continuation<d_field_dispatch>(h_field_particle_dispatch)));
         return _fieldPresentationInstalled;
     }
 
@@ -171,6 +171,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_field_particle_dispatch(nint manager)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_field_dispatch>(new FhCallLocation(0x317010, 0)).chain_from(h_field_particle_dispatch).fnptr)(manager);
+            return;
+        }
+
         var original = _fieldDispatchOriginal ??= new FhCallHandle<d_field_dispatch>(new FhCallLocation(0x317010, 0))
             .chain_from(h_field_particle_dispatch).fnptr!;
         if (!_fieldPresentationInstalled || !is_field_particle_manager(manager)) { original(manager); return; }

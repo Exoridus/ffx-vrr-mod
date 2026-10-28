@@ -87,7 +87,7 @@ public unsafe sealed partial class VrrModule
 
         _cross_fade_hold_active = hook_or_log(HookSiteId.CrossFadeSgDrawFilter, "Sg_DrawFilter", EngineAddresses.SgDrawFilter,
             () => new FhCallHandle<d_draw_filter>(new FhCallLocation(EngineAddresses.SgDrawFilter, 0))
-                .hook(this, h_draw_filter));
+                .hook(this, with_hook_continuation<d_draw_filter>(h_draw_filter)));
         _filter_presentation_hold &= _cross_fade_hold_active;
 
         return _cross_fade_hold_active;
@@ -143,6 +143,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_draw_filter()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_draw_filter>(new FhCallLocation(EngineAddresses.SgDrawFilter, 0)).chain_from(h_draw_filter).fnptr)();
+            return;
+        }
+
         var original = new FhCallHandle<d_draw_filter>(new FhCallLocation(EngineAddresses.SgDrawFilter, 0))
             .chain_from(h_draw_filter);
 

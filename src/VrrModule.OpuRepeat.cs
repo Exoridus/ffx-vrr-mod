@@ -17,6 +17,7 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static int bx_on_stream_entry(nint scratch, nint record)
     {
+        if (s_battle_effects?.RuntimeEffectsArmed != true) return 0;
         try { return s_battle_effects?.bx_stream_entry(scratch, record) ?? 0; }
         catch (Exception) { return 0; }
     }
@@ -34,6 +35,7 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void bx_on_stream_next(nint scratch, nint record)
     {
+        if (s_battle_effects?.RuntimeEffectsArmed != true) return;
         try
         {
             var module = s_battle_effects;

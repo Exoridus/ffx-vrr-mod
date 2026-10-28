@@ -49,13 +49,13 @@ public unsafe sealed partial class VrrModule
     private bool init_graphics_lifetime_hooks()
     {
         bool ok = hook_or_log(HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion, "ordinary render completion", RenderImageOrdinary,
-            () => new FhCallHandle<d_graphics_result>(new FhCallLocation(RenderImageOrdinary, 0)).hook(this, h_render_image_ordinary));
+            () => new FhCallHandle<d_graphics_result>(new FhCallLocation(RenderImageOrdinary, 0)).hook(this, with_hook_continuation<d_graphics_result>(h_render_image_ordinary)));
         ok &= hook_or_log(HookSiteId.GraphicsLifetimeGraphicsInitializeObservation, "graphics initialize observation", GraphicsInitialize,
-            () => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsInitialize, 0)).hook(this, h_graphics_initialize));
+            () => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsInitialize, 0)).hook(this, with_hook_continuation<d_graphics_result>(h_graphics_initialize)));
         ok &= hook_or_log(HookSiteId.GraphicsLifetimeGraphicsFinalizeObservation, "graphics finalize observation", GraphicsFinalize,
-            () => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0)).hook(this, h_graphics_finalize));
+            () => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0)).hook(this, with_hook_continuation<d_graphics_result>(h_graphics_finalize)));
         ok &= hook_or_log(HookSiteId.GraphicsLifetimeGraphicsResetObservation, "graphics reset observation", GraphicsReset,
-            () => new FhCallHandle<d_graphics_reset>(new FhCallLocation(GraphicsReset, 0)).hook(this, h_graphics_reset));
+            () => new FhCallHandle<d_graphics_reset>(new FhCallLocation(GraphicsReset, 0)).hook(this, with_hook_continuation<d_graphics_reset>(h_graphics_reset)));
         return ok;
     }
 
@@ -104,6 +104,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_graphics_initialize()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsInitialize, 0)).chain_from(h_graphics_initialize).fnptr)();
+
         GraphicsObservation observation = graphics_lifecycle_enter(true);
         bool normal = false;
         uint result = 0;
@@ -120,6 +123,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_graphics_finalize()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_graphics_result>(new FhCallLocation(GraphicsFinalize, 0)).chain_from(h_graphics_finalize).fnptr)();
+
         GraphicsObservation observation = graphics_lifecycle_enter(false);
         try
         {
@@ -132,6 +138,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_graphics_reset()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_graphics_reset>(new FhCallLocation(GraphicsReset, 0)).chain_from(h_graphics_reset).fnptr)();
+            return;
+        }
+
         GraphicsObservation observation = graphics_lifecycle_enter(false);
         try
         {
@@ -144,6 +156,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_render_image_ordinary()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_graphics_result>(new FhCallLocation(RenderImageOrdinary, 0)).chain_from(h_render_image_ordinary).fnptr)();
+
         RenderImageFrameScope? frame = _renderImageFrame.Value;
         int version = 0;
         if (frame is not null)

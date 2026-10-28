@@ -2,6 +2,18 @@ namespace Fahrenheit.Mods.Vrr;
 
 public unsafe sealed partial class VrrModule
 {
+    private readonly StartupActivation _startupActivation = new();
+    internal bool RuntimeEffectsArmed => _startupActivation.IsArmed;
+
+    private T with_hook_continuation<T>(T callback) where T : Delegate
+    {
+        // The unresolved handle looks up this exact callback without binding another native target.
+        if (_hookRegistration is null || !_hookRegistration.RecordContinuation(callback,
+            () => new FhCallHandle<T>(default).chain_from(callback).fnptr is not null))
+            throw new InvalidOperationException("The callback has no selected owning registration attempt.");
+        return callback;
+    }
+
     private HookRegistrationPlan? _hookRegistration;
     private long _hookRegistrationGeneration;
 

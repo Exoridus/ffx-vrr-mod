@@ -27,13 +27,13 @@ public unsafe sealed partial class VrrModule
         }
         bool ok = true;
         if (IndependentPresentationEnabled) ok = hook_or_log(HookSiteId.TexturePresentationTextureUVOutput, "texture UV output", TextureUvOutput,
-            () => new FhCallHandle<d_texture_uv_output>(new FhCallLocation(TextureUvOutput, 0)).hook(this, h_texture_uv_output));
+            () => new FhCallHandle<d_texture_uv_output>(new FhCallLocation(TextureUvOutput, 0)).hook(this, with_hook_continuation<d_texture_uv_output>(h_texture_uv_output)));
         ok &= hook_or_log(HookSiteId.TexturePresentationTextureFinalImage, "texture final image", TextureFinalDraw,
-            () => new FhCallHandle<d_texture_final_draw>(new FhCallLocation(TextureFinalDraw, 0)).hook(this, h_texture_final_draw));
+            () => new FhCallHandle<d_texture_final_draw>(new FhCallLocation(TextureFinalDraw, 0)).hook(this, with_hook_continuation<d_texture_final_draw>(h_texture_final_draw)));
         ok &= hook_or_log(HookSiteId.TexturePresentationTextureWorkLifetime, "texture work lifetime", TextureWorkCreate,
-            () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(TextureWorkCreate, 0)).hook(this, h_texture_work_create));
+            () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(TextureWorkCreate, 0)).hook(this, with_hook_continuation<d_new_texture_advance>(h_texture_work_create)));
         ok &= hook_or_log(HookSiteId.TexturePresentationTextureSlotLifetime, "texture slot lifetime", TextureSlotDelete,
-            () => new FhCallHandle<d_texture_delete>(new FhCallLocation(TextureSlotDelete, 0)).hook(this, h_texture_slot_delete));
+            () => new FhCallHandle<d_texture_delete>(new FhCallLocation(TextureSlotDelete, 0)).hook(this, with_hook_continuation<d_texture_delete>(h_texture_slot_delete)));
         _texturePresentationBound = ok && IndependentPresentationEnabled;
         _textureFramePhaseBound = ok && _config.TextureFrameInterpolation;
         return ok;
@@ -53,6 +53,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texture_work_create(int slot, nint model, nint descriptor)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(TextureWorkCreate, 0)).chain_from(h_texture_work_create).fnptr)(slot, model, descriptor);
+            return;
+        }
+
         invalidate_texture_uv(slot);
         new FhCallHandle<d_new_texture_advance>(new FhCallLocation(TextureWorkCreate, 0))
             .chain_from(h_texture_work_create).fnptr!(slot, model, descriptor);
@@ -61,6 +67,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texture_slot_delete(int slot)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_texture_delete>(new FhCallLocation(TextureSlotDelete, 0)).chain_from(h_texture_slot_delete).fnptr)(slot);
+            return;
+        }
+
         invalidate_texture_uv(slot);
         new FhCallHandle<d_texture_delete>(new FhCallLocation(TextureSlotDelete, 0))
             .chain_from(h_texture_slot_delete).fnptr!(slot);
@@ -77,6 +89,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texture_uv_output(int record, int set, float u, float v, nint renderer)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_texture_uv_output>(new FhCallLocation(TextureUvOutput, 0)).chain_from(h_texture_uv_output).fnptr)(record, set, u, v, renderer);
+            return;
+        }
+
         if (_textureUvCapturing)
             capture_texture_uv(FhUtil.ptr_at<byte>(TextureAnimationSlots + _textureUvSlot * TextureSlotStride),
                 _textureUvSlot, record, set, u, v, (uint)(nuint)renderer);
@@ -111,6 +129,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texture_final_draw()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_texture_final_draw>(new FhCallLocation(TextureFinalDraw, 0)).chain_from(h_texture_final_draw).fnptr)();
+            return;
+        }
+
         bool drawn = FhUtil.get_at<int>(0xefb7d8) == 0;
         if (_texturePresentationBound)
         {

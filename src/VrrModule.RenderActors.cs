@@ -76,11 +76,11 @@ public unsafe sealed partial class VrrModule
             return false;
         }
         bool ok = hook_or_log(HookSiteId.RenderActorsActorWorldGroup, "actor world group", RenderActorWorldGroup,
-            () => new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0)).hook(this, h_render_actor_group));
+            () => new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0)).hook(this, with_hook_continuation<d_render_actor_group>(h_render_actor_group)));
         ok &= hook_or_log(HookSiteId.RenderActorsActorModelWorldGroup, "actor model world group", RenderActorWorldModel,
-            () => new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0)).hook(this, h_render_actor_model));
+            () => new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0)).hook(this, with_hook_continuation<d_render_actor_model>(h_render_actor_model)));
         ok &= hook_or_log(HookSiteId.RenderActorsActorRendererWorldInstance, "actor renderer world instance", RenderActorWorldInstance,
-            () => new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0)).hook(this, h_render_actor_instance));
+            () => new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0)).hook(this, with_hook_continuation<d_render_actor_instance>(h_render_actor_instance)));
         _renderActorsBound = ok;
         return ok;
     }
@@ -157,6 +157,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_render_actor_group(nint group, Matrix4x4* matrix)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0)).chain_from(h_render_actor_group).fnptr)(group, matrix);
+            return;
+        }
+
         nint previous = _renderActorSubmittingGroup;
         _renderActorSubmittingGroup = group;
         try
@@ -170,6 +176,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_render_actor_model(nint group, Matrix4x4* matrix, uint model)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0)).chain_from(h_render_actor_model).fnptr)(group, matrix, model);
+            return;
+        }
+
         nint previous = _renderActorSubmittingGroup;
         _renderActorSubmittingGroup = group;
         try
@@ -183,6 +195,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     private void h_render_actor_instance(nint instance, Matrix4x4* matrix)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0)).chain_from(h_render_actor_instance).fnptr)(instance, matrix);
+            return;
+        }
+
         System.Threading.Interlocked.Increment(ref _renderActorCallbacks);
         try { lock (_renderActorLock) submit_render_actor_instance(instance, matrix); }
         finally { System.Threading.Interlocked.Decrement(ref _renderActorCallbacks); }

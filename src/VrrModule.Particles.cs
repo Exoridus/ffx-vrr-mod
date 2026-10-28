@@ -48,16 +48,16 @@ public unsafe sealed partial class VrrModule
         if (!init_particle_sprite_clock()) return false;
 
         bool ok = hook_or_log(HookSiteId.ParticlesPppStartPart, "_pppStartPart", EngineAddresses.PppStartPart,
-            () => new FhCallHandle<d_ppp_start_part>(new FhCallLocation(EngineAddresses.PppStartPart, 0)).hook(this, h_ppp_start_part));
+            () => new FhCallHandle<d_ppp_start_part>(new FhCallLocation(EngineAddresses.PppStartPart, 0)).hook(this, with_hook_continuation<d_ppp_start_part>(h_ppp_start_part)));
         if (_config.ParticleTimeline)
         {
             ok &= hook_or_log(HookSiteId.ParticlesPppPartLoop, "pppPartLoop", EngineAddresses.PppPartLoop,
-                () => new FhCallHandle<d_ppp_part_loop>(new FhCallLocation(EngineAddresses.PppPartLoop, 0)).hook(this, h_ppp_part_loop));
+                () => new FhCallHandle<d_ppp_part_loop>(new FhCallLocation(EngineAddresses.PppPartLoop, 0)).hook(this, with_hook_continuation<d_ppp_part_loop>(h_ppp_part_loop)));
             ok &= hook_or_log(HookSiteId.ParticlesPppRunPartFp, "_pppRunPartFp", EngineAddresses.PppRunPartFp,
-                () => new FhCallHandle<d_ppp_run_part_fp>(new FhCallLocation(EngineAddresses.PppRunPartFp, 0)).hook(this, h_ppp_run_part_fp));
+                () => new FhCallHandle<d_ppp_run_part_fp>(new FhCallLocation(EngineAddresses.PppRunPartFp, 0)).hook(this, with_hook_continuation<d_ppp_run_part_fp>(h_ppp_run_part_fp)));
         }
         ok &= hook_or_log(HookSiteId.ParticlesPppRunPart, "_pppRunPart", EngineAddresses.PppRunPart,
-            () => new FhCallHandle<d_ppp_run_part>(new FhCallLocation(EngineAddresses.PppRunPart, 0)).hook(this, h_ppp_run_part));
+            () => new FhCallHandle<d_ppp_run_part>(new FhCallLocation(EngineAddresses.PppRunPart, 0)).hook(this, with_hook_continuation<d_ppp_run_part>(h_ppp_run_part)));
         return ok;
     }
 
@@ -97,6 +97,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_ppp_start_part(nint manager, int time_step, nint data, int flags)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_ppp_start_part>(new FhCallLocation(EngineAddresses.PppStartPart, 0)).chain_from(h_ppp_start_part).fnptr)(manager, time_step, data, flags);
+            return;
+        }
+
         _fieldDeferral.Drop(manager);
         field_particle_manager_changed(manager);
         if (_particle_sprite_installed) _particle_sprite_clock.ResetManager(manager);
@@ -117,6 +123,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_ppp_run_part(nint manager, byte mode)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_ppp_run_part>(new FhCallLocation(EngineAddresses.PppRunPart, 0)).chain_from(h_ppp_run_part).fnptr)(manager, mode);
+
         _part_runs++;
 
         var orig = new FhCallHandle<d_ppp_run_part>(new FhCallLocation(EngineAddresses.PppRunPart, 0))
@@ -147,6 +156,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_ppp_run_part_fp(nint manager, uint mode)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_ppp_run_part_fp>(new FhCallLocation(EngineAddresses.PppRunPartFp, 0)).chain_from(h_ppp_run_part_fp).fnptr)(manager, mode);
+
         _fp_runs++;
 
         if (!_fp_started.ContainsKey(manager)) note_field_start(manager);
@@ -207,6 +219,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_ppp_part_loop()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_ppp_part_loop>(new FhCallLocation(EngineAddresses.PppPartLoop, 0)).chain_from(h_ppp_part_loop).fnptr)();
+            return;
+        }
+
         _part_loops++;
 
         new FhCallHandle<d_ppp_part_loop>(new FhCallLocation(EngineAddresses.PppPartLoop, 0))

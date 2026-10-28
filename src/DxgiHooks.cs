@@ -53,14 +53,14 @@ public unsafe sealed partial class VrrModule
         {
             Installed = kind switch
             {
-                0 => HookSites.Install(HookSiteId.DxgiPresent, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_present>(new FhCallLocation(_target)).hook(_owner, Present)),
-                1 => HookSites.Install(HookSiteId.DxgiResize, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_resize>(new FhCallLocation(_target)).hook(_owner, Resize)),
-                2 => HookSites.Install(HookSiteId.DxgiFullscreen, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_fullscreen>(new FhCallLocation(_target)).hook(_owner, Fullscreen)),
-                3 => HookSites.Install(HookSiteId.DxgiRelease, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_release>(new FhCallLocation(_target)).hook(_owner, Release)),
-                4 => HookSites.Install(HookSiteId.DxgiSetTargets, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_set_targets>(new FhCallLocation(_target)).hook(_owner, SetTargets)),
-                5 => HookSites.Install(HookSiteId.DxgiClearState, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_clear_state>(new FhCallLocation(_target)).hook(_owner, ClearState)),
-                6 => HookSites.Install(HookSiteId.DxgiDrawIndexed, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_draw_indexed>(new FhCallLocation(_target)).hook(_owner, DrawIndexed)),
-                7 => HookSites.Install(HookSiteId.DxgiDraw, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_draw>(new FhCallLocation(_target)).hook(_owner, Draw)),
+                0 => HookSites.Install(HookSiteId.DxgiPresent, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_present>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_present>(Present))),
+                1 => HookSites.Install(HookSiteId.DxgiResize, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_resize>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_resize>(Resize))),
+                2 => HookSites.Install(HookSiteId.DxgiFullscreen, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_fullscreen>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_fullscreen>(Fullscreen))),
+                3 => HookSites.Install(HookSiteId.DxgiRelease, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_release>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_release>(Release))),
+                4 => HookSites.Install(HookSiteId.DxgiSetTargets, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_set_targets>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_set_targets>(SetTargets))),
+                5 => HookSites.Install(HookSiteId.DxgiClearState, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_clear_state>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_clear_state>(ClearState))),
+                6 => HookSites.Install(HookSiteId.DxgiDrawIndexed, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_draw_indexed>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_draw_indexed>(DrawIndexed))),
+                7 => HookSites.Install(HookSiteId.DxgiDraw, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_draw>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_draw>(Draw))),
                 _ => false
             };
             return Installed;
@@ -69,6 +69,9 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private int Present(IDXGISwapChain* swapchain, uint interval, uint flags)
         {
+            if (!_owner.RuntimeEffectsArmed)
+                return HookSites.Native(() => new FhCallHandle<d_present>(new FhCallLocation(_target)).chain_from(Present).fnptr)(swapchain, interval, flags);
+
             var next = new FhCallHandle<d_present>(new FhCallLocation(_target)).chain_from(Present).fnptr!;
             DxgiSwapchainState? state = _owner.presenter_state((nint)swapchain);
             if (state is null) return next(swapchain, interval, flags);
@@ -148,6 +151,12 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private void DrawIndexed(ID3D11DeviceContext* context, uint count, uint start, int baseVertex)
         {
+            if (!_owner.RuntimeEffectsArmed)
+            {
+                HookSites.Native(() => new FhCallHandle<d_draw_indexed>(new FhCallLocation(_target)).chain_from(DrawIndexed).fnptr)(context, count, start, baseVertex);
+                return;
+            }
+
             _owner.diagnostic_gameover_gpu_draw(count);
             _owner.diagnostic_water_draw(context, "indexed", count, start, baseVertex);
             new FhCallHandle<d_draw_indexed>(new FhCallLocation(_target)).chain_from(DrawIndexed).fnptr!(context, count, start, baseVertex);
@@ -156,6 +165,12 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private void Draw(ID3D11DeviceContext* context, uint count, uint start)
         {
+            if (!_owner.RuntimeEffectsArmed)
+            {
+                HookSites.Native(() => new FhCallHandle<d_draw>(new FhCallLocation(_target)).chain_from(Draw).fnptr)(context, count, start);
+                return;
+            }
+
             _owner.diagnostic_gameover_gpu_draw(count);
             _owner.diagnostic_water_draw(context, "plain", count, start, 0);
             new FhCallHandle<d_draw>(new FhCallLocation(_target)).chain_from(Draw).fnptr!(context, count, start);
@@ -164,6 +179,9 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private int Resize(IDXGISwapChain* swapchain, uint count, uint width, uint height, DXGI_FORMAT format, uint flags)
         {
+            if (!_owner.RuntimeEffectsArmed)
+                return HookSites.Native(() => new FhCallHandle<d_resize>(new FhCallLocation(_target)).chain_from(Resize).fnptr)(swapchain, count, width, height, format, flags);
+
             var next = new FhCallHandle<d_resize>(new FhCallLocation(_target)).chain_from(Resize).fnptr!;
             DxgiSwapchainState? state = _owner.presenter_state((nint)swapchain);
             if (state is null) return next(swapchain, count, width, height, format, flags);
@@ -193,6 +211,9 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private int Fullscreen(IDXGISwapChain* swapchain, int fullscreen, IDXGIOutput* output)
         {
+            if (!_owner.RuntimeEffectsArmed)
+                return HookSites.Native(() => new FhCallHandle<d_fullscreen>(new FhCallLocation(_target)).chain_from(Fullscreen).fnptr)(swapchain, fullscreen, output);
+
             if (fullscreen != 0 && _owner.presenter_state((nint)swapchain) is not null)
             {
                 _owner._logger.Warning("[Vrr] Exclusive fullscreen request refused; select windowed or borderless mode for VRR.");
@@ -205,6 +226,9 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private uint Release(IDXGISwapChain* swapchain)
         {
+            if (!_owner.RuntimeEffectsArmed)
+                return HookSites.Native(() => new FhCallHandle<d_release>(new FhCallLocation(_target)).chain_from(Release).fnptr)(swapchain);
+
             uint references = new FhCallHandle<d_release>(new FhCallLocation(_target)).chain_from(Release).fnptr!(swapchain);
             if (references == 0) _owner.presenter_forget((nint)swapchain);
             return references;
@@ -213,6 +237,12 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private void SetTargets(ID3D11DeviceContext* context, uint count, ID3D11RenderTargetView** targets, ID3D11DepthStencilView* depth)
         {
+            if (!_owner.RuntimeEffectsArmed)
+            {
+                HookSites.Native(() => new FhCallHandle<d_set_targets>(new FhCallLocation(_target)).chain_from(SetTargets).fnptr)(context, count, targets, depth);
+                return;
+            }
+
             if (!_inside_present)
             {
                 lock (_owner._presenter_lock)
@@ -232,6 +262,12 @@ public unsafe sealed partial class VrrModule
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private void ClearState(ID3D11DeviceContext* context)
         {
+            if (!_owner.RuntimeEffectsArmed)
+            {
+                HookSites.Native(() => new FhCallHandle<d_clear_state>(new FhCallLocation(_target)).chain_from(ClearState).fnptr)(context);
+                return;
+            }
+
             if (!_inside_present)
             {
                 lock (_owner._presenter_lock)

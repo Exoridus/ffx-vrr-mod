@@ -212,7 +212,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.ChFacingChSetPitchTarget, "Ch_SetPitchTarget", EngineAddresses.ChSetPitchTarget,
             () => new FhCallHandle<d_ch_set_pitch>(new FhCallLocation(EngineAddresses.ChSetPitchTarget, 0))
-                .hook(this, h_ch_set_pitch));
+                .hook(this, with_hook_continuation<d_ch_set_pitch>(h_ch_set_pitch)));
     }
 
     /* Measured cdecl: the body reads [ebp+8], [ebp+0xc] and [ebp+0x10] and ends 5d c3, so the caller
@@ -225,6 +225,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_ch_set_pitch(nint actor, float angle, float rate)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_ch_set_pitch>(new FhCallLocation(EngineAddresses.ChSetPitchTarget, 0)).chain_from(h_ch_set_pitch).fnptr)(actor, angle, rate);
+            return;
+        }
+
         _ch_pitch_sets++;
 
         float scale = Scale;

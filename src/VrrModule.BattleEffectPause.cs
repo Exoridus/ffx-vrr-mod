@@ -149,7 +149,7 @@ public unsafe sealed partial class VrrModule
             return false;
         }
         if (!hook_or_log(HookSiteId.BattleEffectPauseMAG028ParticlePauseSetter, "MAG-028 particle pause setter", BxPauseSetter,
-                () => new FhCallHandle<d_bx_setter>(new FhCallLocation(BxPauseSetter, 0)).hook(this, h_bx_pause_setter)))
+                () => new FhCallHandle<d_bx_setter>(new FhCallLocation(BxPauseSetter, 0)).hook(this, with_hook_continuation<d_bx_setter>(h_bx_pause_setter))))
         {
             _logger.Error("[Vrr] Battle effect pause refused: the pause setter hook could not be installed; no code was patched.");
             return false;
@@ -286,6 +286,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_bx_pause_setter(int value)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_bx_setter>(new FhCallLocation(BxPauseSetter, 0)).chain_from(h_bx_pause_setter).fnptr)(value);
+            return;
+        }
+
         Volatile.Write(ref _bxWantedPause, value);
         new FhCallHandle<d_bx_setter>(new FhCallLocation(BxPauseSetter, 0)).chain_from(h_bx_pause_setter).fnptr!(value);
     }
@@ -294,6 +300,7 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static int bx_on_follow(nint unit)
     {
+        if (s_battle_effects?.RuntimeEffectsArmed != true) return 0;
         try
         {
             var module = s_battle_effects;
@@ -313,7 +320,16 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static uint bx_on_driver(nint list, int param, int cookie)
     {
-        var module = s_battle_effects!;
+        var module = s_battle_effects;
+        if (module is null) { Environment.FailFast("Battle driver has no owning module."); return 0; }
+        if (!module.RuntimeEffectsArmed)
+        {
+            if ((uint)cookie >= (uint)module._bxDrivers.Count || module._bxAdapter == 0
+                || module._bxDrivers[cookie].Trampoline == 0)
+            { Environment.FailFast("Battle driver native continuation is unavailable."); return 0; }
+            return ((delegate* unmanaged[Cdecl]<nint, int, nint, uint>)module._bxAdapter)(
+                list, param, module._bxDrivers[cookie].Trampoline);
+        }
         var (headOperand, trampoline) = module._bxDrivers[cookie];
         var call = (delegate* unmanaged[Cdecl]<nint, int, nint, uint>)module._bxAdapter;
         const int Limit = 128;

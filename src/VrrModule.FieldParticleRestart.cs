@@ -54,7 +54,7 @@ public unsafe sealed partial class VrrModule
         if (!_config.FieldParticleRestartHold && !IndependentPresentationEnabled) return true;
 
         return hook_or_log(HookSiteId.FieldParticleRestartPppFpLoop, "pppFpLoop", EngineAddresses.PppFpLoop,
-            () => new FhCallHandle<d_ppp_fp_loop>(new FhCallLocation(EngineAddresses.PppFpLoop, 0)).hook(this, h_ppp_fp_loop));
+            () => new FhCallHandle<d_ppp_fp_loop>(new FhCallLocation(EngineAddresses.PppFpLoop, 0)).hook(this, with_hook_continuation<d_ppp_fp_loop>(h_ppp_fp_loop)));
     }
 
     /// <summary>
@@ -74,6 +74,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_ppp_fp_loop()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_ppp_fp_loop>(new FhCallLocation(EngineAddresses.PppFpLoop, 0)).chain_from(h_ppp_fp_loop).fnptr)();
+            return;
+        }
+
         bool held = (RenderPassContext.IsPresentation || (_config.FieldParticleRestartHold && !advance_this_frame())) && arm_restart_hold();
         var saved = field_particle_save_manager_work();
         try

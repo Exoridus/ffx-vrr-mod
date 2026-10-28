@@ -23,9 +23,9 @@ public unsafe sealed partial class VrrModule
         }
 
         bool ok = hook_or_log(HookSiteId.ParticleUvPppDrawMdlTs2UVClock, "pppDrawMdlTs2 UV clock", ParticleUvTs2,
-            () => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs2, 0)).hook(this, h_particle_uv_ts2));
+            () => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs2, 0)).hook(this, with_hook_continuation<d_particle_uv_draw>(h_particle_uv_ts2)));
         ok &= hook_or_log(HookSiteId.ParticleUvPppDrawMdlTs3UVClock, "pppDrawMdlTs3 UV clock", ParticleUvTs3,
-            () => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs3, 0)).hook(this, h_particle_uv_ts3));
+            () => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs3, 0)).hook(this, with_hook_continuation<d_particle_uv_draw>(h_particle_uv_ts3)));
         return ok;
     }
 
@@ -75,6 +75,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_uv_ts2(nint obj, nint data, nint program)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs2, 0)).chain_from(h_particle_uv_ts2).fnptr)(obj, data, program);
+            return;
+        }
+
         prepare_particle_uv(obj, program);
         new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs2, 0))
             .chain_from(h_particle_uv_ts2).fnptr!(obj, data, program);
@@ -83,6 +89,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_uv_ts3(nint obj, nint data, nint program)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs3, 0)).chain_from(h_particle_uv_ts3).fnptr)(obj, data, program);
+            return;
+        }
+
         prepare_particle_uv(obj, program);
         new FhCallHandle<d_particle_uv_draw>(new FhCallLocation(ParticleUvTs3, 0))
             .chain_from(h_particle_uv_ts3).fnptr!(obj, data, program);

@@ -59,7 +59,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.IdleSwayChIdleSway, "Ch idle sway", EngineAddresses.ChIdleSway,
             () => new FhCallHandle<d_idle_sway>(new FhCallLocation(EngineAddresses.ChIdleSway, 0))
-                .hook(this, h_idle_sway));
+                .hook(this, with_hook_continuation<d_idle_sway>(h_idle_sway)));
     }
 
     /* One argument, caller cleanup: the body ends 5f 5e 8b e5 5d c3 and its only call site pushes
@@ -72,6 +72,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_idle_sway(nint actor)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_idle_sway>(new FhCallLocation(EngineAddresses.ChIdleSway, 0)).chain_from(h_idle_sway).fnptr)(actor);
+            return;
+        }
+
         var original = new FhCallHandle<d_idle_sway>(
             new FhCallLocation(EngineAddresses.ChIdleSway, 0)).chain_from(h_idle_sway);
 

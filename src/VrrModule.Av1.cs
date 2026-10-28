@@ -17,7 +17,7 @@ public unsafe sealed partial class VrrModule
     private delegate nint d_av1_queue_reserve(nint queue, uint bytes);
 
     private bool init_av1_worker() => hook_or_log(HookSiteId.Av1AV1MovieDecodingWorker, "AV1 movie decoding worker", 0x6279b0,
-        () => new FhCallHandle<d_av1_worker>(new FhCallLocation(0x6279b0, 0)).hook(this, h_av1_worker));
+        () => new FhCallHandle<d_av1_worker>(new FhCallLocation(0x6279b0, 0)).hook(this, with_hook_continuation<d_av1_worker>(h_av1_worker)));
 
     private void prepare_av1_worker(nint manager)
     {
@@ -35,6 +35,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private void h_av1_worker(nint player)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_av1_worker>(new FhCallLocation(0x6279b0, 0)).chain_from(h_av1_worker).fnptr)(player);
+            return;
+        }
+
         if (player != _av1Player || _av1Metadata is not { } metadata || _av1Native is not { } api)
         {
             new FhCallHandle<d_av1_worker>(new FhCallLocation(0x6279b0, 0)).chain_from(h_av1_worker).fnptr!(player);

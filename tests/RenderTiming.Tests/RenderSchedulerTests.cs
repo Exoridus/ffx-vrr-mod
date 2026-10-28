@@ -126,7 +126,15 @@ public sealed class RenderSchedulerCollection;
 
 public unsafe sealed partial class VrrModule
 {
-    public VrrModule() { _pad_latch_installed = _pad_history_readers_ready = true; SeedSyntheticSnapshotBaseline(); }
+    public VrrModule() { _pad_latch_installed = _pad_history_readers_ready = true; SeedSyntheticSnapshotBaseline(); ArmSyntheticRuntimeForTest(); }
+    private void ArmSyntheticRuntimeForTest()
+    {
+        // Synthetic fixture activation does not qualify native startup.
+        _startupActivation.Prepare(1);
+        if (!_startupActivation.Invoke(1, true, () => { }, () => true, () => { }))
+            throw new InvalidOperationException("Synthetic fixture activation failed.");
+    }
+    internal void StopSyntheticRuntimeForTest() => _startupActivation.Stop();
     internal bool SyntheticSnapshotReady = true;
     private void SeedSyntheticSnapshotBaseline()
     {

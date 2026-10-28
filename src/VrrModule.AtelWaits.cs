@@ -18,6 +18,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_atel_wait_init(nint work, int* storage, nint stack)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_atel_wait_init>(new FhCallLocation(EngineAddresses.AtelWaitInit, 0)).chain_from(h_atel_wait_init).fnptr)(work, storage, stack);
+            return;
+        }
+
         new FhCallHandle<d_atel_wait_init>(new FhCallLocation(EngineAddresses.AtelWaitInit, 0))
             .chain_from(h_atel_wait_init).fnptr!(work, storage, stack);
 
@@ -61,6 +67,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_atel_wait_exec(nint work, int* storage)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_atel_wait_exec>(new FhCallLocation(EngineAddresses.AtelWaitExec, 0)).chain_from(h_atel_wait_exec).fnptr)(work, storage);
+
         bool previous = _inside_atel_wait_exec;
         _inside_atel_wait_exec = _atel_wait_hooks_ready;
         try
@@ -94,6 +103,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_movie_frame_delta()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_movie_frame_delta>(new FhCallLocation(EngineAddresses.MovieFrameDelta, 0)).chain_from(h_movie_frame_delta).fnptr)();
+
         int delta = new FhCallHandle<d_movie_frame_delta>(new FhCallLocation(EngineAddresses.MovieFrameDelta, 0))
             .chain_from(h_movie_frame_delta).fnptr!();
 

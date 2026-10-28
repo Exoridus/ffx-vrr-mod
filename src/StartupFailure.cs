@@ -2,6 +2,11 @@ namespace Fahrenheit.Mods.Vrr;
 
 internal static class StartupFailure
 {
+    public static void Abort(Action report, Action cleanup, Action<string> terminate)
+    {
+        Abort(() => { try { report(); } finally { cleanup(); } }, terminate);
+    }
+
     public static void Abort(Action cleanup, Action<string> terminate)
     {
         try

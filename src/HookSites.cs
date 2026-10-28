@@ -151,10 +151,29 @@ internal enum HookSiteId
     PadLatchMenuPressed,
     PadLatchMenuRepeat,
     PadSnapshotProducer,
+    ModuleStartupCookieInitialization,
 }
 
 internal static partial class HookSites
 {
+
+    internal static T Native<T>(Func<T?> resolve) where T : Delegate
+        => ResolveContinuation(resolve, static error => Environment.FailFast("An owned native continuation is unavailable.", error));
+
+    internal static T ResolveContinuation<T>(Func<T?> resolve, Action<Exception> unavailable) where T : Delegate
+    {
+        Exception failure;
+        try
+        {
+            T? continuation = resolve();
+            if (continuation is not null) return continuation;
+            failure = new InvalidOperationException("The exact owned native continuation is missing.");
+        }
+        catch (Exception error) { failure = error; }
+        unavailable(failure);
+        throw new InvalidOperationException("The native continuation failure handler returned.", failure);
+    }
+
     internal static bool IsDeclared(HookSiteId site) => site != HookSiteId.Unknown && Enum.IsDefined(site);
 
     internal static bool Install(HookSiteId site, HookRegistrationPlan? plan, nint target, long generation, Func<bool> install)

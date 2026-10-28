@@ -41,9 +41,9 @@ public unsafe sealed partial class VrrModule
         }
         _device_lock_verified = true;
         return hook_or_log(HookSiteId.DeviceLockFairnessPhyreDeviceLockTelemetry, "Phyre device lock telemetry", DeviceLockEnter,
-                () => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockEnter, 0)).hook(this, h_device_lock_enter))
+                () => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockEnter, 0)).hook(this, with_hook_continuation<d_device_lock_enter>(h_device_lock_enter)))
             && hook_or_log(HookSiteId.DeviceLockFairnessPhyreDeviceLockRelease, "Phyre device lock release", DeviceLockLeave,
-                () => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockLeave, 0)).hook(this, h_device_lock_leave));
+                () => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockLeave, 0)).hook(this, with_hook_continuation<d_device_lock_enter>(h_device_lock_leave)));
     }
 
     private bool _device_lock_verified;
@@ -73,6 +73,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private void h_device_lock_leave(nint guard)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockLeave, 0)).chain_from(h_device_lock_leave).fnptr)(guard);
+            return;
+        }
+
         int* lockState = FhUtil.ptr_at<int>(DeviceLock);
         if (lockState[5] == 1 && _device_lock_held_since != 0)
         {
@@ -91,6 +97,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private void h_device_lock_enter(nint guard)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_device_lock_enter>(new FhCallLocation(DeviceLockEnter, 0)).chain_from(h_device_lock_enter).fnptr)(guard);
+            return;
+        }
+
         int* lockState = FhUtil.ptr_at<int>(DeviceLock);
         bool outer = (uint)lockState[4] != GetCurrentThreadId();
         long entered = Stopwatch.GetTimestamp();

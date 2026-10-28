@@ -44,13 +44,13 @@ public unsafe sealed partial class VrrModule
         // probe, and a chain that does not resolve leaves fnptr null, so a counting probe can never
         // be the thing that ends the process.
         probe(HookSiteId.SurveyChrTexanimDraw, "chr_texanim_draw", EngineAddresses.ChrTexAnimDraw,
-            () => new FhCallHandle<d_texanim_draw>(new FhCallLocation(EngineAddresses.ChrTexAnimDraw, 0)).hook(this, h_texanim_draw));
+            () => new FhCallHandle<d_texanim_draw>(new FhCallLocation(EngineAddresses.ChrTexAnimDraw, 0)).hook(this, with_hook_continuation<d_texanim_draw>(h_texanim_draw)));
         probe(HookSiteId.SurveyScreenTextureAnimationDraw, "screenTextureAnimationDraw", EngineAddresses.ScreenTextureAnimationDraw,
-            () => new FhCallHandle<d_screen_texanim_draw>(new FhCallLocation(EngineAddresses.ScreenTextureAnimationDraw, 0)).hook(this, h_screen_texanim_draw));
+            () => new FhCallHandle<d_screen_texanim_draw>(new FhCallLocation(EngineAddresses.ScreenTextureAnimationDraw, 0)).hook(this, with_hook_continuation<d_screen_texanim_draw>(h_screen_texanim_draw)));
         probe(HookSiteId.SurveySetMaterialUVScroll, "setMaterialUVScroll", EngineAddresses.SetMaterialUVScroll,
-            () => new FhCallHandle<d_uv_scroll>(new FhCallLocation(EngineAddresses.SetMaterialUVScroll, 0)).hook(this, h_uv_scroll));
+            () => new FhCallHandle<d_uv_scroll>(new FhCallLocation(EngineAddresses.SetMaterialUVScroll, 0)).hook(this, with_hook_continuation<d_uv_scroll>(h_uv_scroll)));
         probe(HookSiteId.SurveyChTextureAnimSetEnable, "Ch_TextureAnimSetEnable", EngineAddresses.ChTextureAnimSetEnable,
-            () => new FhCallHandle<d_texanim_set_enable>(new FhCallLocation(EngineAddresses.ChTextureAnimSetEnable, 0)).hook(this, h_texanim_set_enable));
+            () => new FhCallHandle<d_texanim_set_enable>(new FhCallLocation(EngineAddresses.ChTextureAnimSetEnable, 0)).hook(this, with_hook_continuation<d_texanim_set_enable>(h_texanim_set_enable)));
 
         _logger.Info("[Vrr] Texture animation survey armed; counts appear in the telemetry line.");
         return true;
@@ -97,6 +97,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_texanim_draw(int index, int arg2, int arg3)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_texanim_draw>(new FhCallLocation(EngineAddresses.ChrTexAnimDraw, 0)).chain_from(h_texanim_draw).fnptr)(index, arg2, arg3);
+
         _texanim_draw++;
         var orig = new FhCallHandle<d_texanim_draw>(new FhCallLocation(EngineAddresses.ChrTexAnimDraw, 0))
             .chain_from(h_texanim_draw).fnptr;
@@ -106,6 +109,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_screen_texanim_draw(int table, int bank, int index)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_screen_texanim_draw>(new FhCallLocation(EngineAddresses.ScreenTextureAnimationDraw, 0)).chain_from(h_screen_texanim_draw).fnptr)(table, bank, index);
+            return;
+        }
+
         _screen_texanim_draw++;
         note_screen_texanim_id(table, bank, index);
 
@@ -144,6 +153,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     private void h_uv_scroll(nint arg1, float arg2, float arg3)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_uv_scroll>(new FhCallLocation(EngineAddresses.SetMaterialUVScroll, 0)).chain_from(h_uv_scroll).fnptr)(arg1, arg2, arg3);
+            return;
+        }
+
         _uv_scroll++;
         new FhCallHandle<d_uv_scroll>(new FhCallLocation(EngineAddresses.SetMaterialUVScroll, 0))
             .chain_from(h_uv_scroll).fnptr?.Invoke(arg1, arg2, arg3);
@@ -152,6 +167,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texanim_set_enable(uint arg1, uint arg2)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_texanim_set_enable>(new FhCallLocation(EngineAddresses.ChTextureAnimSetEnable, 0)).chain_from(h_texanim_set_enable).fnptr)(arg1, arg2);
+            return;
+        }
+
         _texanim_set_enable++;
         new FhCallHandle<d_texanim_set_enable>(new FhCallLocation(EngineAddresses.ChTextureAnimSetEnable, 0))
             .chain_from(h_texanim_set_enable).fnptr?.Invoke(arg1, arg2);

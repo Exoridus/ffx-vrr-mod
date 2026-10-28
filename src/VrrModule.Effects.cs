@@ -28,7 +28,7 @@ public unsafe sealed partial class VrrModule
 
         bool ok = hook_or_log(HookSiteId.EffectsMsEffectProcess, "MsEffectProcess", EngineAddresses.MsEffectProcess,
             () => new FhCallHandle<d_effect_process>(new FhCallLocation(EngineAddresses.MsEffectProcess, 0))
-                .hook(this, h_effect_process));
+                .hook(this, with_hook_continuation<d_effect_process>(h_effect_process)));
         init_gameover_probe();
 
         // The eternal set's second list has to be held with the first or not at all. Holding one of
@@ -38,7 +38,7 @@ public unsafe sealed partial class VrrModule
         {
             ok &= hook_or_log(HookSiteId.EffectsEternalEffectRunAfter, "eternal effect run_after", EngineAddresses.EternalEffectRunAfter,
                 () => new FhCallHandle<d_eternal_run>(new FhCallLocation(EngineAddresses.EternalEffectRunAfter, 0))
-                    .hook(this, h_eternal_run_after));
+                    .hook(this, with_hook_continuation<d_eternal_run>(h_eternal_run_after)));
         }
 
         return ok;
@@ -56,6 +56,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_effect_process(int mode)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_effect_process>(new FhCallLocation(EngineAddresses.MsEffectProcess, 0)).chain_from(h_effect_process).fnptr)(mode);
+            return;
+        }
+
         if (mode == EffectAdvanceMode) _effect_advances++;
         else                           _effect_draws++;
 
@@ -88,6 +94,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_eternal_run_after()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_eternal_run>(new FhCallLocation(EngineAddresses.EternalEffectRunAfter, 0)).chain_from(h_eternal_run_after).fnptr)();
+            return;
+        }
+
         _eternal_calls++;
 
         // With the battle effect pause a presentation pass draws this list and its walks hold every unit's state.

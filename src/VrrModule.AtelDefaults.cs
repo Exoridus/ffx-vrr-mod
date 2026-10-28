@@ -8,6 +8,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_atel_init_records(nint worker, nint thread, int level)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_atel_init_records>(new FhCallLocation(EngineAddresses.AtelInitMotionRecords, 0)).chain_from(h_atel_init_records).fnptr)(worker, thread, level);
+            return;
+        }
+
         new FhCallHandle<d_atel_init_records>(new FhCallLocation(EngineAddresses.AtelInitMotionRecords, 0))
             .chain_from(h_atel_init_records).fnptr!(worker, thread, level);
 

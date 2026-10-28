@@ -38,19 +38,19 @@ public unsafe sealed partial class VrrModule
         if (fx_code_matches(MinimapDraw, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC 68 03 00 00 A1 ?? ?? ?? ?? 33 C5")
             && fx_code_matches(MinimapDraw + 0x1206, "FF 46 74"))
             ok &= hook_or_log(HookSiteId.UpstreamUiUI014MinimapDraw, "UI-014 minimap draw", MinimapDraw,
-                () => new FhCallHandle<d_minimap_draw>(new FhCallLocation(MinimapDraw, 0)).hook(this, h_minimap_draw));
+                () => new FhCallHandle<d_minimap_draw>(new FhCallLocation(MinimapDraw, 0)).hook(this, with_hook_continuation<d_minimap_draw>(h_minimap_draw)));
         else ok &= refuse_ui_row("UI-014 minimap draw");
 
         if (fx_code_matches(SaveListInput, "E8 ?? ?? ?? ?? 68 00 10 00 00 A3 ?? ?? ?? ?? E8 ?? ?? ?? ?? D9 05 ?? ?? ?? ?? 83 C4 04 85 C0 75 1B A1 ?? ?? ?? ?? D8 58 04 DF E0 F6 C4 41 74 0E C7 05")
             && fx_operand_is(SaveListInput + 0x0B, SaveListCounters + 0x20)
             && fx_operand_is(SaveListInput + 0x32, SaveListCounters))
             ok &= hook_or_log(HookSiteId.UpstreamUiUI020SaveLoadListInput, "UI-020 save/load list input", SaveListInput,
-                () => new FhCallHandle<d_ui_int>(new FhCallLocation(SaveListInput, 0)).hook(this, h_save_list_input));
+                () => new FhCallHandle<d_ui_int>(new FhCallLocation(SaveListInput, 0)).hook(this, with_hook_continuation<d_ui_int>(h_save_list_input)));
         else ok &= refuse_ui_row("UI-020 save/load list input");
 
         if (fx_code_matches(SphereGridUpdate, "55 8B EC 83 EC 18 A1 ?? ?? ?? ?? 33 C5 89 45 FC 8B 0D ?? ?? ?? ?? C7 05 ?? ?? ?? ?? 01 00 00 00 80 B9 B8 15 01 00"))
             ok &= hook_or_log(HookSiteId.UpstreamUiUISPH001SphereGridUpdate, "UI-SPH-001 sphere grid update", SphereGridUpdate,
-                () => new FhCallHandle<d_render_void>(new FhCallLocation(SphereGridUpdate, 0)).hook(this, h_sphere_grid_update));
+                () => new FhCallHandle<d_render_void>(new FhCallLocation(SphereGridUpdate, 0)).hook(this, with_hook_continuation<d_render_void>(h_sphere_grid_update)));
         else ok &= refuse_ui_row("UI-SPH-001 sphere grid update");
 
         if (fx_code_matches(0x49C9F5, "68 00 00 00 08 E8 ?? ?? ?? ?? 83 C4 04 85 C0 74 3F 0F BF 46 08")
@@ -58,7 +58,7 @@ public unsafe sealed partial class VrrModule
             && fx_code_matches(ActionEdge, "55 8B EC FF 75 08 E8 ?? ?? ?? ?? 8B C8 E8")
             && fx_code_matches(0x231300, "B8 ?? ?? ?? ?? C3") && fx_operand_is(0x231301, ActionLatch))
             ok &= hook_or_log(HookSiteId.UpstreamUiUIBTLL1PartySwapEdge, "UI-BTLL1 party swap edge", ActionEdge,
-                () => new FhCallHandle<d_action_edge>(new FhCallLocation(ActionEdge, 0)).hook(this, h_action_edge));
+                () => new FhCallHandle<d_action_edge>(new FhCallLocation(ActionEdge, 0)).hook(this, with_hook_continuation<d_action_edge>(h_action_edge)));
         else ok &= refuse_ui_row("UI-BTLL1 party swap edge");
 
         return ok;
@@ -73,6 +73,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_minimap_draw(nint obj, int mode)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_minimap_draw>(new FhCallLocation(MinimapDraw, 0)).chain_from(h_minimap_draw).fnptr)(obj, mode);
+            return;
+        }
+
         bool hold = RenderPassContext.IsPresentation && obj != 0;
         uint pulse = hold ? *(uint*)(obj + 0x74) : 0;
         new FhCallHandle<d_minimap_draw>(new FhCallLocation(MinimapDraw, 0)).chain_from(h_minimap_draw).fnptr!(obj, mode);
@@ -89,6 +95,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_save_list_input()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_ui_int>(new FhCallLocation(SaveListInput, 0)).chain_from(h_save_list_input).fnptr)();
+
         var original = new FhCallHandle<d_ui_int>(new FhCallLocation(SaveListInput, 0)).chain_from(h_save_list_input);
         if (!RenderPassContext.IsPresentation) return original.fnptr!();
 
@@ -128,6 +137,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_sphere_grid_update()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(SphereGridUpdate, 0)).chain_from(h_sphere_grid_update).fnptr)();
+            return;
+        }
+
         if (RenderPassContext.IsPresentation) { _sphereSkipped++; sphere_smooth(true); return; }
         if (_render_frame_enabled && !advance_this_frame())
         {
@@ -183,6 +198,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_action_edge(uint mask)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_action_edge>(new FhCallLocation(ActionEdge, 0)).chain_from(h_action_edge).fnptr)(mask);
+
         int live = new FhCallHandle<d_action_edge>(new FhCallLocation(ActionEdge, 0)).chain_from(h_action_edge).fnptr!(mask);
         if (mask != PartySwapMask) return live;
         bool rescued = live == 0 && (_partySwapSticky & mask) != 0;

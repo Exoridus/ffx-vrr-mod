@@ -54,9 +54,9 @@ public unsafe sealed partial class VrrModule
         }
         if (!preflight_field_particle_presentation()) return false;
         bool ok = hook_or_log(HookSiteId.ParticlePresentationParticlePresentationWorker, "particle presentation worker", PilotWorker,
-            () => new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).hook(this, h_particle_pilot_worker));
+            () => new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).hook(this, with_hook_continuation<d_pilot_worker>(h_particle_pilot_worker)));
         ok &= hook_or_log(HookSiteId.ParticlePresentationParticlePresentationDD, "particle presentation DD", PilotDd,
-            () => new FhCallHandle<d_pilot_dd>(new FhCallLocation(PilotDd, 0)).hook(this, h_particle_pilot_dd));
+            () => new FhCallHandle<d_pilot_dd>(new FhCallLocation(PilotDd, 0)).hook(this, with_hook_continuation<d_pilot_dd>(h_particle_pilot_dd)));
         ok &= init_particle_lifecycle();
         foreach (ParticlePresentationKernel kernel in Enum.GetValues<ParticlePresentationKernel>())
         {
@@ -64,6 +64,12 @@ public unsafe sealed partial class VrrModule
             d_pilot_kernel? self = null;
             self = (obj, data, descriptor) =>
             {
+                if (!RuntimeEffectsArmed)
+                {
+                    HookSites.Native(() => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(rva, 0)).chain_from(self!).fnptr)(obj, data, descriptor);
+                    return;
+                }
+
                 if (!_particle_pilot_replaying && _particle_pilot_capture is { } owner
                     && Environment.CurrentManagedThreadId == _particle_pilot_thread)
                 {
@@ -76,7 +82,7 @@ public unsafe sealed partial class VrrModule
             };
             _particle_pilot_kernels.Add(kernel, self);
             ok &= hook_or_log(HookSiteId.ParticlePresentationKernelTemplate, $"particle presentation {kernel}", rva,
-                () => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(rva, 0)).hook(this, self));
+                () => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(rva, 0)).hook(this, with_hook_continuation<d_pilot_kernel>(self)));
         }
         if (ok) ok = init_field_particle_presentation();
         _particle_pilot_installed = ok;
@@ -292,6 +298,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_pilot_worker(ushort family, byte mode)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).chain_from(h_particle_pilot_worker).fnptr)(family, mode);
+            return;
+        }
+
         var original = new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).chain_from(h_particle_pilot_worker).fnptr!;
         int thread = Environment.CurrentManagedThreadId;
         bool localHold = IsOwnedBattleEffectHold;
@@ -387,6 +399,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private nint h_particle_pilot_dd(nint scratch, nint pc)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_pilot_dd>(new FhCallLocation(PilotDd, 0)).chain_from(h_particle_pilot_dd).fnptr)(scratch, pc);
+
         var original = new FhCallHandle<d_pilot_dd>(new FhCallLocation(PilotDd, 0)).chain_from(h_particle_pilot_dd).fnptr!;
         ParticlePilotOwner? previous = _particle_pilot_dd;
         try
@@ -545,6 +560,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private nint h_particle_pilot_create(nint manager, nint entry)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_pilot_create>(new FhCallLocation(0x316770, 0)).chain_from(h_particle_pilot_create).fnptr)(manager, entry);
+
         var original = _particle_create_original ??= new FhCallHandle<d_pilot_create>(new FhCallLocation(0x316770, 0)).chain_from(h_particle_pilot_create).fnptr!;
         nint obj = original(manager, entry);
         field_particle_created(manager, obj);
@@ -557,6 +575,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_pilot_delete(nint obj)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x3168f0, 0)).chain_from(h_particle_pilot_delete).fnptr)(obj);
+            return;
+        }
+
         _fieldDeferral.Forget(obj);
         field_particle_object_changed(obj);
         if (_particle_sprite_installed) _particle_sprite_clock.Deleted(obj);
@@ -570,6 +594,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_pilot_reset(nint obj)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x312d20, 0)).chain_from(h_particle_pilot_reset).fnptr)(obj);
+            return;
+        }
+
         // The dispatcher already set the loop age; ops and init callbacks reset at the next logic step.
         if (_fieldDeferral.TryDeferRestart(obj)) return;
         field_particle_object_changed(obj);
@@ -584,6 +614,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_particle_pilot_free(nint manager)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_pilot_object>(new FhCallLocation(0x311f20, 0)).chain_from(h_particle_pilot_free).fnptr)(manager);
+            return;
+        }
+
         _fieldDeferral.Drop(manager);
         field_particle_manager_changed(manager);
         if (_particle_sprite_installed) _particle_sprite_clock.ResetManager(manager);

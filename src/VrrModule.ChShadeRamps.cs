@@ -52,7 +52,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.ChShadeRampsChSetRampTarget, "Ch_SetRampTarget", EngineAddresses.ChSetRampTarget,
             () => new FhCallHandle<d_ch_set_ramp>(new FhCallLocation(EngineAddresses.ChSetRampTarget, 0))
-                .hook(this, h_ch_set_ramp));
+                .hook(this, with_hook_continuation<d_ch_set_ramp>(h_ch_set_ramp)));
     }
 
     /* Measured cdecl: the function ends 5d c3 on both of its two returns, so the caller cleans.
@@ -65,6 +65,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_ch_set_ramp(nint record, float target, int frames)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_ch_set_ramp>(new FhCallLocation(EngineAddresses.ChSetRampTarget, 0)).chain_from(h_ch_set_ramp).fnptr)(record, target, frames);
+            return;
+        }
+
         _ch_ramp_arms++;
 
         float scale = Scale;

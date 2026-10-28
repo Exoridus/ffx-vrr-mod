@@ -18,9 +18,9 @@ public unsafe sealed partial class VrrModule
         _fmvAudioHooksReady = fmv_audio_guard(FmvTrackGetType, [0x8b, 0x41, 0x20, 0xc3, 0xcc])
             && fmv_audio_guard(FmvNativeStop, [0x55, 0x8b, 0xec, 0x51, 0x57, 0x8b, 0xf9])
             && hook_or_log(HookSiteId.FmvAudioMovieAudioTrackType, "movie audio track type", FmvTrackGetType,
-                () => new FhCallHandle<d_fmv_track_type>(new FhCallLocation(FmvTrackGetType, 0)).hook(this, h_fmv_track_type))
+                () => new FhCallHandle<d_fmv_track_type>(new FhCallLocation(FmvTrackGetType, 0)).hook(this, with_hook_continuation<d_fmv_track_type>(h_fmv_track_type)))
             && hook_or_log(HookSiteId.FmvAudioMovieAudioScopeStop, "movie audio scope stop", FmvNativeStop,
-                () => new FhCallHandle<d_fmv_native_stop>(new FhCallLocation(FmvNativeStop, 0)).hook(this, h_fmv_native_stop));
+                () => new FhCallHandle<d_fmv_native_stop>(new FhCallLocation(FmvNativeStop, 0)).hook(this, with_hook_continuation<d_fmv_native_stop>(h_fmv_native_stop)));
         return _fmvAudioHooksReady;
     }
 
@@ -62,6 +62,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private int h_fmv_track_type(nint track)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_fmv_track_type>(new FhCallLocation(FmvTrackGetType, 0)).chain_from(h_fmv_track_type).fnptr)(track);
+
         int type = new FhCallHandle<d_fmv_track_type>(new FhCallLocation(FmvTrackGetType, 0))
             .chain_from(h_fmv_track_type).fnptr!(track);
         return filter_fmv_audio_type(track, type);
@@ -70,6 +73,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private byte h_fmv_native_stop(nint player)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_fmv_native_stop>(new FhCallLocation(FmvNativeStop, 0)).chain_from(h_fmv_native_stop).fnptr)(player);
+
         byte result = new FhCallHandle<d_fmv_native_stop>(new FhCallLocation(FmvNativeStop, 0))
             .chain_from(h_fmv_native_stop).fnptr!(player);
         // Stop joins the reader first; pending selection belongs to a possible reinitialization.

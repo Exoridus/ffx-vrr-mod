@@ -32,6 +32,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_pad_menu_cache_update()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(PadMenuCacheUpdate, 0)).chain_from(h_pad_menu_cache_update).fnptr)();
+            return;
+        }
+
         if (pad_suppress_presentation_edges()) return;
         new FhCallHandle<d_render_void>(new FhCallLocation(PadMenuCacheUpdate, 0)).chain_from(h_pad_menu_cache_update).fnptr!();
     }
@@ -39,6 +45,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private ushort h_pad_menu_pressed()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuPressed, 0)).chain_from(h_pad_menu_pressed).fnptr)();
+
         bool suppress = pad_suppress_presentation_edges();
         ushort value = new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuPressed, 0)).chain_from(h_pad_menu_pressed).fnptr!();
         return suppress && pad_suppress_presentation_edges() ? (ushort)0 : value;
@@ -47,6 +56,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private ushort h_pad_menu_repeat()
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuRepeat, 0)).chain_from(h_pad_menu_repeat).fnptr)();
+
         bool suppress = pad_suppress_presentation_edges();
         ushort value = new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuRepeat, 0)).chain_from(h_pad_menu_repeat).fnptr!();
         return suppress && pad_suppress_presentation_edges() ? (ushort)0 : value;
@@ -122,21 +134,21 @@ public unsafe sealed partial class VrrModule
         }
         if (!prepare_pad_snapshot_hook()) return false;
         bool ok = hook_or_log(HookSiteId.PadLatchPadLatch, "pad latch", PadLatch,
-            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, h_pad_latch));
+            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, with_hook_continuation<d_render_void>(h_pad_latch)));
         ok &= hook_or_log(HookSiteId.PadLatchPressedHistory, "pad pressed history", PadPressedHistory,
-            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0)).hook(this, h_pad_pressed_history));
+            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0)).hook(this, with_hook_continuation<d_pad_history>(h_pad_pressed_history)));
         ok &= hook_or_log(HookSiteId.PadLatchReleasedHistory, "pad released history", PadReleasedHistory,
-            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadReleasedHistory, 0)).hook(this, h_pad_released_history));
+            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadReleasedHistory, 0)).hook(this, with_hook_continuation<d_pad_history>(h_pad_released_history)));
         ok &= hook_or_log(HookSiteId.PadLatchRepeatHistory, "pad repeat history", PadRepeatHistory,
-            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeatHistory, 0)).hook(this, h_pad_repeat_history));
+            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeatHistory, 0)).hook(this, with_hook_continuation<d_pad_history>(h_pad_repeat_history)));
         ok &= hook_or_log(HookSiteId.PadLatchRepeat2History, "pad repeat2 history", PadRepeat2History,
-            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeat2History, 0)).hook(this, h_pad_repeat2_history));
+            () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeat2History, 0)).hook(this, with_hook_continuation<d_pad_history>(h_pad_repeat2_history)));
         ok &= hook_or_log(HookSiteId.PadLatchMenuCacheUpdate, "pad menu cache update", PadMenuCacheUpdate,
-            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadMenuCacheUpdate, 0)).hook(this, h_pad_menu_cache_update));
+            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadMenuCacheUpdate, 0)).hook(this, with_hook_continuation<d_render_void>(h_pad_menu_cache_update)));
         ok &= hook_or_log(HookSiteId.PadLatchMenuPressed, "pad menu pressed", PadMenuPressed,
-            () => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuPressed, 0)).hook(this, h_pad_menu_pressed));
+            () => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuPressed, 0)).hook(this, with_hook_continuation<d_menu_edge>(h_pad_menu_pressed)));
         ok &= hook_or_log(HookSiteId.PadLatchMenuRepeat, "pad menu repeat", PadMenuRepeat,
-            () => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuRepeat, 0)).hook(this, h_pad_menu_repeat));
+            () => new FhCallHandle<d_menu_edge>(new FhCallLocation(PadMenuRepeat, 0)).hook(this, with_hook_continuation<d_menu_edge>(h_pad_menu_repeat)));
         if (ok) ok = init_pad_snapshot_hook();
         _pad_latch_installed = _pad_history_readers_ready = ok;
         return ok;
@@ -145,6 +157,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private ushort h_pad_pressed_history(int port, int pad, int history)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0)).chain_from(h_pad_pressed_history).fnptr)(port, pad, history);
+
         bool suppress = pad_suppress_presentation_edges();
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0))
             .chain_from(h_pad_pressed_history).fnptr!(port, pad, history);
@@ -154,6 +169,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private ushort h_pad_released_history(int port, int pad, int history)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_pad_history>(new FhCallLocation(PadReleasedHistory, 0)).chain_from(h_pad_released_history).fnptr)(port, pad, history);
+
         bool suppress = pad_suppress_presentation_edges();
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadReleasedHistory, 0))
             .chain_from(h_pad_released_history).fnptr!(port, pad, history);
@@ -163,6 +181,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private ushort h_pad_repeat_history(int port, int pad, int history)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeatHistory, 0)).chain_from(h_pad_repeat_history).fnptr)(port, pad, history);
+
         bool suppress = pad_suppress_presentation_edges();
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeatHistory, 0))
             .chain_from(h_pad_repeat_history).fnptr!(port, pad, history);
@@ -172,6 +193,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private ushort h_pad_repeat2_history(int port, int pad, int history)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeat2History, 0)).chain_from(h_pad_repeat2_history).fnptr)(port, pad, history);
+
         bool suppress = pad_suppress_presentation_edges();
         ushort value = new FhCallHandle<d_pad_history>(new FhCallLocation(PadRepeat2History, 0))
             .chain_from(h_pad_repeat2_history).fnptr!(port, pad, history);
@@ -184,6 +208,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_pad_latch()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).chain_from(h_pad_latch).fnptr)();
+            return;
+        }
+
         _pad_latch_calls++;
         if (!_pad_latch_installed || !OwnsRenderPass || pad_native_input_owner())
         {

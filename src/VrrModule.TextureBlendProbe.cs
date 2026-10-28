@@ -22,7 +22,7 @@ public unsafe sealed partial class VrrModule
             return;
         }
         _textureProbeReady = HookSites.Install(HookSiteId.TextureBlendProbeResolve, _hookRegistration, TextureProbeResolve, _hookRegistrationGeneration, () => new FhCallHandle<d_texture_probe_resolve>(new FhCallLocation(TextureProbeResolve, 0))
-            .hook(this, h_texture_probe_resolve));
+            .hook(this, with_hook_continuation<d_texture_probe_resolve>(h_texture_probe_resolve)));
         if (_textureProbeReady) AppDomain.CurrentDomain.ProcessExit += (_, _) => release_texture_blend_probe_resources();
         diagnostic_event("texture_blend_probe_ready", new { installed = _textureProbeReady,
             resource_limit = 32, binding_limit = 64, draw_limit = 4096,
@@ -35,6 +35,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private nint h_texture_probe_resolve(nint model, nint animation, uint frame, nint name)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_texture_probe_resolve>(new FhCallLocation(TextureProbeResolve, 0)).chain_from(h_texture_probe_resolve).fnptr)(model, animation, frame, name);
+
         nint texture = new FhCallHandle<d_texture_probe_resolve>(new FhCallLocation(TextureProbeResolve, 0))
             .chain_from(h_texture_probe_resolve).fnptr!(model, animation, frame, name);
         if (!_textureProbeReady || (_textureBlendDiagnostics ?? _diagnostics)?.IsCapturing != true) return texture;

@@ -43,16 +43,16 @@ public unsafe sealed partial class VrrModule
         }
         diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneBeginScene, "farplane_begin_scene", FarplaneBeginScene,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x56, 0x8b, 0xf1, 0x8b, 0x46, 0x04, 0xa8, 0x01],
-            () => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneBeginScene, 0)).hook(this, h_farplane_begin_scene));
+            () => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneBeginScene, 0)).hook(this, with_hook_continuation<d_farplane_scene>(h_farplane_begin_scene)));
         diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneEndScene, "farplane_end_scene", FarplaneEndScene,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x56, 0x8b, 0xf1, 0x8b, 0x4e, 0x04, 0x8b, 0xc1, 0xf7, 0xd0, 0xa8, 0x01],
-            () => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneEndScene, 0)).hook(this, h_farplane_end_scene));
+            () => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneEndScene, 0)).hook(this, with_hook_continuation<d_farplane_scene>(h_farplane_end_scene)));
         diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneFmvDraw, "farplane_fmv_draw", FarplaneFmvDraw,
             [0x55, 0x8b, 0xec, 0x53, 0x8b, 0xd9, 0x80, 0xbb, 0xd2, 0x06, 0x00, 0x00, 0x00],
-            () => new FhCallHandle<d_farplane_fmv_draw>(new FhCallLocation(FarplaneFmvDraw, 0)).hook(this, h_farplane_fmv_draw));
+            () => new FhCallHandle<d_farplane_fmv_draw>(new FhCallLocation(FarplaneFmvDraw, 0)).hook(this, with_hook_continuation<d_farplane_fmv_draw>(h_farplane_fmv_draw)));
         diagnostic_hook(HookSiteId.FarplaneDiagnosticsFarplaneClearColor, "farplane_clear_color", FarplaneClearColor,
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x53, 0x56, 0x57, 0x8b, 0xf1],
-            () => new FhCallHandle<d_farplane_clear_color>(new FhCallLocation(FarplaneClearColor, 0)).hook(this, h_farplane_clear_color));
+            () => new FhCallHandle<d_farplane_clear_color>(new FhCallLocation(FarplaneClearColor, 0)).hook(this, with_hook_continuation<d_farplane_clear_color>(h_farplane_clear_color)));
     }
 
     private bool diagnostic_farplane(uint kind, bool after, nint function, nint instance,
@@ -119,6 +119,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_farplane_begin_scene(nint renderer, uint flags)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneBeginScene, 0)).chain_from(h_farplane_begin_scene).fnptr)(renderer, flags);
+
         bool capture = diagnostic_farplane(1, false, FarplaneBeginScene, renderer, renderer, flags, 0);
         uint result = new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneBeginScene, 0))
             .chain_from(h_farplane_begin_scene).fnptr!(renderer, flags);
@@ -129,6 +132,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_farplane_end_scene(nint renderer, uint flags)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneEndScene, 0)).chain_from(h_farplane_end_scene).fnptr)(renderer, flags);
+
         bool capture = diagnostic_farplane(2, false, FarplaneEndScene, renderer, renderer, flags, 0);
         uint result = new FhCallHandle<d_farplane_scene>(new FhCallLocation(FarplaneEndScene, 0))
             .chain_from(h_farplane_end_scene).fnptr!(renderer, flags);
@@ -139,6 +145,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_farplane_fmv_draw(nint manager, nint renderer)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_farplane_fmv_draw>(new FhCallLocation(FarplaneFmvDraw, 0)).chain_from(h_farplane_fmv_draw).fnptr)(manager, renderer);
+
         bool capture = diagnostic_farplane(3, false, FarplaneFmvDraw, manager, renderer, 0, 0);
         uint result = new FhCallHandle<d_farplane_fmv_draw>(new FhCallLocation(FarplaneFmvDraw, 0))
             .chain_from(h_farplane_fmv_draw).fnptr!(manager, renderer);
@@ -150,6 +159,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_farplane_clear_color(nint renderer, uint red, uint green, uint blue, uint alpha)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_farplane_clear_color>(new FhCallLocation(FarplaneClearColor, 0)).chain_from(h_farplane_clear_color).fnptr)(renderer, red, green, blue, alpha);
+
         bool capture = diagnostic_farplane(4, false, FarplaneClearColor, renderer, renderer, 0, 0,
             red: red, green: green, blue: blue, alpha: alpha);
         uint result = new FhCallHandle<d_farplane_clear_color>(new FhCallLocation(FarplaneClearColor, 0))

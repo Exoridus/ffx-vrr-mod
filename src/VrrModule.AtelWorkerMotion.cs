@@ -204,12 +204,18 @@ public unsafe sealed partial class VrrModule
         {
             ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELMotionRecordDefaults, "ATEL motion record defaults", EngineAddresses.AtelInitMotionRecords,
                 () => new FhCallHandle<d_atel_init_records>(new FhCallLocation(EngineAddresses.AtelInitMotionRecords, 0))
-                    .hook(this, h_atel_init_records));
+                    .hook(this, with_hook_continuation<d_atel_init_records>(h_atel_init_records)));
             foreach ((string name, nint rva) in AtelRateSettersAllLevels)
             {
                 d_atel_rate_all? self = null;
                 self = (worker, rate) =>
                 {
+                    if (!RuntimeEffectsArmed)
+                    {
+                        HookSites.Native(() => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(rva, 0)).chain_from(self!).fnptr)(worker, rate);
+                        return;
+                    }
+
                     _atel_rate_sets++;
                     float scale = Scale;
 
@@ -221,7 +227,7 @@ public unsafe sealed partial class VrrModule
 
                 d_atel_rate_all hook = self;
                 ok &= hook_or_log(HookSiteId.AtelRateSettersAllLevelsTemplate, name, rva,
-                    () => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(rva, 0)).hook(this, hook));
+                    () => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(rva, 0)).hook(this, with_hook_continuation<d_atel_rate_all>(hook)));
             }
 
             foreach ((string name, nint rva) in AtelRateSettersOneLevel)
@@ -229,6 +235,12 @@ public unsafe sealed partial class VrrModule
                 d_atel_rate_level? self = null;
                 self = (worker, level, rate) =>
                 {
+                    if (!RuntimeEffectsArmed)
+                    {
+                        HookSites.Native(() => new FhCallHandle<d_atel_rate_level>(new FhCallLocation(rva, 0)).chain_from(self!).fnptr)(worker, level, rate);
+                        return;
+                    }
+
                     _atel_rate_sets++;
                     float scale = Scale;
 
@@ -240,7 +252,7 @@ public unsafe sealed partial class VrrModule
 
                 d_atel_rate_level hook = self;
                 ok &= hook_or_log(HookSiteId.AtelRateSettersOneLevelTemplate, name, rva,
-                    () => new FhCallHandle<d_atel_rate_level>(new FhCallLocation(rva, 0)).hook(this, hook));
+                    () => new FhCallHandle<d_atel_rate_level>(new FhCallLocation(rva, 0)).hook(this, with_hook_continuation<d_atel_rate_level>(hook)));
             }
 
             foreach ((string name, nint rva) in AtelDeadlineSettersAllLevels)
@@ -248,6 +260,12 @@ public unsafe sealed partial class VrrModule
                 d_atel_deadline_all? self = null;
                 self = (worker, frames) =>
                 {
+                    if (!RuntimeEffectsArmed)
+                    {
+                        HookSites.Native(() => new FhCallHandle<d_atel_deadline_all>(new FhCallLocation(rva, 0)).chain_from(self!).fnptr)(worker, frames);
+                        return;
+                    }
+
                     _atel_deadline_sets++;
                     float scale = Scale;
 
@@ -259,7 +277,7 @@ public unsafe sealed partial class VrrModule
 
                 d_atel_deadline_all hook = self;
                 ok &= hook_or_log(HookSiteId.AtelDeadlineSettersAllLevelsTemplate, name, rva,
-                    () => new FhCallHandle<d_atel_deadline_all>(new FhCallLocation(rva, 0)).hook(this, hook));
+                    () => new FhCallHandle<d_atel_deadline_all>(new FhCallLocation(rva, 0)).hook(this, with_hook_continuation<d_atel_deadline_all>(hook)));
             }
 
             foreach ((string name, nint rva) in AtelDeadlineSettersOneLevel)
@@ -267,6 +285,12 @@ public unsafe sealed partial class VrrModule
                 d_atel_deadline_level? self = null;
                 self = (worker, level, frames) =>
                 {
+                    if (!RuntimeEffectsArmed)
+                    {
+                        HookSites.Native(() => new FhCallHandle<d_atel_deadline_level>(new FhCallLocation(rva, 0)).chain_from(self!).fnptr)(worker, level, frames);
+                        return;
+                    }
+
                     _atel_deadline_sets++;
                     float scale = Scale;
 
@@ -278,16 +302,16 @@ public unsafe sealed partial class VrrModule
 
                 d_atel_deadline_level hook = self;
                 ok &= hook_or_log(HookSiteId.AtelDeadlineSettersOneLevelTemplate, name, rva,
-                    () => new FhCallHandle<d_atel_deadline_level>(new FhCallLocation(rva, 0)).hook(this, hook));
+                    () => new FhCallHandle<d_atel_deadline_level>(new FhCallLocation(rva, 0)).hook(this, with_hook_continuation<d_atel_deadline_level>(hook)));
             }
 
             ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELMoveRecordReader, "ATEL move record reader", EngineAddresses.AtelMoveRecordRead,
                 () => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelMoveRecordRead, 0))
-                    .hook(this, h_atel_move_read));
+                    .hook(this, with_hook_continuation<d_atel_worker_pass>(h_atel_move_read)));
 
             ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELRotationRecordReader, "ATEL rotation record reader", EngineAddresses.AtelRotRecordRead,
                 () => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelRotRecordRead, 0))
-                    .hook(this, h_atel_rot_read));
+                    .hook(this, with_hook_continuation<d_atel_worker_pass>(h_atel_rot_read)));
         }
 
         // Same shape as the all-levels rate setters - two arguments, the level read out of
@@ -298,6 +322,12 @@ public unsafe sealed partial class VrrModule
             d_atel_rate_all? grav_self = null;
             grav_self = (worker, g) =>
             {
+                if (!RuntimeEffectsArmed)
+                {
+                    HookSites.Native(() => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(grav_rva, 0)).chain_from(grav_self!).fnptr)(worker, g);
+                    return;
+                }
+
                 _atel_gravity_sets++;
                 float scale = Scale;
 
@@ -309,14 +339,14 @@ public unsafe sealed partial class VrrModule
 
             d_atel_rate_all grav_hook = grav_self;
             ok &= hook_or_log(HookSiteId.AtelWorkerMotionSetGravity0094h, "setGravity [0094h]", grav_rva,
-                () => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(grav_rva, 0)).hook(this, grav_hook));
+                () => new FhCallHandle<d_atel_rate_all>(new FhCallLocation(grav_rva, 0)).hook(this, with_hook_continuation<d_atel_rate_all>(grav_hook)));
         }
 
         if (_config.AtelWorkerTranslation)
         {
             ok &= hook_or_log(HookSiteId.AtelWorkerMotionATELWorkerPositionIntegrator, "ATEL worker position integrator", EngineAddresses.AtelWorkerIntegratePos,
                 () => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelWorkerIntegratePos, 0))
-                    .hook(this, h_atel_integrate_position));
+                    .hook(this, with_hook_continuation<d_atel_worker_pass>(h_atel_integrate_position)));
         }
 
         return ok;
@@ -393,6 +423,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_atel_move_read(nint worker, nint thread)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelMoveRecordRead, 0)).chain_from(h_atel_move_read).fnptr)(worker, thread);
+            return;
+        }
+
         var original = new FhCallHandle<d_atel_worker_pass>(
             new FhCallLocation(EngineAddresses.AtelMoveRecordRead, 0)).chain_from(h_atel_move_read);
 
@@ -433,6 +469,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_atel_rot_read(nint worker, nint thread)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelRotRecordRead, 0)).chain_from(h_atel_rot_read).fnptr)(worker, thread);
+            return;
+        }
+
         var original = new FhCallHandle<d_atel_worker_pass>(
             new FhCallLocation(EngineAddresses.AtelRotRecordRead, 0)).chain_from(h_atel_rot_read);
 
@@ -469,6 +511,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_atel_integrate_position(nint worker, nint thread)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_atel_worker_pass>(new FhCallLocation(EngineAddresses.AtelWorkerIntegratePos, 0)).chain_from(h_atel_integrate_position).fnptr)(worker, thread);
+            return;
+        }
+
         var original = new FhCallHandle<d_atel_worker_pass>(
             new FhCallLocation(EngineAddresses.AtelWorkerIntegratePos, 0)).chain_from(h_atel_integrate_position);
 

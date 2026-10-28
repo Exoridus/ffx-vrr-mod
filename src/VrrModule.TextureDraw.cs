@@ -42,8 +42,8 @@ public unsafe sealed partial class VrrModule
                 (context, isIndexed, count) => owner.texture_blend_probe_draw((ID3D11DeviceContext*)context, isIndexed, count));
         }
         internal bool Install(bool indexed) => indexed
-            ? HookSites.Install(HookSiteId.TextureDrawIndexed, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_indexed>(new FhCallLocation(_target)).hook(_owner, Indexed))
-            : HookSites.Install(HookSiteId.TextureDrawPlain, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_plain>(new FhCallLocation(_target)).hook(_owner, Plain));
+            ? HookSites.Install(HookSiteId.TextureDrawIndexed, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_indexed>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_indexed>(Indexed)))
+            : HookSites.Install(HookSiteId.TextureDrawPlain, _owner._hookRegistration, _target, _owner._hookRegistrationGeneration, () => new FhCallHandle<d_plain>(new FhCallLocation(_target)).hook(_owner, _owner.with_hook_continuation<d_plain>(Plain)));
         private TextureDrawNext Resolve(bool indexed)
         {
             // Fahrenheit appends later hooks by patching the existing trampoline, retaining its address.
@@ -61,9 +61,23 @@ public unsafe sealed partial class VrrModule
         }
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private void Indexed(ID3D11DeviceContext* context, uint count, uint start, int baseVertex)
-            => _dispatch.Draw((nint)context, count, start, baseVertex);
+        {
+            if (!_owner.RuntimeEffectsArmed)
+            {
+                HookSites.Native(() => new FhCallHandle<d_indexed>(new FhCallLocation(_target)).chain_from(Indexed).fnptr)(context, count, start, baseVertex);
+                return;
+            }
+            _dispatch.Draw((nint)context, count, start, baseVertex);
+        }
         [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
         private void Plain(ID3D11DeviceContext* context, uint count, uint start)
-            => _dispatch.Draw((nint)context, count, start, 0);
+        {
+            if (!_owner.RuntimeEffectsArmed)
+            {
+                HookSites.Native(() => new FhCallHandle<d_plain>(new FhCallLocation(_target)).chain_from(Plain).fnptr)(context, count, start);
+                return;
+            }
+            _dispatch.Draw((nint)context, count, start, 0);
+        }
     }
 }

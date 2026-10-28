@@ -10,5 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/NativeSnapshotBridge.cs" Link="NativeSnapshotBridge.cs" />
+    <Compile Include="../../src/StartupActivation.cs" Link="StartupActivation.cs" />
+    <Compile Include="../../src/StartupCaller.cs" Link="StartupCaller.cs" />
   </ItemGroup>
 </Project>

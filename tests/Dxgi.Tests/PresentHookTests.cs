@@ -102,6 +102,23 @@ public unsafe sealed class PresentHookTests
     }
 
     [Fact]
+    public void Unarmed_present_preserves_native_arguments_and_skips_ownership_work()
+    {
+        using var fixture = new Fixture();
+        fixture.Module.StopSyntheticRuntimeForTest();
+        fixture.Module.RejectImage = true;
+        Assert.Equal(0, fixture.Present(0x204));
+        Assert.Equal(1, _native);
+        Assert.Equal(1u, _interval);
+        Assert.Equal(0x204u, _flags);
+        Assert.Equal(0, _binds);
+        Assert.Equal(0, _adds);
+        Assert.Equal(0, fixture.Module.PresentDiagnostics);
+        Assert.True(fixture.Module.DeviceLockHeld);
+    }
+
+
+    [Fact]
     public void Rejected_image_is_withheld_but_native_state_cleanup_still_runs()
     {
         using var fixture = new Fixture();

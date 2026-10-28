@@ -117,9 +117,9 @@ public unsafe sealed partial class VrrModule
                 init_farplane_diagnostics();
                 init_menu_water_diagnostics();
                 diagnostic_hook(HookSiteId.DiagnosticsViewportFinalize, "viewport_finalize", DiagnosticFinalize, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x20, 0xc7, 0x05],
-                    () => new FhCallHandle<d_diag_finalize>(new FhCallLocation(DiagnosticFinalize, 0)).hook(this, h_diag_finalize));
+                    () => new FhCallHandle<d_diag_finalize>(new FhCallLocation(DiagnosticFinalize, 0)).hook(this, with_hook_continuation<d_diag_finalize>(h_diag_finalize)));
                 diagnostic_hook(HookSiteId.DiagnosticsViewCommit, "view_commit", DiagnosticViewCommit, [0x55, 0x8b, 0xec, 0x81, 0xec, 0xc0, 0x00, 0x00, 0x00],
-                    () => new FhCallHandle<d_diag_commit>(new FhCallLocation(DiagnosticViewCommit, 0)).hook(this, h_diag_commit));
+                    () => new FhCallHandle<d_diag_commit>(new FhCallLocation(DiagnosticViewCommit, 0)).hook(this, with_hook_continuation<d_diag_commit>(h_diag_commit)));
             }
         }
         catch (Exception e) { _logger.Error($"[Vrr] Diagnostics unavailable: {e.GetType().Name}: {e.Message}"); }
@@ -136,6 +136,7 @@ public unsafe sealed partial class VrrModule
 
     private void diagnostic_event(string kind, object? data = null)
     {
+        if (!RuntimeEffectsArmed) return;
         var session = kind.StartsWith("texture_", StringComparison.Ordinal)
             ? _textureBlendDiagnostics ?? _diagnostics : _diagnostics;
         try { if (session?.IsCapturing == true) session.TryWrite(kind, _frames, new { loop = _diagnosticLoopId, detail = data }); }
@@ -201,6 +202,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_diag_finalize(int viewport)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_diag_finalize>(new FhCallLocation(DiagnosticFinalize, 0)).chain_from(h_diag_finalize).fnptr)(viewport);
+
         diagnostic_event("viewport_enter", new { viewport });
         int result = new FhCallHandle<d_diag_finalize>(new FhCallLocation(DiagnosticFinalize, 0)).chain_from(h_diag_finalize).fnptr!(viewport);
         if (_diagnostics?.IsCapturing == true) diagnostic_event("viewport_exit", new { viewport, result, view = diagnostic_view() });
@@ -210,6 +214,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_diag_commit(float* matrix)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_diag_commit>(new FhCallLocation(DiagnosticViewCommit, 0)).chain_from(h_diag_commit).fnptr)(matrix);
+            return;
+        }
+
         if (_binaryDiagnostics?.IsCapturing == true)
         {
             Span<byte> bytes = stackalloc byte[64];

@@ -22,7 +22,7 @@ public unsafe sealed partial class VrrModule
     private void init_menu_water_diagnostics()
     {
         diagnostic_hook(HookSiteId.MenuWaterDiagnosticsWaterAssetLoad, "water_asset_load", WaterAssetLoad, [0x55, 0x8b, 0xec, 0x6a, 0xff],
-            () => new FhCallHandle<d_water_asset>(new FhCallLocation(WaterAssetLoad, 0)).hook(this, h_water_asset));
+            () => new FhCallHandle<d_water_asset>(new FhCallLocation(WaterAssetLoad, 0)).hook(this, with_hook_continuation<d_water_asset>(h_water_asset)));
         foreach (var context in FhApi.Mods.get_modules())
         {
             var module = context.Module;
@@ -41,13 +41,13 @@ public unsafe sealed partial class VrrModule
             }
         }
         diagnostic_hook(HookSiteId.MenuWaterDiagnosticsWaterClusterGet, "water_cluster_get", WaterClusterGet, [0x55, 0x8b, 0xec, 0x53, 0x56, 0x57, 0xff, 0x75, 0x08],
-            () => new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterGet, 0)).hook(this, h_water_cluster_get));
+            () => new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterGet, 0)).hook(this, with_hook_continuation<d_water_cluster>(h_water_cluster_get)));
         diagnostic_hook(HookSiteId.MenuWaterDiagnosticsWaterClusterLoad, "water_cluster_load", WaterClusterLoad, [0x55, 0x8b, 0xec, 0x81, 0xec, 0x0c, 0x01, 0x00, 0x00],
-            () => new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterLoad, 0)).hook(this, h_water_cluster_load));
+            () => new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterLoad, 0)).hook(this, with_hook_continuation<d_water_cluster>(h_water_cluster_load)));
         diagnostic_hook(HookSiteId.MenuWaterDiagnosticsWaterTextureIterator, "water_texture_iterator", WaterTextureIterator, [0x55, 0x8b, 0xec, 0x8b, 0x45, 0x08, 0x83, 0xc0, 0x1c],
-            () => new FhCallHandle<d_water_iterator>(new FhCallLocation(WaterTextureIterator, 0)).hook(this, h_water_iterator));
+            () => new FhCallHandle<d_water_iterator>(new FhCallLocation(WaterTextureIterator, 0)).hook(this, with_hook_continuation<d_water_iterator>(h_water_iterator)));
         diagnostic_hook(HookSiteId.MenuWaterDiagnosticsWaterShaderTexture, "water_shader_texture", WaterShaderTexture, [0x55, 0x8b, 0xec, 0x83, 0xec, 0x10, 0x53, 0x57, 0x8b, 0x7d, 0x08, 0x8b, 0xd9],
-            () => new FhCallHandle<d_water_shader>(new FhCallLocation(WaterShaderTexture, 0)).hook(this, h_water_shader));
+            () => new FhCallHandle<d_water_shader>(new FhCallLocation(WaterShaderTexture, 0)).hook(this, with_hook_continuation<d_water_shader>(h_water_shader)));
     }
 
     private void water_event(string kind, object detail)
@@ -211,6 +211,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_water_asset(nint output, nint path, uint identity)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_water_asset>(new FhCallLocation(WaterAssetLoad, 0)).chain_from(h_water_asset).fnptr)(output, path, identity);
+
         int result = new FhCallHandle<d_water_asset>(new FhCallLocation(WaterAssetLoad, 0))
             .chain_from(h_water_asset).fnptr!(output, path, identity);
         if (WaterDiagnosticCapturing)
@@ -232,6 +235,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private nint h_water_cluster_get(nint manager, nint path)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterGet, 0)).chain_from(h_water_cluster_get).fnptr)(manager, path);
+
         nint result = new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterGet, 0))
             .chain_from(h_water_cluster_get).fnptr!(manager, path);
         diagnostic_water_cluster("lookup", path, result);
@@ -241,6 +247,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private nint h_water_cluster_load(nint manager, nint path)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterLoad, 0)).chain_from(h_water_cluster_load).fnptr)(manager, path);
+
         diagnostic_water_load_begin(path);
         nint result = new FhCallHandle<d_water_cluster>(new FhCallLocation(WaterClusterLoad, 0))
             .chain_from(h_water_cluster_load).fnptr!(manager, path);
@@ -251,6 +260,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private void h_water_iterator(nint iterator, nint cluster)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_water_iterator>(new FhCallLocation(WaterTextureIterator, 0)).chain_from(h_water_iterator).fnptr)(iterator, cluster);
+            return;
+        }
+
         new FhCallHandle<d_water_iterator>(new FhCallLocation(WaterTextureIterator, 0))
             .chain_from(h_water_iterator).fnptr!(iterator, cluster);
         diagnostic_water_texture(iterator, cluster);
@@ -259,6 +274,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private int h_water_shader(nint instance, nint parameter, nint value)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_water_shader>(new FhCallLocation(WaterShaderTexture, 0)).chain_from(h_water_shader).fnptr)(instance, parameter, value);
+
         int result = new FhCallHandle<d_water_shader>(new FhCallLocation(WaterShaderTexture, 0))
             .chain_from(h_water_shader).fnptr!(instance, parameter, value);
         diagnostic_water_shader(parameter, value, result);

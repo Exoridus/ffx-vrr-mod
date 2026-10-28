@@ -51,11 +51,11 @@ public unsafe sealed partial class VrrModule
         diagnostic_hook(HookSiteId.GameOverGameoverVfxUpdate, "gameover_vfx_update", GameOverVfxUpdate,
             [0x55, 0x8b, 0xec],
             () => new FhCallHandle<d_gameover_vfx_update>(new FhCallLocation(GameOverVfxUpdate, 0))
-                .hook(this, h_gameover_vfx_update));
+                .hook(this, with_hook_continuation<d_gameover_vfx_update>(h_gameover_vfx_update)));
         diagnostic_hook(HookSiteId.GameOverGameoverVfxDataUpdate, "gameover_vfx_data_update", GameOverVfxDataUpdate,
             [0x55, 0x8b, 0xec, 0x81, 0xec, 0xfc, 0x00, 0x00, 0x00],
             () => new FhCallHandle<d_gameover_vfx_data>(new FhCallLocation(GameOverVfxDataUpdate, 0))
-                .hook(this, h_gameover_vfx_data));
+                .hook(this, with_hook_continuation<d_gameover_vfx_data>(h_gameover_vfx_data)));
         diagnostic_event("gameover_probe_armed", new { frame_limit = 180, event_limit = 8192,
             effect_hold = _config.EffectHold, effect_hold_in_battle = _config.EffectHoldInBattle,
             fades = _config.Fades, cross_fade_hold = _config.CrossFadeHold,
@@ -125,6 +125,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_gameover_vfx_update(uint identityLow, uint identityHigh)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_gameover_vfx_update>(new FhCallLocation(GameOverVfxUpdate, 0)).chain_from(h_gameover_vfx_update).fnptr)(identityLow, identityHigh);
+            return;
+        }
+
         new FhCallHandle<d_gameover_vfx_update>(new FhCallLocation(GameOverVfxUpdate, 0))
             .chain_from(h_gameover_vfx_update).fnptr!(identityLow, identityHigh);
         if (!gameover_probe_record()) return;
@@ -143,6 +149,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private uint h_gameover_vfx_data(uint identityLow, uint identityHigh, nint geometry, nint state)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_gameover_vfx_data>(new FhCallLocation(GameOverVfxDataUpdate, 0)).chain_from(h_gameover_vfx_data).fnptr)(identityLow, identityHigh, geometry, state);
+
         bool capture = gameover_probe_record();
         if (capture)
         {

@@ -85,6 +85,7 @@ internal static partial class HookSites
         HookSiteId.MenuWaterDiagnosticsWaterClusterLoad => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "MenuWaterDiagnosticsWaterClusterLoad", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
         HookSiteId.MenuWaterDiagnosticsWaterShaderTexture => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "MenuWaterDiagnosticsWaterShaderTexture", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
         HookSiteId.MenuWaterDiagnosticsWaterTextureIterator => D(site, HookFamily.Diagnostics, HookPurpose.Observation, "MenuWaterDiagnosticsWaterTextureIterator", "NativePhaseProbe && DiagnosticSession", "Observes native calls and retains bounded diagnostic state.", [], [], "", ""),
+        HookSiteId.ModuleStartupCookieInitialization => D(site, HookFamily.ModuleLifecycle, HookPurpose.ResourceLifecycle, "module.startup", "Present", "Verifies owned continuations and publishes prepared patches before CRT startup continues.", ["clock.pass_scope"], [], "startup_patch_publication", "module"),
         HookSiteId.ModuleFFXApplicationAnimate => D(site, HookFamily.ModuleLifecycle, HookPurpose.NativeTimingCorrection, "ModuleFFXApplicationAnimate", "Present", "Controls native frame pacing and vsync arguments.", [], [], "", ""),
         HookSiteId.ModuleSetFlipVSyncInterval => D(site, HookFamily.ModuleLifecycle, HookPurpose.NativeTimingCorrection, "ModuleSetFlipVSyncInterval", "KeepVsyncInterval", "Controls native frame pacing and vsync arguments.", [], [], "", ""),
         HookSiteId.MotionSequenceChSeqFrame => D(site, HookFamily.ActorMotion, HookPurpose.NativeTimingCorrection, "MotionSequenceChSeqFrame", "MotionSequenceCounters", "Changes actor motion advancement or frame counters.", [], [], "", ""),
@@ -188,6 +189,13 @@ internal sealed partial class HookRegistrationPlan : IDisposable
     private readonly HashSet<(HookSiteId Site, nint Target, long Generation)> _queued = [];
     private readonly HashSet<(HookSiteId Site, nint Target, long Generation)> _attempted = [];
     private readonly object _gate = new();
+    private sealed record ContinuationReceipt(Delegate Callback, Func<bool> Probe);
+    private readonly Dictionary<(HookSiteId Site, nint Target, long Generation), ContinuationReceipt> _continuations = [];
+    private (HookSiteId Site, nint Target, long Generation)? _currentAttempt;
+    private ContinuationReceipt? _pendingContinuation;
+    private int _installationThread;
+    private bool _verifyingContinuations;
+
     internal HookRegistrationState State { get; private set; } = HookRegistrationState.Preflighted;
     internal string? RefusalReason { get; private set; }
 
@@ -260,6 +268,8 @@ internal sealed partial class HookRegistrationPlan : IDisposable
     private bool InstallCore(HookSiteId site, nint target, long generation, Func<bool> install)
     {
         if (State is HookRegistrationState.Refused or HookRegistrationState.Disposed) return false;
+        if (_currentAttempt is not null || _verifyingContinuations)
+            return Refuse("Hook registration cannot reenter registration or continuation verification.");
         if (!_selected.TryGetValue(site, out HookSelection? selection) || !selection.Enabled
             || _attempted.Contains((site, target, generation)) || generation < 0
             || _queued.Any(q => q.Site == site && q.Generation != generation)
@@ -267,21 +277,95 @@ internal sealed partial class HookRegistrationPlan : IDisposable
             || (selection.ExpectedTargets is { } targets && !targets.Contains(target))
             || (ExpectedCount(selection) is { } expected && _queued.Count(q => q.Site == site) >= expected))
             return Refuse($"Unselected, disabled, duplicate or invalid hook instance {site}.");
-        _attempted.Add((site, target, generation));
+        var instance = (site, target, generation);
+        _attempted.Add(instance);
+        _currentAttempt = instance;
+        System.Threading.Volatile.Write(ref _installationThread, Environment.CurrentManagedThreadId);
         try
         {
             if (!install()) return InstallationFailed(selection, $"Hook registration failed for {site}.");
+            if (State is HookRegistrationState.Refused or HookRegistrationState.Disposed) return false;
+            _queued.Add(instance);
+            if (_pendingContinuation is not null) _continuations.Add(instance, _pendingContinuation);
+            State = _selected.Values.Where(s => s.Enabled).All(HasExpectedInstances)
+                ? HookRegistrationState.GroupComplete : HookRegistrationState.Queued;
+            return true;
         }
         catch
         {
             InstallationFailed(selection, $"Hook registration threw for {site}.");
             throw;
         }
-        _queued.Add((site, target, generation));
-        State = _selected.Values.Where(s => s.Enabled).All(HasExpectedInstances)
-            ? HookRegistrationState.GroupComplete : HookRegistrationState.Queued;
-        return true;
+        finally
+        {
+            System.Threading.Volatile.Write(ref _installationThread, 0);
+            _currentAttempt = null;
+            _pendingContinuation = null;
+        }
     }
+
+    /// <summary>Records the exact callback and its lookup probe for the current synchronous installer.</summary>
+    /// <remarks>Call before native insertion; only a successful queue attempt retains the receipt.</remarks>
+    internal bool RecordContinuation(Delegate callback, Func<bool> probe)
+    {
+        if (System.Threading.Volatile.Read(ref _installationThread) != Environment.CurrentManagedThreadId) return false;
+        lock (_gate)
+        {
+            if (_currentAttempt is null || State is HookRegistrationState.Refused or HookRegistrationState.Disposed) return false;
+            if (callback is null || probe is null) return Refuse("Continuation evidence requires an exact callback and probe.");
+            // The SDK keys owned next links by delegate equality, including equal separate delegate objects.
+            if (_pendingContinuation is not null || _continuations.Values.Any(r => r.Callback.Equals(callback)))
+                return Refuse("Duplicate continuation callback or receipt.");
+            _pendingContinuation = new(callback, probe);
+            return true;
+        }
+    }
+
+    /// <summary>Rechecks required, nondeferred continuations without granting runtime activation.</summary>
+    /// <remarks>Probes must only look up their recorded callback, never invoke it or register hooks.</remarks>
+    internal bool TryVerifyRequiredContinuations(out string? reason)
+    {
+        lock (_gate)
+        {
+            reason = null;
+            if (State is HookRegistrationState.Refused or HookRegistrationState.Disposed)
+            { reason = RefusalReason ?? $"Hook registration is {State}."; return false; }
+            if (_currentAttempt is not null)
+            { reason = "Cannot verify continuations during hook registration."; return false; }
+            if (_verifyingContinuations)
+            {
+                reason = "Continuation verification cannot reenter itself.";
+                return Refuse(reason);
+            }
+            HookSelection[] required = _selected.Values.Where(s => s.Enabled && s.Required && !s.Deferred).ToArray();
+            if (required.Length == 0)
+            { reason = "No required startup continuations were selected."; return false; }
+            if (!required.All(HasExpectedInstances))
+            { reason = "Required hook registration is incomplete."; return false; }
+            _verifyingContinuations = true;
+            try
+            {
+                foreach (var instance in _queued.Where(q => _selected[q.Site].Required && !_selected[q.Site].Deferred)
+                    .OrderBy(q => q.Site).ThenBy(q => q.Target).ThenBy(q => q.Generation))
+                {
+                    string identity = $"{instance.Site} at 0x{instance.Target:X}, generation {instance.Generation}";
+                    if (!_continuations.TryGetValue(instance, out ContinuationReceipt? receipt))
+                    { reason = $"Missing owned continuation for {identity}."; return false; }
+                    bool available;
+                    try { available = receipt.Probe(); }
+                    catch (Exception error)
+                    { reason = $"Continuation probe for {identity} threw {error.GetType().Name}: {error.Message}"; return false; }
+                    if (State is HookRegistrationState.Refused or HookRegistrationState.Disposed)
+                    { reason = RefusalReason ?? $"Hook registration became {State} during continuation verification."; return false; }
+                    if (!available)
+                    { reason = $"Owned continuation is unavailable for {identity}."; return false; }
+                }
+                return true;
+            }
+            finally { _verifyingContinuations = false; }
+        }
+    }
+
 
     internal bool IsGroupComplete(string group)
     {
@@ -309,7 +393,7 @@ internal sealed partial class HookRegistrationPlan : IDisposable
     private bool Refuse(string reason)
     {
         RefusalReason ??= reason;
-        State = HookRegistrationState.Refused;
+        if (State != HookRegistrationState.Disposed) State = HookRegistrationState.Refused;
         return false;
     }
 
@@ -457,6 +541,7 @@ internal sealed partial class HookRegistrationPlan
             HookSiteId.MenuWaterDiagnosticsWaterClusterLoad => config.NativePhaseProbe && diagnostics,
             HookSiteId.MenuWaterDiagnosticsWaterShaderTexture => config.NativePhaseProbe && diagnostics,
             HookSiteId.MenuWaterDiagnosticsWaterTextureIterator => config.NativePhaseProbe && diagnostics,
+            HookSiteId.ModuleStartupCookieInitialization => config.Present,
             HookSiteId.ModuleFFXApplicationAnimate => config.Present,
             HookSiteId.ModuleSetFlipVSyncInterval => config.KeepVsyncInterval,
             HookSiteId.MotionSequenceChSeqFrame => config.MotionSequenceCounters,

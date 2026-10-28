@@ -32,7 +32,7 @@ public unsafe sealed partial class VrrModule
         if (!NativeBuild.TryValidate(out _) || !texture_binding_prefix(TextureProbeResolve,
             [0x55, 0x8b, 0xec, 0x8b, 0x55, 0x08, 0x53, 0x56, 0x57, 0x85, 0xd2])) return false;
         _textureFrameBound = hook_or_log(HookSiteId.TextureFrameInterpolationTextureFrameInterpolation, "texture frame interpolation", TextureProbeResolve,
-            () => new FhCallHandle<d_texture_frame_resolve>(new FhCallLocation(TextureProbeResolve, 0)).hook(this, h_texture_frame_resolve));
+            () => new FhCallHandle<d_texture_frame_resolve>(new FhCallLocation(TextureProbeResolve, 0)).hook(this, with_hook_continuation<d_texture_frame_resolve>(h_texture_frame_resolve)));
         if (_textureFrameBound) AppDomain.CurrentDomain.ProcessExit += (_, _) => invalidate_texture_frame_gpu();
         return _textureFrameBound;
     }
@@ -43,6 +43,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private nint h_texture_frame_resolve(nint model, nint animation, uint frame, nint name)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_texture_frame_resolve>(new FhCallLocation(TextureProbeResolve, 0)).chain_from(h_texture_frame_resolve).fnptr)(model, animation, frame, name);
+
         var original = new FhCallHandle<d_texture_frame_resolve>(new FhCallLocation(TextureProbeResolve, 0))
             .chain_from(h_texture_frame_resolve).fnptr!;
         nint texture = original(model, animation, frame, name);

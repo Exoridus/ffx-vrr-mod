@@ -35,13 +35,16 @@ public unsafe sealed partial class VrrModule
     private bool install_vrr_swapchain_hook()
         => hook_or_log(HookSiteId.PresenterD3D11CreateDeviceAndSwapChain, "D3D11CreateDeviceAndSwapChain", 0,
             () => new FhCallHandle<d_create_swapchain>(new FhCallLocation("d3d11.dll", "D3D11CreateDeviceAndSwapChain"))
-                .hook(this, h_create_swapchain));
+                .hook(this, with_hook_continuation<d_create_swapchain>(h_create_swapchain)));
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     private int h_create_swapchain(IDXGIAdapter* adapter, uint driverType, nint software,
         uint flags, uint* levels, uint levelCount, uint sdk, DXGI_SWAP_CHAIN_DESC* descriptor,
         IDXGISwapChain** swapchain, ID3D11Device** device, uint* selectedLevel, ID3D11DeviceContext** context)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_create_swapchain>(new FhCallLocation("d3d11.dll", "D3D11CreateDeviceAndSwapChain")).chain_from(h_create_swapchain).fnptr)(adapter, driverType, software, flags, levels, levelCount, sdk, descriptor, swapchain, device, selectedLevel, context);
+
         var next = new FhCallHandle<d_create_swapchain>(
             new FhCallLocation("d3d11.dll", "D3D11CreateDeviceAndSwapChain")).chain_from(h_create_swapchain).fnptr!;
         if (!_render_mode_ready)

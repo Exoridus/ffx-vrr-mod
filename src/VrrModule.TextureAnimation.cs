@@ -37,7 +37,7 @@ public unsafe sealed partial class VrrModule
         // The patched operand retains this storage until image rollback at process teardown.
         _texture_step_shadow = (byte*)NativeMemory.AllocZeroed(TextureSlotCount * TextureSlotStride);
         if (!hook_or_log(HookSiteId.TextureAnimationNewFormatCharacterTextureAdvance, "new-format character texture advance", NewTextureAdvance,
-            () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(NewTextureAdvance, 0)).hook(this, h_new_texture_advance)))
+            () => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(NewTextureAdvance, 0)).hook(this, with_hook_continuation<d_new_texture_advance>(h_new_texture_advance))))
             return false;
         _patches.Write(NewTextureStepRead + 3, BitConverter.GetBytes((uint)(nuint)(_texture_step_shadow + 0xe)));
         return init_texture_presentation();
@@ -49,6 +49,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_new_texture_advance(int slot, nint model, nint renderer)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_new_texture_advance>(new FhCallLocation(NewTextureAdvance, 0)).chain_from(h_new_texture_advance).fnptr)(slot, model, renderer);
+            return;
+        }
+
         var original = new FhCallHandle<d_new_texture_advance>(new FhCallLocation(NewTextureAdvance, 0))
             .chain_from(h_new_texture_advance).fnptr!;
         if ((uint)slot >= TextureSlotCount) { original(slot, model, renderer); return; }

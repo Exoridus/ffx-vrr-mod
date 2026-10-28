@@ -29,7 +29,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.EternalCalmToDrawEternalCalmCopyRight, "ToDrawEternalCalmCopyRight", EngineAddresses.ToDrawEternalCalmCopyRight,
             () => new FhCallHandle<d_eternal_calm_card>(new FhCallLocation(EngineAddresses.ToDrawEternalCalmCopyRight, 0))
-                .hook(this, h_eternal_calm_card));
+                .hook(this, with_hook_continuation<d_eternal_calm_card>(h_eternal_calm_card)));
     }
 
     /* Cdecl with one argument, and the binary is what says so. The function ends in a plain c3 and
@@ -43,6 +43,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_eternal_calm_card(int frames)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_eternal_calm_card>(new FhCallLocation(EngineAddresses.ToDrawEternalCalmCopyRight, 0)).chain_from(h_eternal_calm_card).fnptr)(frames);
+            return;
+        }
+
         var original = new FhCallHandle<d_eternal_calm_card>(
             new FhCallLocation(EngineAddresses.ToDrawEternalCalmCopyRight, 0)).chain_from(h_eternal_calm_card);
 

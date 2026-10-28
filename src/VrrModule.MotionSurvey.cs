@@ -197,7 +197,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.MotionSurveyMotionAdvance, "motion advance", EngineAddresses.MotionAdvance,
             () => new FhCallHandle<d_motion_advance>(new FhCallLocation(EngineAddresses.MotionAdvance, 0))
-                .hook(this, h_motion_advance));
+                .hook(this, with_hook_continuation<d_motion_advance>(h_motion_advance)));
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -240,6 +240,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_motion_advance(nint actor, int mode)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_motion_advance>(new FhCallLocation(EngineAddresses.MotionAdvance, 0)).chain_from(h_motion_advance).fnptr)(actor, mode);
+            return;
+        }
+
         uint* flags_ptr = actor == 0 ? null : (uint*)(actor + EngineAddresses.ActorFlagsOffset);
         bool  lent_flag   = false;
         bool  lent_global = false;

@@ -77,7 +77,7 @@ public unsafe sealed partial class VrrModule
 
         return hook_or_log(HookSiteId.NeckTrackingChNeckTracking, "Ch neck tracking", EngineAddresses.ChNeckCalc,
             () => new FhCallHandle<d_neck_calc>(new FhCallLocation(EngineAddresses.ChNeckCalc, 0))
-                .hook(this, h_neck_calc));
+                .hook(this, with_hook_continuation<d_neck_calc>(h_neck_calc)));
     }
 
     /* One argument, caller cleanup: both returns are a plain c3 and the only call site, in the
@@ -90,6 +90,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_neck_calc(nint actor)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_neck_calc>(new FhCallLocation(EngineAddresses.ChNeckCalc, 0)).chain_from(h_neck_calc).fnptr)(actor);
+            return;
+        }
+
         var original = new FhCallHandle<d_neck_calc>(
             new FhCallLocation(EngineAddresses.ChNeckCalc, 0)).chain_from(h_neck_calc);
 

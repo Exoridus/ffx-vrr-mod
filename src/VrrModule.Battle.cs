@@ -11,7 +11,7 @@ public unsafe sealed partial class VrrModule
         if (!_config.BattleTimers) return true;
 
         return hook_or_log(HookSiteId.BattleTOBtlCtrlLimitTimer, "TOBtlCtrlLimitTimer", EngineAddresses.TOBtlCtrlLimitTimer,
-            () => new FhCallHandle<d_limit_timer>(new FhCallLocation(EngineAddresses.TOBtlCtrlLimitTimer, 0)).hook(this, h_limit_timer));
+            () => new FhCallHandle<d_limit_timer>(new FhCallLocation(EngineAddresses.TOBtlCtrlLimitTimer, 0)).hook(this, with_hook_continuation<d_limit_timer>(h_limit_timer)));
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -27,6 +27,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_limit_timer()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_limit_timer>(new FhCallLocation(EngineAddresses.TOBtlCtrlLimitTimer, 0)).chain_from(h_limit_timer).fnptr)();
+            return;
+        }
+
         if (FhUtil.get_at<uint>(EngineAddresses.LimitTimerMode) != 2) return;
 
         float* frames  = FhUtil.ptr_at<float>(EngineAddresses.LimitTimerFrames);

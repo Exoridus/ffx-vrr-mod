@@ -45,11 +45,11 @@ public unsafe sealed partial class VrrModule
 
         bool play = hook_or_log(HookSiteId.VideoOverridePhyFMVPlayerManagerPlayStart, "PhyFMVPlayerManager play start", EngineAddresses.FmvPlayStart,
             () => new FhCallHandle<d_fmv_play_start>(new FhCallLocation(EngineAddresses.FmvPlayStart, 0))
-                .hook(this, h_fmv_play_start));
+                .hook(this, with_hook_continuation<d_fmv_play_start>(h_fmv_play_start)));
         if (!play) return false;
         return init_av1_worker() && init_fmv_audio_hooks() && hook_or_log(HookSiteId.VideoOverridePhyFMVPlayerManagerInitialize, "PhyFMVPlayerManager initialize", EngineAddresses.FmvInitialize,
             () => new FhCallHandle<d_fmv_initialize>(new FhCallLocation(EngineAddresses.FmvInitialize, 0))
-                .hook(this, h_fmv_initialize));
+                .hook(this, with_hook_continuation<d_fmv_initialize>(h_fmv_initialize)));
     }
 
     private sealed record FmvSelection(string Original, string Absolute, byte[] Bytes, FmvReplacementMetadata? Metadata)
@@ -73,6 +73,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private int h_fmv_initialize(nint manager, int movieId, byte highResolution, byte arg3)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_fmv_initialize>(new FhCallLocation(EngineAddresses.FmvInitialize, 0)).chain_from(h_fmv_initialize).fnptr)(manager, movieId, highResolution, arg3);
+
         _fmv_selection = null;
         _fmv_selection_manager = manager;
         _fmv_last_outcome = "retail";
@@ -197,6 +200,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private int h_fmv_play_start(nint manager, int arg)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_fmv_play_start>(new FhCallLocation(EngineAddresses.FmvPlayStart, 0)).chain_from(h_fmv_play_start).fnptr)(manager, arg);
+
         try
         {
             rewrite_fmv_path(manager);

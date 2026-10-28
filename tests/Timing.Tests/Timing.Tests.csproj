@@ -6,6 +6,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/StartupActivation.cs" Link="StartupActivation.cs" />
     <Compile Include="../../src/HookSites.cs" Link="HookSites.cs" />
     <Compile Include="../../src/HookRegistration.cs" Link="HookRegistration.cs" />
     <Compile Include="../../src/VrrModule.HookRegistration.cs" Link="VrrModule.HookRegistration.cs" />

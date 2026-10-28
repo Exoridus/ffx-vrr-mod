@@ -128,6 +128,8 @@ public unsafe sealed partial class VrrModule : FhModule
 
         if (!preflight_expanded_menu_water()) return false;
 
+        if (!prepare_startup_arm()) return false;
+
         if (!TimingOwnership.TryAcquire(out _timing_ownership))
         {
             _logger.Error("[Vrr] Another FPS/VRR module already owns engine timing. The first initialized module retains ownership; this module installs no hooks.");
@@ -137,19 +139,20 @@ public unsafe sealed partial class VrrModule : FhModule
 
         try
         {
+            begin_startup_preparation();
+            bool ok = init_startup_hook();
             init_diagnostics();
-            bool ok = true;
 
             if (_config.Present)
             {
                 ok &= hook_or_log(HookSiteId.ModuleFFXApplicationAnimate, "FFXApplication::animate", EngineAddresses.FFXApplicationAnimate,
-                    () => new FhCallHandle<d_frame>(new FhCallLocation(EngineAddresses.FFXApplicationAnimate, 0)).hook(this, h_frame));
+                    () => new FhCallHandle<d_frame>(new FhCallLocation(EngineAddresses.FFXApplicationAnimate, 0)).hook(this, with_hook_continuation<d_frame>(h_frame)));
             }
 
             if (_config.KeepVsyncInterval)
             {
                 ok &= hook_or_log(HookSiteId.ModuleSetFlipVSyncInterval, "SetFlipVSyncInterval", EngineAddresses.SetFlipVSyncInterval,
-                    () => new FhCallHandle<d_set_vsync>(new FhCallLocation(EngineAddresses.SetFlipVSyncInterval, 0)).hook(this, h_set_vsync));
+                    () => new FhCallHandle<d_set_vsync>(new FhCallLocation(EngineAddresses.SetFlipVSyncInterval, 0)).hook(this, with_hook_continuation<d_set_vsync>(h_set_vsync)));
             }
 
             if (_config.VideoTargetFramerate is not null)
@@ -203,7 +206,7 @@ public unsafe sealed partial class VrrModule : FhModule
                 _logger.Info("[Vrr] Simulation defaults to 60 Hz; render measurements do not change it.");
             }
 
-            _logger.Info($"[Vrr] Initialized. present={_config.Present} atel={_config.AtelWaits} camera={_config.Camera} " +
+            _logger.Info($"[Vrr] Prepared. present={_config.Present} atel={_config.AtelWaits} camera={_config.Camera} " +
                          $"fades={_config.Fades} motion={_config.Motion} battle={_config.BattleTimers}");
             _logger.Info($"[Vrr] Frame-sequence holds: menu_water={_config.MenuWater} fmv={_config.Fmv} " +
                          $"texture_animation={_config.TextureAnimation}. These are 30 Hz inside a 60 Hz game by " +
@@ -213,26 +216,28 @@ public unsafe sealed partial class VrrModule : FhModule
 
             apply_rate_patches();
             ok &= _hookRegistration?.RequiredRegistrationsComplete == true;
-            _render_mode_ready = ok && _render_scheduler_active;
-            if (IndependentPresentationEnabled && !_render_mode_ready)
+            bool renderReady = ok && _render_scheduler_active;
+            if (IndependentPresentationEnabled && !renderReady)
             {
                 _render_scheduler_active = false;
                 _logger.Error("[Vrr] Independent presentation was not armed because a required initialization failed. The native swapchain and 60 Hz limiter are retained.");
             }
-            _initialized = ok;
+            _initialized = false;
             diagnostic_event("initialization_complete", new { success = ok, independent_presentation_requested = _config.VrrEnabled, independent_presentation_enabled = IndependentPresentationEnabled, independent_presentation_ready = _render_mode_ready, qualification = _independentQualification.Reason });
             if (!ok) StartupFailure.Abort(() => cleanup_runtime(failedStartup: true), Environment.FailFast);
-            return ok;
+            complete_startup_preparation(renderReady);
+            return true;
         }
         catch (Exception error)
         {
-            _logger.Error($"[Vrr] Initialization failed: {error}");
-            StartupFailure.Abort(() => cleanup_runtime(failedStartup: true), Environment.FailFast);
+            StartupFailure.Abort(() => _logger.Error($"[Vrr] Initialization failed: {error}"),
+                () => cleanup_runtime(failedStartup: true), message => Environment.FailFast(message, error));
             return false;
         }
     }
 
-    private void cleanup_runtime(bool failedStartup = false)
+
+    private void cleanup_runtime_owned(bool failedStartup)
     {
         dispose_hook_registration();
         _render_mode_ready = false;
@@ -277,6 +282,9 @@ public unsafe sealed partial class VrrModule : FhModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private uint h_frame(nint ptr_this)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_frame>(new FhCallLocation(EngineAddresses.FFXApplicationAnimate, 0)).chain_from(h_frame).fnptr)(ptr_this);
+
         _frames++;
         MemoryProbe.NextFrame();
         diagnostic_frame_begin();
@@ -321,7 +329,13 @@ public unsafe sealed partial class VrrModule : FhModule
     /* The engine sets the interval to 1 in menus and 2 everywhere else. Since this module owns it,
      * every request to change it is dropped rather than chained. */
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    private void h_set_vsync(uint interval) { }
+    private void h_set_vsync(uint interval) {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_set_vsync>(new FhCallLocation(EngineAddresses.SetFlipVSyncInterval, 0)).chain_from(h_set_vsync).fnptr)(interval);
+            return;
+        }
+ }
 
     // --- Telemetry ---
 

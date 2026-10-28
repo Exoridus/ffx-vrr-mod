@@ -28,7 +28,15 @@ public unsafe sealed partial class VrrModule
 
     private static void bx_opp(int op, nint scratch, nint ctx)
     {
-        var module = s_battle_effects!;
+        var module = s_battle_effects;
+        if (module is null) { Environment.FailFast("Battle operation has no owning module."); return; }
+        if (!module.RuntimeEffectsArmed)
+        {
+            if ((uint)op >= (uint)module._bxOppOriginal.Length || module._bxOppOriginal[op] == 0)
+            { Environment.FailFast("Battle operation native continuation is unavailable."); return; }
+            ((delegate* unmanaged[Cdecl]<nint, nint, void>)module._bxOppOriginal[op])(scratch, ctx);
+            return;
+        }
         var original = (delegate* unmanaged[Cdecl]<nint, nint, void>)module._bxOppOriginal[op];
         nint record = 0;
         byte* saved = stackalloc byte[0x100];
@@ -69,7 +77,15 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void bx_on_node_walk(nint head)
     {
-        var module = s_battle_effects!;
+        var module = s_battle_effects;
+        if (module is null) { Environment.FailFast("Battle node walk has no owning module."); return; }
+        if (!module.RuntimeEffectsArmed)
+        {
+            if (module._bxNodeWalkOriginal == 0)
+            { Environment.FailFast("Battle node walk native continuation is unavailable."); return; }
+            ((delegate* unmanaged[Cdecl]<nint, void>)module._bxNodeWalkOriginal)(head);
+            return;
+        }
         if (!RenderPassContext.IsPresentation && !module.IsOwnedBattleEffectHold)
         {
             ((delegate* unmanaged[Cdecl]<nint, void>)module._bxNodeWalkOriginal)(head);

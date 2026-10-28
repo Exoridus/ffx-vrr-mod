@@ -20,7 +20,7 @@ public unsafe sealed partial class VrrModule
         diagnostic_hook(HookSiteId.DiagnosticBindingsPadPollObservation, "pad_poll", DiagnosticPadPoll,
             [0x56, 0x33, 0xf6, 0x6a, 0x00, 0x56, 0xe8, 0x85, 0xf3, 0xff, 0xff, 0x50, 0x6a, 0x00, 0x56,
              0xe8, 0xbc, 0xf5, 0xff, 0xff, 0x46, 0x83, 0xc4, 0x14, 0x83, 0xfe, 0x02, 0x7c, 0xe6, 0x5e, 0xc3],
-            () => new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).hook(this, h_diag_pad_poll));
+            () => new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).hook(this, with_hook_continuation<d_render_void>(h_diag_pad_poll)));
     }
 
     private void reset_pad_observation_timeline(string reason)
@@ -65,6 +65,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_diag_pad_poll()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr)();
+            return;
+        }
+
         try
         {
             new FhCallHandle<d_render_void>(new FhCallLocation(DiagnosticPadPoll, 0)).chain_from(h_diag_pad_poll).fnptr!();

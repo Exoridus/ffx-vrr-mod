@@ -60,19 +60,19 @@ public unsafe sealed partial class VrrModule
         if (_config.VBlankRate)
         {
             ok &= hook_or_log(HookSiteId.TimingVerticalBlankCounters, "vertical blank counters", EngineAddresses.AdvanceVBlankCounters,
-                () => new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0)).hook(this, h_advance_vblank));
+                () => new FhCallHandle<d_advance_vblank>(new FhCallLocation(EngineAddresses.AdvanceVBlankCounters, 0)).hook(this, with_hook_continuation<d_advance_vblank>(h_advance_vblank)));
         }
 
         if (_config.EventClockOnVblank)
         {
             ok &= hook_or_log(HookSiteId.TimingYiAnimInfoInit, "yiAnimInfo_init", EngineAddresses.YiAnimInfoInit,
-                () => new FhCallHandle<d_yi_anim_info_init>(new FhCallLocation(EngineAddresses.YiAnimInfoInit, 0)).hook(this, h_yi_anim_info_init));
+                () => new FhCallHandle<d_yi_anim_info_init>(new FhCallLocation(EngineAddresses.YiAnimInfoInit, 0)).hook(this, with_hook_continuation<d_yi_anim_info_init>(h_yi_anim_info_init)));
         }
 
         if (_config.SyncDataDisable)
         {
             ok &= hook_or_log(HookSiteId.TimingISyncGetData, "iSyncGetData", EngineAddresses.ISyncGetData,
-                () => new FhCallHandle<d_isync_get_data>(new FhCallLocation(EngineAddresses.ISyncGetData, 0)).hook(this, h_isync_get_data));
+                () => new FhCallHandle<d_isync_get_data>(new FhCallLocation(EngineAddresses.ISyncGetData, 0)).hook(this, with_hook_continuation<d_isync_get_data>(h_isync_get_data)));
 
             _logger.Info("[Vrr] Recorded cutscene pacing refused: the three syncdata scenes will run at the " +
                          "corrected rate and lose the timing their recording asks for.");
@@ -84,17 +84,17 @@ public unsafe sealed partial class VrrModule
         if (_config.CharacterDelta || _config.Buoyancy || _binaryDiagnostics is not null)
         {
             ok &= hook_or_log(HookSiteId.TimingChCalcMain, "Ch_CalcMain", EngineAddresses.ChCalcMain,
-                () => new FhCallHandle<d_ch_calc_main>(new FhCallLocation(EngineAddresses.ChCalcMain, 0)).hook(this, h_ch_calc_main));
+                () => new FhCallHandle<d_ch_calc_main>(new FhCallLocation(EngineAddresses.ChCalcMain, 0)).hook(this, with_hook_continuation<d_ch_calc_main>(h_ch_calc_main)));
         }
 
         if (_config.AtelWaits)
         {
             bool waitInit = hook_or_log(HookSiteId.TimingATELWaitInit, "ATEL wait init", EngineAddresses.AtelWaitInit,
-                () => new FhCallHandle<d_atel_wait_init>(new FhCallLocation(EngineAddresses.AtelWaitInit, 0)).hook(this, h_atel_wait_init));
+                () => new FhCallHandle<d_atel_wait_init>(new FhCallLocation(EngineAddresses.AtelWaitInit, 0)).hook(this, with_hook_continuation<d_atel_wait_init>(h_atel_wait_init)));
             bool waitExec = hook_or_log(HookSiteId.TimingATELWaitExec, "ATEL wait exec", EngineAddresses.AtelWaitExec,
-                () => new FhCallHandle<d_atel_wait_exec>(new FhCallLocation(EngineAddresses.AtelWaitExec, 0)).hook(this, h_atel_wait_exec));
+                () => new FhCallHandle<d_atel_wait_exec>(new FhCallLocation(EngineAddresses.AtelWaitExec, 0)).hook(this, with_hook_continuation<d_atel_wait_exec>(h_atel_wait_exec)));
             bool movieDelta = hook_or_log(HookSiteId.TimingMovieFrameDelta, "movie frame delta", EngineAddresses.MovieFrameDelta,
-                () => new FhCallHandle<d_movie_frame_delta>(new FhCallLocation(EngineAddresses.MovieFrameDelta, 0)).hook(this, h_movie_frame_delta));
+                () => new FhCallHandle<d_movie_frame_delta>(new FhCallLocation(EngineAddresses.MovieFrameDelta, 0)).hook(this, with_hook_continuation<d_movie_frame_delta>(h_movie_frame_delta)));
             _atel_wait_hooks_ready = waitInit && waitExec && movieDelta;
             ok &= _atel_wait_hooks_ready;
         }
@@ -102,19 +102,19 @@ public unsafe sealed partial class VrrModule
         if (_config.Camera)
         {
             ok &= hook_or_log(HookSiteId.TimingMsCameraMoveFrame, "MsCameraMoveFrame", EngineAddresses.MsCameraMoveFrame,
-                () => new FhCallHandle<d_camera_move_frame>(new FhCallLocation(EngineAddresses.MsCameraMoveFrame, 0)).hook(this, h_camera_move_frame));
+                () => new FhCallHandle<d_camera_move_frame>(new FhCallLocation(EngineAddresses.MsCameraMoveFrame, 0)).hook(this, with_hook_continuation<d_camera_move_frame>(h_camera_move_frame)));
             ok &= hook_or_log(HookSiteId.TimingMsCameraMoveAcc, "MsCameraMoveAcc", EngineAddresses.MsCameraMoveAcc,
-                () => new FhCallHandle<d_camera_move_acc>(new FhCallLocation(EngineAddresses.MsCameraMoveAcc, 0)).hook(this, h_camera_move_acc));
+                () => new FhCallHandle<d_camera_move_acc>(new FhCallLocation(EngineAddresses.MsCameraMoveAcc, 0)).hook(this, with_hook_continuation<d_camera_move_acc>(h_camera_move_acc)));
         }
 
         if (_config.Fades)
         {
             ok &= hook_or_log(HookSiteId.TimingSgFadeCommon, "Sg_Fade_Common", EngineAddresses.SgFadeCommon,
-                () => new FhCallHandle<d_fade_common>(new FhCallLocation(EngineAddresses.SgFadeCommon, 0)).hook(this, h_fade_common));
+                () => new FhCallHandle<d_fade_common>(new FhCallLocation(EngineAddresses.SgFadeCommon, 0)).hook(this, with_hook_continuation<d_fade_common>(h_fade_common)));
             ok &= hook_or_log(HookSiteId.TimingSgFlash, "Sg_Flash", EngineAddresses.SgFlash,
-                () => new FhCallHandle<d_sg_flash>(new FhCallLocation(EngineAddresses.SgFlash, 0)).hook(this, h_sg_flash));
+                () => new FhCallHandle<d_sg_flash>(new FhCallLocation(EngineAddresses.SgFlash, 0)).hook(this, with_hook_continuation<d_sg_flash>(h_sg_flash)));
             ok &= hook_or_log(HookSiteId.TimingTkSetFadeOut, "TkSetFadeOut", EngineAddresses.TkSetFadeOut,
-                () => new FhCallHandle<d_tk_set_fade_out>(new FhCallLocation(EngineAddresses.TkSetFadeOut, 0)).hook(this, h_tk_set_fade_out));
+                () => new FhCallHandle<d_tk_set_fade_out>(new FhCallLocation(EngineAddresses.TkSetFadeOut, 0)).hook(this, with_hook_continuation<d_tk_set_fade_out>(h_tk_set_fade_out)));
         }
 
         // The cross-fade setter is the only place the slot 0 hold can see the engine re-entering
@@ -124,20 +124,20 @@ public unsafe sealed partial class VrrModule
         if (_config.Fades || _config.CrossFadeHold)
         {
             _acc_set_alpha_hooked = hook_or_log(HookSiteId.TimingSgAccSetAlpha, "Sg_AccSetAlpha", EngineAddresses.SgAccSetAlpha,
-                () => new FhCallHandle<d_acc_set_alpha>(new FhCallLocation(EngineAddresses.SgAccSetAlpha, 0)).hook(this, h_acc_set_alpha));
+                () => new FhCallHandle<d_acc_set_alpha>(new FhCallLocation(EngineAddresses.SgAccSetAlpha, 0)).hook(this, with_hook_continuation<d_acc_set_alpha>(h_acc_set_alpha)));
             ok &= _acc_set_alpha_hooked;
         }
 
         if (_config.Motion)
         {
             ok &= hook_or_log(HookSiteId.TimingChSetMotionSpeed, "Ch_SetMotionSpeed", EngineAddresses.ChSetMotionSpeed,
-                () => new FhCallHandle<d_set_motion_speed>(new FhCallLocation(EngineAddresses.ChSetMotionSpeed, 0)).hook(this, h_set_motion_speed));
+                () => new FhCallHandle<d_set_motion_speed>(new FhCallLocation(EngineAddresses.ChSetMotionSpeed, 0)).hook(this, with_hook_continuation<d_set_motion_speed>(h_set_motion_speed)));
             ok &= hook_or_log(HookSiteId.TimingMsEffectSetSpeed, "MsEffectSetSpeed", EngineAddresses.MsEffectSetSpeed,
-                () => new FhCallHandle<d_effect_set_speed>(new FhCallLocation(EngineAddresses.MsEffectSetSpeed, 0)).hook(this, h_effect_set_speed));
+                () => new FhCallHandle<d_effect_set_speed>(new FhCallLocation(EngineAddresses.MsEffectSetSpeed, 0)).hook(this, with_hook_continuation<d_effect_set_speed>(h_effect_set_speed)));
             ok &= hook_or_log(HookSiteId.TimingMsSetChrMotionParamF, "MsSetChrMotionParamF", EngineAddresses.SetMotionParamFloat,
-                () => new FhCallHandle<d_set_motion_param>(new FhCallLocation(EngineAddresses.SetMotionParamFloat, 0)).hook(this, h_set_motion_param));
+                () => new FhCallHandle<d_set_motion_param>(new FhCallLocation(EngineAddresses.SetMotionParamFloat, 0)).hook(this, with_hook_continuation<d_set_motion_param>(h_set_motion_param)));
             ok &= hook_or_log(HookSiteId.TimingChTextureSetAnimTimer, "Ch_TextureSetAnimTimer", EngineAddresses.ChTextureSetAnimTimer,
-                () => new FhCallHandle<d_set_tex_anim_timer>(new FhCallLocation(EngineAddresses.ChTextureSetAnimTimer, 0)).hook(this, h_set_tex_anim_timer));
+                () => new FhCallHandle<d_set_tex_anim_timer>(new FhCallLocation(EngineAddresses.ChTextureSetAnimTimer, 0)).hook(this, with_hook_continuation<d_set_tex_anim_timer>(h_set_tex_anim_timer)));
             _logger.Info("[Vrr] MsSetChrStatInfo observation disabled: the current executable target is unresolved.");
         }
 
@@ -199,6 +199,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_isync_get_data(float* total, float* next, int* rate)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_isync_get_data>(new FhCallLocation(EngineAddresses.ISyncGetData, 0)).chain_from(h_isync_get_data).fnptr)(total, next, rate);
+
         _sync_refused++;
         return 999;
     }
@@ -217,6 +220,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_yi_anim_info_init(nint info)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_yi_anim_info_init>(new FhCallLocation(EngineAddresses.YiAnimInfoInit, 0)).chain_from(h_yi_anim_info_init).fnptr)(info);
+            return;
+        }
+
         new FhCallHandle<d_yi_anim_info_init>(new FhCallLocation(EngineAddresses.YiAnimInfoInit, 0))
             .chain_from(h_yi_anim_info_init).fnptr?.Invoke(info);
 
@@ -239,6 +248,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_ch_calc_main(float delta)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_ch_calc_main>(new FhCallLocation(EngineAddresses.ChCalcMain, 0)).chain_from(h_ch_calc_main).fnptr)(delta);
+            return;
+        }
+
         var original = new FhCallHandle<d_ch_calc_main>(
             new FhCallLocation(EngineAddresses.ChCalcMain, 0)).chain_from(h_ch_calc_main);
 
@@ -257,6 +272,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_camera_move_frame(uint camera_id, uint arg2, uint arg3, uint frames, uint arg5)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_camera_move_frame>(new FhCallLocation(EngineAddresses.MsCameraMoveFrame, 0)).chain_from(h_camera_move_frame).fnptr)(camera_id, arg2, arg3, frames, arg5);
+            return;
+        }
+
         new FhCallHandle<d_camera_move_frame>(new FhCallLocation(EngineAddresses.MsCameraMoveFrame, 0))
             .chain_from(h_camera_move_frame).fnptr!(camera_id, arg2, arg3, scale_up(frames), arg5);
     }
@@ -283,6 +304,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_camera_move_acc(uint camera_id, uint mode_non_ref, uint mode_polar, uint a4, uint a5, uint a6, uint a7)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_camera_move_acc>(new FhCallLocation(EngineAddresses.MsCameraMoveAcc, 0)).chain_from(h_camera_move_acc).fnptr)(camera_id, mode_non_ref, mode_polar, a4, a5, a6, a7);
+            return;
+        }
+
         _camera_acc_calls++;
 
         // The encounter scripts call camMoveAcc(0, 0, 30, 15) in 540 of 641 CamEnter entry points,
@@ -302,6 +329,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_fade_common(ushort frames, uint mode_in, uint mode_w)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_fade_common>(new FhCallLocation(EngineAddresses.SgFadeCommon, 0)).chain_from(h_fade_common).fnptr)(frames, mode_in, mode_w);
+            return;
+        }
+
         new FhCallHandle<d_fade_common>(new FhCallLocation(EngineAddresses.SgFadeCommon, 0))
             .chain_from(h_fade_common).fnptr!(scale_up(frames), mode_in, mode_w);
     }
@@ -309,6 +342,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_sg_flash(ushort frames, byte arg2, byte arg3, byte arg4)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_sg_flash>(new FhCallLocation(EngineAddresses.SgFlash, 0)).chain_from(h_sg_flash).fnptr)(frames, arg2, arg3, arg4);
+            return;
+        }
+
         new FhCallHandle<d_sg_flash>(new FhCallLocation(EngineAddresses.SgFlash, 0))
             .chain_from(h_sg_flash).fnptr!(scale_up(frames), arg2, arg3, arg4);
     }
@@ -319,6 +358,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_acc_set_alpha(ushort alpha, ushort frames)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_acc_set_alpha>(new FhCallLocation(EngineAddresses.SgAccSetAlpha, 0)).chain_from(h_acc_set_alpha).fnptr)(alpha, frames);
+            return;
+        }
+
         _acc_set_alpha_reentered = true;
 
         new FhCallHandle<d_acc_set_alpha>(new FhCallLocation(EngineAddresses.SgAccSetAlpha, 0))
@@ -328,6 +373,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_tk_set_fade_out(uint frames)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_tk_set_fade_out>(new FhCallLocation(EngineAddresses.TkSetFadeOut, 0)).chain_from(h_tk_set_fade_out).fnptr)(frames);
+            return;
+        }
+
         new FhCallHandle<d_tk_set_fade_out>(new FhCallLocation(EngineAddresses.TkSetFadeOut, 0))
             .chain_from(h_tk_set_fade_out).fnptr!(scale_up(frames));
     }
@@ -350,6 +401,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_set_motion_speed(nint ptr_actor, ushort speed)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_set_motion_speed>(new FhCallLocation(EngineAddresses.ChSetMotionSpeed, 0)).chain_from(h_set_motion_speed).fnptr)(ptr_actor, speed);
+            return;
+        }
+
         // How many motion speeds this module ever sees is the coverage question behind "some
         // animations are still fast": an actor whose speed is set from loaded data or left at its
         // default never passes through here.
@@ -366,6 +423,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_effect_set_speed(byte chr_id, int speed)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_effect_set_speed>(new FhCallLocation(EngineAddresses.MsEffectSetSpeed, 0)).chain_from(h_effect_set_speed).fnptr)(chr_id, speed);
+            return;
+        }
+
         if (speed >= 0) speed = scale_down((ushort)Math.Min(ushort.MaxValue, speed));
 
         new FhCallHandle<d_effect_set_speed>(new FhCallLocation(EngineAddresses.MsEffectSetSpeed, 0))
@@ -383,6 +446,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_set_motion_param(uint chr_id, uint stat_id, float value)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_set_motion_param>(new FhCallLocation(EngineAddresses.SetMotionParamFloat, 0)).chain_from(h_set_motion_param).fnptr)(chr_id, stat_id, value);
+            return;
+        }
+
         float scaled = stat_id switch
         {
             3 or 4 or 5 => value / Scale,
@@ -433,6 +502,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_set_tex_anim_timer(nint ptr_chr, int timer)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_set_tex_anim_timer>(new FhCallLocation(EngineAddresses.ChTextureSetAnimTimer, 0)).chain_from(h_set_tex_anim_timer).fnptr)(ptr_chr, timer);
+            return;
+        }
+
         new FhCallHandle<d_set_tex_anim_timer>(new FhCallLocation(EngineAddresses.ChTextureSetAnimTimer, 0))
             .chain_from(h_set_tex_anim_timer).fnptr!(ptr_chr, timer);
     }

@@ -4,6 +4,13 @@ using Xunit;
 
 public sealed class HookSitesTests
 {
+    [Fact]
+    public void Startup_publisher_is_appended_after_existing_hook_ids()
+    {
+        Assert.Equal(147, (int)HookSiteId.PadSnapshotProducer);
+        Assert.Equal(148, (int)HookSiteId.ModuleStartupCookieInitialization);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

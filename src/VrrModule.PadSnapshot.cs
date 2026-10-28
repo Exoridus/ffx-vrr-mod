@@ -29,7 +29,7 @@ public unsafe sealed partial class VrrModule
         if (!IndependentPresentationEnabled) return true;
         if (_padSnapshotEntry is null) return false;
         _padSnapshotInstalled = hook_or_log(HookSiteId.PadSnapshotProducer, "pad snapshot producer", PadSnapshotProducer,
-            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadSnapshotProducer, 0)).hook(this, _padSnapshotEntry!));
+            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadSnapshotProducer, 0)).hook(this, with_hook_continuation<d_render_void>(_padSnapshotEntry!)));
         return _padSnapshotInstalled;
     }
 
@@ -194,7 +194,11 @@ public unsafe sealed partial class VrrModule
             Environment.FailFast("Snapshot next-chain resolution failed.", error);
             return;
         }
-        try { pad_snapshot_invoke(returnAddress, original); }
+        try
+        {
+            if (!RuntimeEffectsArmed) { original(); return; }
+            pad_snapshot_invoke(returnAddress, original);
+        }
         catch (Exception error) { Environment.FailFast("Snapshot native invocation or completion failed; forwarding cannot be retried.", error); }
     }
 

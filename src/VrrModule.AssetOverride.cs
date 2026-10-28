@@ -166,11 +166,11 @@ public unsafe sealed partial class VrrModule
 
         bool ok = hook_or_log(HookSiteId.AssetOverrideBigFileStreamCheckExists, "BigFileStream::checkExists", EngineAddresses.BigFileCheckExists,
             () => new FhCallHandle<d_big_file_check_exists>(new FhCallLocation(EngineAddresses.BigFileCheckExists, 0))
-                .hook(this, h_big_file_check_exists));
+                .hook(this, with_hook_continuation<d_big_file_check_exists>(h_big_file_check_exists)));
 
         ok &= hook_or_log(HookSiteId.AssetOverrideBigFileStreamOpenFile, "BigFileStream::openFile", EngineAddresses.BigFileOpenFile,
             () => new FhCallHandle<d_big_file_open_file>(new FhCallLocation(EngineAddresses.BigFileOpenFile, 0))
-                .hook(this, h_big_file_open_file));
+                .hook(this, with_hook_continuation<d_big_file_open_file>(h_big_file_open_file)));
 
         return ok;
     }
@@ -215,6 +215,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private byte h_big_file_check_exists(nint ptr_this, nint path)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_big_file_check_exists>(new FhCallLocation(EngineAddresses.BigFileCheckExists, 0)).chain_from(h_big_file_check_exists).fnptr)(ptr_this, path);
+
         // Zero means "the archive does not have it", which is what sends the caller to CreateFileW.
         if (overridden(path)) return 0;
 
@@ -225,6 +228,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
     private nint h_big_file_open_file(nint ptr_this, nint path)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_big_file_open_file>(new FhCallLocation(EngineAddresses.BigFileOpenFile, 0)).chain_from(h_big_file_open_file).fnptr)(ptr_this, path);
+
         // Null is the miss the fios open tests for before it falls through to the filesystem. The
         // caller stores it as handle_vbf either way, so returning it costs nothing to unwind.
         if (overridden(path)) return 0;

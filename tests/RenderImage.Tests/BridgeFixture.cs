@@ -12,6 +12,17 @@ namespace Fahrenheit.Mods.Vrr;
 
 public unsafe sealed partial class VrrModule
 {
+    public VrrModule()
+    {
+        // Synthetic fixture activation does not qualify native startup.
+        _startupActivation.Prepare(1);
+        if (!_startupActivation.Invoke(1, true, () => { }, () => true, () => { }))
+            throw new InvalidOperationException("Synthetic fixture activation failed.");
+    }
+
+    internal void StopSyntheticRuntimeForTest() => _startupActivation.Stop();
+
+
     private readonly PresentationAdmission _presentationAdmission = new();
     private bool IndependentPresentationEnabled => _config.VrrEnabled;
     private readonly TestConfig _config = new();

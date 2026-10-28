@@ -35,11 +35,11 @@ public unsafe sealed partial class VrrModule
 
         bool ok = hook_or_log(HookSiteId.MotionSequenceChSeqFrame, "Ch_SeqFrame", EngineAddresses.ChSeqFrame,
             () => new FhCallHandle<d_seq_frame>(new FhCallLocation(EngineAddresses.ChSeqFrame, 0))
-                .hook(this, h_seq_frame));
+                .hook(this, with_hook_continuation<d_seq_frame>(h_seq_frame)));
 
         ok &= hook_or_log(HookSiteId.MotionSequenceMotionCrossFade, "motion cross-fade", EngineAddresses.ChMotionInterpolate,
             () => new FhCallHandle<d_motion_interpolate>(new FhCallLocation(EngineAddresses.ChMotionInterpolate, 0))
-                .hook(this, h_motion_interpolate));
+                .hook(this, with_hook_continuation<d_motion_interpolate>(h_motion_interpolate)));
 
         return ok;
     }
@@ -61,6 +61,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_seq_frame(nint work)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_seq_frame>(new FhCallLocation(EngineAddresses.ChSeqFrame, 0)).chain_from(h_seq_frame).fnptr)(work);
+            return;
+        }
+
         _seq_calls++;
 
         new FhCallHandle<d_seq_frame>(new FhCallLocation(EngineAddresses.ChSeqFrame, 0))
@@ -83,6 +89,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_motion_interpolate(nint work, int hokan)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_motion_interpolate>(new FhCallLocation(EngineAddresses.ChMotionInterpolate, 0)).chain_from(h_motion_interpolate).fnptr)(work, hokan);
+            return;
+        }
+
         _hokan_calls++;
 
         new FhCallHandle<d_motion_interpolate>(new FhCallLocation(EngineAddresses.ChMotionInterpolate, 0))

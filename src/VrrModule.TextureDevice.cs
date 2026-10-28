@@ -23,7 +23,7 @@ public unsafe sealed partial class VrrModule
             [0x55, 0x8b, 0xec, 0x83, 0xec, 0x40])) return false;
         _textureDeviceObserverInstalled = hook_or_log(HookSiteId.TextureDeviceTextureEngineDeviceObserver, "texture engine device observer", TextureDeviceCreate,
             () => new FhCallHandle<d_texture_device_create>(new FhCallLocation(TextureDeviceCreate, 0))
-                .hook(this, h_texture_device_create));
+                .hook(this, with_hook_continuation<d_texture_device_create>(h_texture_device_create)));
         if (_textureDeviceObserverInstalled)
             AppDomain.CurrentDomain.ProcessExit += (_, _) =>
             {
@@ -40,6 +40,9 @@ public unsafe sealed partial class VrrModule
     private int h_texture_device_create(nint owner, uint width, uint height, uint samples,
         uint windowed, uint mode, nint window)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_texture_device_create>(new FhCallLocation(TextureDeviceCreate, 0)).chain_from(h_texture_device_create).fnptr)(owner, width, height, samples, windowed, mode, window);
+
         var original = new FhCallHandle<d_texture_device_create>(new FhCallLocation(TextureDeviceCreate, 0))
             .chain_from(h_texture_device_create).fnptr!;
         int result = original(owner, width, height, samples, windowed, mode, window);

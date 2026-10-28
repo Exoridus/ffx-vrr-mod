@@ -7,6 +7,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/StartupActivation.cs" Link="StartupActivation.cs" />
     <Using Include="System.Text.Json" />
     <Compile Include="../../src/HookSites.cs" Link="HookSites.cs" />
     <Compile Include="../../src/HookRegistration.cs" Link="HookRegistration.cs" />

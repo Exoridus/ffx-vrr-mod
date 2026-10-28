@@ -228,6 +228,12 @@ public unsafe sealed partial class VrrModule
 
             self = (obj, data, prog) =>
             {
+                if (!RuntimeEffectsArmed)
+                {
+                    HookSites.Native(() => new FhCallHandle<d_ke_update>(new FhCallLocation(rva, 0)).chain_from(self!).fnptr)(obj, data, prog);
+                    return;
+                }
+
                 _ke_calls++;
                 note_keyframe_grid(data);
                 var counts = _ke_by_name[key];
@@ -261,7 +267,7 @@ public unsafe sealed partial class VrrModule
 
             d_ke_update hook = self;
             ok &= hook_or_log(HookSiteId.ParticleStepKernelTemplate, name, rva,
-                () => new FhCallHandle<d_ke_update>(new FhCallLocation(rva, 0)).hook(this, hook));
+                () => new FhCallHandle<d_ke_update>(new FhCallLocation(rva, 0)).hook(this, with_hook_continuation<d_ke_update>(hook)));
 
             _logger.Info(hold
                 ? $"[Vrr] Holding particle step kernel {name} at RVA 0x{rva:X}."

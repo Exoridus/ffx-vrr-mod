@@ -34,31 +34,31 @@ public unsafe sealed partial class VrrModule
         if (_config.MenuWater)
         {
             ok &= hook_or_log(HookSiteId.FrameSequencesGraphicDrawMainMenuWaterEffect, "graphicDrawMainMenuWaterEffect", EngineAddresses.GraphicDrawMainMenuWaterEffect,
-                () => new FhCallHandle<d_menu_water>(new FhCallLocation(EngineAddresses.GraphicDrawMainMenuWaterEffect, 0)).hook(this, h_menu_water));
+                () => new FhCallHandle<d_menu_water>(new FhCallLocation(EngineAddresses.GraphicDrawMainMenuWaterEffect, 0)).hook(this, with_hook_continuation<d_menu_water>(h_menu_water)));
         }
 
         if (_config.Fmv)
         {
             ok &= hook_or_log(HookSiteId.FrameSequencesGraphicVideoUpdate, "graphicVideoUpdate", EngineAddresses.GraphicVideoUpdate,
-                () => new FhCallHandle<d_video_update>(new FhCallLocation(EngineAddresses.GraphicVideoUpdate, 0)).hook(this, h_video_update));
+                () => new FhCallHandle<d_video_update>(new FhCallLocation(EngineAddresses.GraphicVideoUpdate, 0)).hook(this, with_hook_continuation<d_video_update>(h_video_update)));
         }
 
         if (_config.TextureVideo)
         {
             ok &= hook_or_log(HookSiteId.FrameSequencesGraphicTextureVideoUpdate, "graphicTextureVideoUpdate", EngineAddresses.GraphicTextureVideoUpdate,
-                () => new FhCallHandle<d_texture_video_update>(new FhCallLocation(EngineAddresses.GraphicTextureVideoUpdate, 0)).hook(this, h_texture_video_update));
+                () => new FhCallHandle<d_texture_video_update>(new FhCallLocation(EngineAddresses.GraphicTextureVideoUpdate, 0)).hook(this, with_hook_continuation<d_texture_video_update>(h_texture_video_update)));
         }
 
         if (_config.BattleIntroBlur)
         {
             ok &= hook_or_log(HookSiteId.FrameSequencesBattleEntryBlur, "battle entry blur", EngineAddresses.EternalBlurTransition,
-                () => new FhCallHandle<d_eternal_blur>(new FhCallLocation(EngineAddresses.EternalBlurTransition, 0)).hook(this, h_eternal_blur));
+                () => new FhCallHandle<d_eternal_blur>(new FhCallLocation(EngineAddresses.EternalBlurTransition, 0)).hook(this, with_hook_continuation<d_eternal_blur>(h_eternal_blur)));
         }
 
         if (_config.TextureAnimation)
         {
             ok &= hook_or_log(HookSiteId.FrameSequencesOldFormatTextureAnimationAdvance, "old-format texture animation advance", EngineAddresses.ChrTexAnimAdvanceOld,
-                () => new FhCallHandle<d_texanim_advance_old>(new FhCallLocation(EngineAddresses.ChrTexAnimAdvanceOld, 0)).hook(this, h_texanim_advance_old));
+                () => new FhCallHandle<d_texanim_advance_old>(new FhCallLocation(EngineAddresses.ChrTexAnimAdvanceOld, 0)).hook(this, with_hook_continuation<d_texanim_advance_old>(h_texanim_advance_old)));
         }
 
         return ok;
@@ -99,6 +99,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texture_video_update()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_texture_video_update>(new FhCallLocation(EngineAddresses.GraphicTextureVideoUpdate, 0)).chain_from(h_texture_video_update).fnptr)();
+            return;
+        }
+
         _texture_video_calls++;
 
         if (!advance_this_call(ref _texture_video_carry)) { _texture_video_held++; return; }
@@ -115,6 +121,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_eternal_blur(int arg1, int arg2)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_eternal_blur>(new FhCallLocation(EngineAddresses.EternalBlurTransition, 0)).chain_from(h_eternal_blur).fnptr)(arg1, arg2);
+            return;
+        }
+
         new FhCallHandle<d_eternal_blur>(new FhCallLocation(EngineAddresses.EternalBlurTransition, 0))
             .chain_from(h_eternal_blur).fnptr?.Invoke(arg1, arg2);
 
@@ -131,6 +143,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_menu_water()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_menu_water>(new FhCallLocation(EngineAddresses.GraphicDrawMainMenuWaterEffect, 0)).chain_from(h_menu_water).fnptr)();
+            return;
+        }
+
         _menu_water_calls++;
         byte before = FhUtil.get_at<byte>(EngineAddresses.MenuWaterFrame);
 
@@ -173,6 +191,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_video_update()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_video_update>(new FhCallLocation(EngineAddresses.GraphicVideoUpdate, 0)).chain_from(h_video_update).fnptr)();
+            return;
+        }
+
         if (abort_failed_av1_movie()) return;
 
         var original = new FhCallHandle<d_video_update>(new FhCallLocation(EngineAddresses.GraphicVideoUpdate, 0))
@@ -198,6 +222,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_texanim_advance_old(int slot)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_texanim_advance_old>(new FhCallLocation(EngineAddresses.ChrTexAnimAdvanceOld, 0)).chain_from(h_texanim_advance_old).fnptr)(slot);
+            return;
+        }
+
         _texanim_advance_old_path++;
 
         if (!advance_this_frame()) return;

@@ -13,7 +13,7 @@ public unsafe sealed partial class VrrModule
     {
         if (!IndependentPresentationEnabled)
             diagnostic_hook(HookSiteId.DiagnosticBindingsMainLoop, "main_loop", DiagnosticMainLoop, [0x55, 0x8b, 0xec, 0x81, 0xec, 0xa4, 0, 0, 0],
-                () => new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).hook(this, h_diag_loop));
+                () => new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).hook(this, with_hook_continuation<d_diag_loop>(h_diag_loop)));
         byte* exec = FhUtil.ptr_at<byte>(DiagnosticGetExec);
         _diagnosticExecAvailable = MemoryProbe.IsReadable((nint)exec, 15)
             && exec[0] == 0x80 && exec[1] == 0x3d && exec[6] == 0 && exec[7] == 0x56
@@ -66,6 +66,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_diag_loop(float delta)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_diag_loop>(new FhCallLocation(DiagnosticMainLoop, 0)).chain_from(h_diag_loop).fnptr)(delta);
+            return;
+        }
+
         long previous = _diagnosticLoopId;
         _diagnosticLoopId = System.Threading.Interlocked.Increment(ref _diagnosticLoopCounter);
         _load_passes++;

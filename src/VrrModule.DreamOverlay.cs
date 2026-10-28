@@ -76,7 +76,11 @@ public unsafe sealed partial class VrrModule
         // Keep the live phase below the new equality threshold when the cycle shrinks.
         ushort counter = FhUtil.get_at<ushort>(EngineAddresses.DreamStarCounter);
         int phase = Math.Min(counter, current - 1);
-        FhUtil.set_at(EngineAddresses.DreamStarCounter, (ushort)(phase * threshold / current));
+        ushort rebased = (ushort)(phase * threshold / current);
+        if (_patches.IsPreparing)
+            _patches.Write(EngineAddresses.DreamStarCounter, BitConverter.GetBytes(rebased));
+        else
+            FhUtil.set_at(EngineAddresses.DreamStarCounter, rebased);
 
         _patches.Write(EngineAddresses.DreamStarCounterCompare + DreamStarThresholdOffset, [(byte)threshold]);
         _logger.Info($"[Vrr] Dream overlay star counter set to {threshold} presented frames per pass.");

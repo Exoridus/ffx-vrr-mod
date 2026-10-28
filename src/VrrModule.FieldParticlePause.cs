@@ -86,22 +86,22 @@ public unsafe sealed partial class VrrModule
         }
         bool ok = true;
         ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeSpawn, "FX-010 camera shape spawn", 0x347090,
-            () => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x347090, 0)).hook(this, h_fx_shape_spawn_a));
+            () => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x347090, 0)).hook(this, with_hook_continuation<d_fx_shape_spawn>(h_fx_shape_spawn_a)));
         ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeIntegrate, "FX-010 camera shape integrate", 0x3472b0,
-            () => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x3472b0, 0)).hook(this, h_fx_shape_integrate_a));
+            () => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x3472b0, 0)).hook(this, with_hook_continuation<d_fx_shape_integrate>(h_fx_shape_integrate_a)));
         ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeDisPosSpawn, "FX-010 camera shape DisPos spawn", 0x3482e0,
-            () => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x3482e0, 0)).hook(this, h_fx_shape_spawn_b));
+            () => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x3482e0, 0)).hook(this, with_hook_continuation<d_fx_shape_spawn>(h_fx_shape_spawn_b)));
         ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010CameraShapeDisPosIntegrate, "FX-010 camera shape DisPos integrate", 0x348500,
-            () => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x348500, 0)).hook(this, h_fx_shape_integrate_b));
+            () => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x348500, 0)).hook(this, with_hook_continuation<d_fx_shape_integrate>(h_fx_shape_integrate_b)));
         ok &= hook_or_log(HookSiteId.FieldParticlePauseFX010KeyedDrawOp, "FX-010 keyed draw op", KeyedAddDrawOp,
-            () => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(KeyedAddDrawOp, 0)).hook(this, h_fx_keyed_add));
+            () => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(KeyedAddDrawOp, 0)).hook(this, with_hook_continuation<d_pilot_kernel>(h_fx_keyed_add)));
         if (!ok)
         {
             _logger.Error("[Vrr] Field particle pause refused: a draw-op hook could not be installed; no code was patched.");
             return false;
         }
 
-        _fieldFreeCheck = obj => _fieldDeferral.TryDeferFree(obj) ? 1 : 0;
+        _fieldFreeCheck = obj => RuntimeEffectsArmed && _fieldDeferral.TryDeferFree(obj) ? 1 : 0;
         _fieldFreeStub = VirtualAlloc(0, 0x1000, 0x3000, 0x04);
         if (_fieldFreeStub == 0)
         {
@@ -135,6 +135,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_fx_shape_spawn_a(nint obj, nint data, nint descriptor)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x347090, 0)).chain_from(h_fx_shape_spawn_a).fnptr)(obj, data, descriptor);
+            return;
+        }
+
         if (!fx_particles_paused())
             new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x347090, 0)).chain_from(h_fx_shape_spawn_a).fnptr!(obj, data, descriptor);
     }
@@ -142,6 +148,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_fx_shape_spawn_b(nint obj, nint data, nint descriptor)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x3482e0, 0)).chain_from(h_fx_shape_spawn_b).fnptr)(obj, data, descriptor);
+            return;
+        }
+
         if (!fx_particles_paused())
             new FhCallHandle<d_fx_shape_spawn>(new FhCallLocation(0x3482e0, 0)).chain_from(h_fx_shape_spawn_b).fnptr!(obj, data, descriptor);
     }
@@ -149,6 +161,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_fx_shape_integrate_a(nint obj, nint work)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x3472b0, 0)).chain_from(h_fx_shape_integrate_a).fnptr)(obj, work);
+            return;
+        }
+
         if (!fx_particles_paused())
             new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x3472b0, 0)).chain_from(h_fx_shape_integrate_a).fnptr!(obj, work);
     }
@@ -156,6 +174,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_fx_shape_integrate_b(nint obj, nint work)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x348500, 0)).chain_from(h_fx_shape_integrate_b).fnptr)(obj, work);
+            return;
+        }
+
         if (!fx_particles_paused())
             new FhCallHandle<d_fx_shape_integrate>(new FhCallLocation(0x348500, 0)).chain_from(h_fx_shape_integrate_b).fnptr!(obj, work);
     }
@@ -164,6 +188,12 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_fx_keyed_add(nint obj, nint data, nint descriptor)
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_pilot_kernel>(new FhCallLocation(KeyedAddDrawOp, 0)).chain_from(h_fx_keyed_add).fnptr)(obj, data, descriptor);
+            return;
+        }
+
         int* key = null;
         int saved = 0;
         if (fx_particles_paused() && MemoryProbe.IsReadable(data, 4) && MemoryProbe.IsReadable(obj, 0x10)

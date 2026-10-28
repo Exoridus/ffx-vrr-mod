@@ -101,11 +101,17 @@ public unsafe sealed partial class VrrModule
     private bool init_buoyancy_hook()
         => _buoyancy_restore_ready = hook_or_log(HookSiteId.BuoyancyCharacterJobBarrier, "character job barrier", EngineAddresses.CharacterJobBarrier,
             () => new FhCallHandle<d_buoyancy_barrier>(new FhCallLocation(EngineAddresses.CharacterJobBarrier, 0))
-                .hook(this, h_buoyancy_barrier));
+                .hook(this, with_hook_continuation<d_buoyancy_barrier>(h_buoyancy_barrier)));
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_buoyancy_barrier()
     {
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_buoyancy_barrier>(new FhCallLocation(EngineAddresses.CharacterJobBarrier, 0)).chain_from(h_buoyancy_barrier).fnptr)();
+            return;
+        }
+
         new FhCallHandle<d_buoyancy_barrier>(new FhCallLocation(EngineAddresses.CharacterJobBarrier, 0))
             .chain_from(h_buoyancy_barrier).fnptr!();
         // Only Ch_CalcMain stages a restore; the other barrier caller must leave actor state alone.

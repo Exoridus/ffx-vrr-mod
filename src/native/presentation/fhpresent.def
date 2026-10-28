@@ -3,3 +3,5 @@ EXPORTS
     fhpresent_abi
     fhpresent_bind
     fhpresent_entry
+    fhpresent_startup_bind
+    fhpresent_startup_entry

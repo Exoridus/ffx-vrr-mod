@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <Compile Include="../../src/StartupActivation.cs" Link="StartupActivation.cs" />
+    <Compile Include="../../src/StartupCaller.cs" Link="StartupCaller.cs" />
+    <Compile Include="../../src/VrrModule.Startup.cs" Link="VrrModule.Startup.cs" />
+    <Compile Include="../../src/VrrModule.HookRegistration.cs" Link="VrrModule.HookRegistration.cs" />
+    <Compile Include="../../src/HookSites.cs" Link="HookSites.cs" />
+    <Compile Include="../../src/HookRegistration.cs" Link="HookRegistration.cs" />
+    <Compile Include="../../src/VrrConfig.cs" Link="VrrConfig.cs" />
+    <Compile Include="../../src/PatchJournal.cs" Link="PatchJournal.cs" />
+    <Compile Include="../../src/MemoryProbe.cs" Link="MemoryProbe.cs" />
+    <Compile Include="../../src/StartupFailure.cs" Link="StartupFailure.cs" />
+  </ItemGroup>
+</Project>

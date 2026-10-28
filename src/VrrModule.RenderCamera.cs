@@ -60,7 +60,7 @@ public unsafe sealed partial class VrrModule
             return render_camera_binding_failed();
 
         _renderCameraBound = hook_or_log(HookSiteId.RenderCameraRenderCameraFinalize, "render camera finalize", RenderCameraFinalize,
-            () => new FhCallHandle<d_render_camera_finalize>(new FhCallLocation(RenderCameraFinalize, 0)).hook(this, h_render_camera_finalize));
+            () => new FhCallHandle<d_render_camera_finalize>(new FhCallLocation(RenderCameraFinalize, 0)).hook(this, with_hook_continuation<d_render_camera_finalize>(h_render_camera_finalize)));
         return _renderCameraBound;
     }
 
@@ -112,6 +112,9 @@ public unsafe sealed partial class VrrModule
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private int h_render_camera_finalize(int viewport)
     {
+        if (!RuntimeEffectsArmed)
+            return HookSites.Native(() => new FhCallHandle<d_render_camera_finalize>(new FhCallLocation(RenderCameraFinalize, 0)).chain_from(h_render_camera_finalize).fnptr)(viewport);
+
         // A later viewport can reuse the global view instead of rebuilding it.
         restore_render_camera();
         int result = new FhCallHandle<d_render_camera_finalize>(new FhCallLocation(RenderCameraFinalize, 0))
