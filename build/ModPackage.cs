@@ -55,13 +55,13 @@ internal static class ModPackage
             var value = document.RootElement;
             var inputs = value.GetProperty("input_sha256");
             return value.GetProperty("workflow").GetString() == "prepare-presentation"
-                && value.GetProperty("architecture").GetString() == "x86" && value.GetProperty("abi").GetInt32() == 2
-                && value.GetProperty("symbol_count").GetInt32() == 5
+                && value.GetProperty("architecture").GetString() == "x86" && value.GetProperty("abi").GetInt32() == 3
+                && value.GetProperty("symbol_count").GetInt32() == 7
                 && value.GetProperty("native_caller_test").GetString() == "passed"
                 && value.GetProperty("managed_x86_probe").GetString() == "passed"
-                && inputs.GetProperty("src/native/presentation/fhpresent.c").GetString() == "EC01EC9EB988E0B970A268E3716907052517880E8926F3CABBCF5A989B59E4E9"
-                && inputs.GetProperty("src/native/presentation/fhpresent.def").GetString() == "D2299E0309C51B5B5B8745DF1CC343F20AB1B9C056CC12705FED3634CA093E8B"
-                && inputs.GetProperty("src/NativeSnapshotBridge.cs").GetString() == "DB8E0777766DD654BAEE0042A83B671A36B446BFEE6F7DBA3B7A2B329D642A8C"
+                && inputs.GetProperty("src/native/presentation/fhpresent.c").GetString() == "E1745BE8913C17AFE20CCAED0071D356AAD985FBABAC7D82538AFAEB8C7FB428"
+                && inputs.GetProperty("src/native/presentation/fhpresent.def").GetString() == "53C54548002090009CA6BFD7C1C0C03AA4F82D83E0B0F79FA101B92F975F45EB"
+                && inputs.GetProperty("src/NativeSnapshotBridge.cs").GetString() == "89E02BDD4C1D24EFAEAE8E8FD6972D332DE65D6AE4E18C988C54BD6F4F0607F3"
                 && value.GetProperty("output_sha256").GetProperty("fhpresent.dll").GetString()
                     == Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(library)));
         }

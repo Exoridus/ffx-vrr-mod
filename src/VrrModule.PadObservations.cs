@@ -12,6 +12,8 @@ public unsafe sealed partial class VrrModule
     private int _padObservationFailed;
     private PadTickCorrelation? _padPreparedTick;
     private double? _padPreparedDeadline;
+    private bool _padNativePublicationObserved, _padPublicationSeen;
+    private int _padPublicationDepth;
 
     private bool init_pad_observations()
     {
@@ -37,6 +39,7 @@ public unsafe sealed partial class VrrModule
     {
         lock (_padObservationGate)
         {
+            _padNativePublicationObserved = _padPublicationSeen = false;
             _padPreparedTick = null;
             _padPreparedDeadline = null;
             _padTimeline.Reset(reason);
@@ -153,8 +156,14 @@ public unsafe sealed partial class VrrModule
         {
             lock (_padObservationGate)
             {
+                _padNativePublicationObserved = _padPublicationSeen = false;
                 _padPreparedTick = null;
                 _padPreparedDeadline = null;
+                if (System.Threading.Volatile.Read(ref _padPublicationDepth) != 0)
+                {
+                    reset_pad_observation_timeline("publication_in_flight");
+                    return;
+                }
                 if (!pad_observation_context(false)) return;
                 if (!_simulationClock.HasMappedInterval)
                 {
@@ -169,6 +178,80 @@ public unsafe sealed partial class VrrModule
         catch (Exception error) { stop_pad_observations(error); }
     }
 
+    private void pad_latch_invoke(nuint returnAddress, nuint returnSlot)
+    {
+        if (!RuntimeEffectsArmed) { h_pad_latch(); return; }
+        int depth = System.Threading.Interlocked.Increment(ref _padPublicationDepth);
+        PadTickCorrelation? prepared = null;
+        PadObservedSample?[] observed = [];
+        try
+        {
+            try
+            {
+                lock (_padObservationGate)
+                {
+                    prepared = _padPreparedTick;
+                    if (prepared is not null)
+                    {
+                        bool caller = returnAddress == (nuint)FhUtil.ptr_at<byte>(PadLatchPublicationReturn)
+                            && returnAddress <= uint.MaxValue && returnSlot <= nuint.MaxValue - sizeof(uint)
+                            && MemoryProbe.IsReadable((nint)returnSlot, sizeof(uint)) && *(uint*)returnSlot == returnAddress;
+                        observed = _padTimeline.LatestObserved();
+                        string? reason = depth != 1 || _padPublicationSeen ? "publication_reentry_or_duplicate"
+                            : !caller ? "publication_caller_unmatched" : pad_publication_check(prepared, observed);
+                        _padPublicationSeen = true;
+                        if (reason is not null) { reset_pad_observation_timeline(reason); prepared = null; }
+                    }
+                }
+            }
+            catch (Exception error) { stop_pad_observations(error); prepared = null; }
+            try { h_pad_latch(); }
+            catch { reset_pad_observation_timeline("native_publication_exception"); throw; }
+            if (prepared is null) return;
+            try
+            {
+                lock (_padObservationGate)
+                {
+                    string? reason = pad_publication_check(prepared, observed);
+                    if (reason is not null) reset_pad_observation_timeline(reason);
+                    else _padNativePublicationObserved = true;
+                }
+            }
+            catch (Exception error) { stop_pad_observations(error); }
+        }
+        finally { System.Threading.Interlocked.Decrement(ref _padPublicationDepth); }
+    }
+
+    private string? pad_publication_check(PadTickCorrelation prepared, PadObservedSample?[] observed)
+    {
+        if (!ReferenceEquals(prepared, _padPreparedTick) || prepared.Epoch != _padTimeline.Epoch
+            || !RuntimeEffectsArmed || !OwnsRenderPass || !_render_clock_seen || !_render_simulation_pass
+            || !pad_observation_context(false) || _padPreparedDeadline != render_simulation_tick_deadline())
+            return "publication_context_changed";
+        var latest = _padTimeline.LatestObserved();
+        Span<byte> raw = stackalloc byte[32];
+        for (int port = 0; port < 2; port++)
+        {
+            var candidate = prepared.Latest[port];
+            var sample = observed[port];
+            if (candidate is null || sample is null || latest[port]?.PollSequence != sample.PollSequence)
+                return "publication_observation_changed";
+            if (!MemoryProbe.TryCopy((nint)FhUtil.ptr_at<byte>(PadRecords + port * 0x100 + 0x80), raw))
+                return "publication_unreadable";
+            var live = MemoryMarshal.Cast<byte, uint>(raw);
+            var words = sample.RawWords;
+            if (live[0] != words[0] || live[5] != words[5] || (live[7] & 0xffff0000u) != (words[7] & 0xffff0000u)
+                || candidate.RawWords[0] != words[0] || candidate.RawWords[5] != words[5]
+                || (candidate.RawWords[7] & 0xffff0000u) != (words[7] & 0xffff0000u)
+                || ((words[0] >> 8) & 0xff) != 1 || ((words[7] >> 16) & 0xff) == 0)
+                return "publication_metadata_changed";
+            // QoL can neutralize these bytes without changing status or repeat settings.
+            if (!live.Slice(1, 4).SequenceEqual(words.AsSpan(1, 4)) || live[6] != words[6])
+                return "publication_payload_changed";
+        }
+        return null;
+    }
+
     private object? pad_observations_pass_completed(double? deadlineSeconds)
     {
         try
@@ -176,7 +259,9 @@ public unsafe sealed partial class VrrModule
             lock (_padObservationGate)
             {
                 var result = _padPreparedTick;
+                bool publicationObserved = _padNativePublicationObserved;
                 double? preparedDeadline = _padPreparedDeadline;
+                _padNativePublicationObserved = _padPublicationSeen = false;
                 _padPreparedTick = null;
                 _padPreparedDeadline = null;
                 if (!pad_observation_context(false)) return null;
@@ -188,6 +273,7 @@ public unsafe sealed partial class VrrModule
                 if (deadlineSeconds is null || preparedDeadline != deadlineSeconds
                     || result is null || result.Epoch != _padTimeline.Epoch) return null;
                 return new { status = "candidate_only", native_input_applied = false, native_continuity_proven = false,
+                    native_publication_observed = publicationObserved,
                     epoch = result.Epoch, boundary = result.Boundary,
                     observations = result.Observations, latest = result.Latest };
             }

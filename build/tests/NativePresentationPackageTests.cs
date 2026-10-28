@@ -16,13 +16,13 @@ public sealed class NativePresentationPackageTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "fhpresent.dll"), "reviewed helper fixture");
         _record = new()
         {
-            ["workflow"] = "prepare-presentation", ["architecture"] = "x86", ["abi"] = 2, ["symbol_count"] = 5,
+            ["workflow"] = "prepare-presentation", ["architecture"] = "x86", ["abi"] = 3, ["symbol_count"] = 7,
             ["native_caller_test"] = "passed", ["managed_x86_probe"] = "passed", ["native_hook_runtime"] = "not_tested",
             ["input_sha256"] = new Dictionary<string, string>
             {
-                ["src/native/presentation/fhpresent.c"] = "EC01EC9EB988E0B970A268E3716907052517880E8926F3CABBCF5A989B59E4E9",
-                ["src/native/presentation/fhpresent.def"] = "D2299E0309C51B5B5B8745DF1CC343F20AB1B9C056CC12705FED3634CA093E8B",
-                ["src/NativeSnapshotBridge.cs"] = "DB8E0777766DD654BAEE0042A83B671A36B446BFEE6F7DBA3B7A2B329D642A8C"
+                ["src/native/presentation/fhpresent.c"] = "E1745BE8913C17AFE20CCAED0071D356AAD985FBABAC7D82538AFAEB8C7FB428",
+                ["src/native/presentation/fhpresent.def"] = "53C54548002090009CA6BFD7C1C0C03AA4F82D83E0B0F79FA101B92F975F45EB",
+                ["src/NativeSnapshotBridge.cs"] = "89E02BDD4C1D24EFAEAE8E8FD6972D332DE65D6AE4E18C988C54BD6F4F0607F3"
             },
             ["output_sha256"] = new Dictionary<string, string>
             {
@@ -49,7 +49,9 @@ public sealed class NativePresentationPackageTests : IDisposable
     [InlineData("workflow", "other")]
     [InlineData("architecture", "x64")]
     [InlineData("abi", 1)]
+    [InlineData("abi", 2)]
     [InlineData("symbol_count", 3)]
+    [InlineData("symbol_count", 5)]
     [InlineData("native_caller_test", "not_run")]
     [InlineData("managed_x86_probe", "not_run")]
     public void RejectsDifferentRecipeOrUntestedAbi(string field, object value)

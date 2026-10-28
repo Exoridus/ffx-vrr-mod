@@ -74,6 +74,11 @@ internal sealed class PadObservationTimeline
         }
     }
 
+    internal PadObservedSample?[] LatestObserved()
+    {
+        lock (_gate) return _lastObserved.Select(sample => sample is null ? null : Clone(sample)).ToArray();
+    }
+
     internal PadTickCorrelation Correlate(double deadlineSeconds)
     {
         lock (_gate)

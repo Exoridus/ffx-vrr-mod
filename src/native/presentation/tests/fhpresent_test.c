@@ -14,6 +14,7 @@ static int registers_ok;
 static int callback_ok;
 static int callback_count;
 static int startup_count;
+static int pad_count;
 static unsigned int original_control;
 
 __declspec(dllexport) uintptr_t __cdecl fhpresent_test_expected_return(void) { return expected_return; }
@@ -121,14 +122,18 @@ static void __cdecl startup_callback(uintptr_t address, uintptr_t slot) {
     ++startup_count;
     callback(address, slot);
 }
+static void __cdecl pad_callback(uintptr_t address, uintptr_t slot) {
+    ++pad_count;
+    callback(address, slot);
+}
 static void __cdecl other_callback(uintptr_t address, uintptr_t slot) { (void)address; (void)slot; }
 
 #ifndef FHPRESENT_PROBE
 int main(int argc, char** argv) {
     HMODULE library;
     int (__cdecl *abi)(void);
-    bind_fn bind, startup_bind;
-    entry_fn entry, startup_entry;
+    bind_fn bind, startup_bind, pad_bind;
+    entry_fn entry, startup_entry, pad_entry;
     CHECK(argc == 2);
     library = LoadLibraryA(argv[1]);
     CHECK(library != NULL);
@@ -137,12 +142,15 @@ int main(int argc, char** argv) {
     entry = (entry_fn)GetProcAddress(library, "fhpresent_entry");
     startup_bind = (bind_fn)GetProcAddress(library, "fhpresent_startup_bind");
     startup_entry = (entry_fn)GetProcAddress(library, "fhpresent_startup_entry");
-    CHECK(abi && bind && entry && startup_bind && startup_entry);
-    CHECK(entry != startup_entry);
-    CHECK(abi() == 2);
+    pad_bind = (bind_fn)GetProcAddress(library, "fhpresent_pad_bind");
+    pad_entry = (entry_fn)GetProcAddress(library, "fhpresent_pad_entry");
+    CHECK(abi && bind && entry && startup_bind && startup_entry && pad_bind && pad_entry);
+    CHECK(entry != startup_entry && entry != pad_entry && startup_entry != pad_entry);
+    CHECK(abi() == 3);
     CHECK(fhpresent_test_invoke(entry));
     CHECK(fhpresent_test_invoke(startup_entry));
-    CHECK(callback_count == 0 && startup_count == 0);
+    CHECK(fhpresent_test_invoke(pad_entry));
+    CHECK(callback_count == 0 && startup_count == 0 && pad_count == 0);
     CHECK(bind(NULL) == 0);
     CHECK(bind(callback) == 1);
     CHECK(bind(callback) == 1);
@@ -160,6 +168,19 @@ int main(int argc, char** argv) {
     CHECK(callback_ok && callback_count == 2 && startup_count == 1);
     CHECK(fhpresent_test_invoke(entry));
     CHECK(callback_ok && callback_count == 3 && startup_count == 1);
+    CHECK(fhpresent_test_invoke(pad_entry));
+    CHECK(callback_count == 3 && startup_count == 1 && pad_count == 0);
+    CHECK(pad_bind(NULL) == 0);
+    CHECK(pad_bind(pad_callback) == 1);
+    CHECK(pad_bind(pad_callback) == 1);
+    CHECK(pad_bind(callback) == 0);
+    CHECK(pad_bind(other_callback) == 0);
+    CHECK(fhpresent_test_invoke(pad_entry));
+    CHECK(callback_ok && callback_count == 4 && startup_count == 1 && pad_count == 1);
+    CHECK(fhpresent_test_invoke(entry));
+    CHECK(callback_ok && callback_count == 5 && startup_count == 1 && pad_count == 1);
+    CHECK(fhpresent_test_invoke(startup_entry));
+    CHECK(callback_ok && callback_count == 6 && startup_count == 2 && pad_count == 1);
     puts("fhpresent native caller: capture, binding, ESP, nonvolatile registers, x87 and SIMD passed.");
     return 0;
 }

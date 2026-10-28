@@ -10,7 +10,9 @@ namespace Fahrenheit.Mods.Vrr;
 /// </summary>
 public unsafe sealed partial class VrrModule
 {
-    private const nint PadLatch = 0x4893E0;
+    private const nint PadLatch = 0x4893E0, PadLatchPublicationReturn = 0x422224;
+    private d_render_void? _padLatchEntry;
+    private NativeSnapshotBridge.Dispatch? _padLatchDispatch;
     private const string PadLatchPattern = "56 E8 ?? ?? ?? ?? 33 F6 6A 00 56 E8";
     private const nint PadRecords = 0xF30288, PadRecordBaseSite = 0x488EC0;
     // Overdrive windows poll and push independently on every pass for timed presses and stick rotation.
@@ -132,9 +134,11 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] Pad latch, history reader or menu input bytes differ from build 25501027; pad input keeps native behavior.");
             return true;
         }
-        if (!prepare_pad_snapshot_hook()) return false;
+        if (!fx_call_is(PadLatchPublicationReturn - 5, PadLatch) || !prepare_pad_snapshot_hook()) return false;
+        _padLatchDispatch = h_pad_latch_dispatch;
+        if (!NativeSnapshotBridge.TryCreatePadLatch(_padLatchDispatch, out _padLatchEntry)) return false;
         bool ok = hook_or_log(HookSiteId.PadLatchPadLatch, "pad latch", PadLatch,
-            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, with_hook_continuation<d_render_void>(h_pad_latch)));
+            () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, with_hook_continuation<d_render_void>(_padLatchEntry!)));
         ok &= hook_or_log(HookSiteId.PadLatchPressedHistory, "pad pressed history", PadPressedHistory,
             () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0)).hook(this, with_hook_continuation<d_pad_history>(h_pad_pressed_history)));
         ok &= hook_or_log(HookSiteId.PadLatchReleasedHistory, "pad released history", PadReleasedHistory,
@@ -202,15 +206,31 @@ public unsafe sealed partial class VrrModule
         return suppress && pad_suppress_presentation_edges() ? (ushort)0 : value;
     }
 
+    private void h_pad_latch_dispatch(nuint returnAddress, nuint returnSlot)
+    {
+        try { pad_latch_invoke(returnAddress, returnSlot); }
+        catch (Exception error) { Environment.FailFast("Pad publication failed; native forwarding cannot be retried.", error); }
+    }
+
     private void pad_latch_original()
-        => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).chain_from(h_pad_latch).fnptr!();
+    {
+        lock (_padObservationGate)
+        {
+            if (_padPublicationDepth == 0 && _padPreparedTick is not null)
+            {
+                if (_padPublicationSeen) reset_pad_observation_timeline("publication_uncaptured_duplicate");
+                else _padPublicationSeen = true;
+            }
+        }
+        new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).chain_from(_padLatchEntry!).fnptr!();
+    }
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     private void h_pad_latch()
     {
         if (!RuntimeEffectsArmed)
         {
-            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).chain_from(h_pad_latch).fnptr)();
+            HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).chain_from(_padLatchEntry!).fnptr)();
             return;
         }
 

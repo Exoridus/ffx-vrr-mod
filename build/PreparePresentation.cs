@@ -84,6 +84,7 @@ string x86Host = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolde
 if (!File.Exists(x86Host)) throw new FileNotFoundException("Presentation probe requires the .NET 10 x86 runtime.", x86Host);
 Run(x86Host, [Path.Combine(probe, "ManagedProbe.dll")]);
 Run(x86Host, [Path.Combine(probe, "ManagedProbe.dll"), "--startup-first"]);
+Run(x86Host, [Path.Combine(probe, "ManagedProbe.dll"), "--pad-first"]);
 foreach (string scenario in new[] { "good", "false", "missing" })
     Run(x86Host, [Path.Combine(probe, "ManagedProbe.dll"), "--startup-trampoline", scenario]);
 foreach (string variant in new[] { "missing", "bad-image", "bad-abi" })
@@ -102,8 +103,8 @@ using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented 
     writer.WriteStartObject();
     writer.WriteString("workflow", "prepare-presentation");
     writer.WriteString("architecture", "x86");
-    writer.WriteNumber("abi", 2);
-    writer.WriteNumber("symbol_count", 5);
+    writer.WriteNumber("abi", 3);
+    writer.WriteNumber("symbol_count", 7);
     writer.WriteString("minhook_version", "1.3.4");
     writer.WriteString("minhook_vcpkg_baseline", "4bca8fd8654e5ba76f92661db7bfe954768ad8ef");
     writer.WriteString("minhook_archive_url", minhookUrl);

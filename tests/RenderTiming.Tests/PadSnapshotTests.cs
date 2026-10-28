@@ -673,6 +673,17 @@ internal static class NativeSnapshotBridge
     internal static int CreateCalls;
     internal static Delegate? Entry;
     private static readonly List<Delegate> Roots = [];
+    internal static Delegate? PadEntry;
+    internal static bool TryCreatePadLatch<T>(Dispatch dispatch, out T? entry) where T : Delegate
+    {
+        entry = null;
+        if (!Available) return false;
+        Action thunk = () => dispatch(0, 0);
+        entry = (T)Delegate.CreateDelegate(typeof(T), thunk.Target, thunk.Method);
+        PadEntry = entry;
+        Roots.Add(entry);
+        return true;
+    }
     internal static bool TryCreate<T>(Dispatch dispatch, out T? entry) where T : Delegate
     {
         CreateCalls++;
@@ -716,6 +727,7 @@ internal static unsafe class NativeSnapshotFixture
     {
         pointer = 0;
         if (rva == 0x420df5) { pointer = (nint)Continuation; return true; }
+        if (rva == 0x422224) { pointer = 0x822224; return true; }
         if (!GuardTypes.TryGetValue(rva, out Type? type)) return false;
         if (ThrowOnRead) throw new InvalidOperationException("Snapshot binding fixture failed.");
         if (type != typeof(T)) throw new InvalidOperationException($"Wrong snapshot guard type at 0x{rva:x}: {typeof(T).Name}");

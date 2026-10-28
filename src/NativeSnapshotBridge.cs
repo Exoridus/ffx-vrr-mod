@@ -23,15 +23,19 @@ internal static class NativeSnapshotBridge
 
     private static readonly Slot Snapshot = new();
     private static readonly Slot Startup = new();
+    private static readonly Slot PadLatch = new();
     private static nint _library;
 
     internal static bool TryCreate<T>(Dispatch dispatch, out T? entry) where T : Delegate
-        => TryCreate(dispatch, Snapshot, false, out entry);
+        => TryCreate(dispatch, Snapshot, 0, out entry);
 
     internal static bool TryCreateStartup<T>(Dispatch dispatch, out T? entry) where T : Delegate
-        => TryCreate(dispatch, Startup, true, out entry);
+        => TryCreate(dispatch, Startup, 1, out entry);
 
-    private static bool TryCreate<T>(Dispatch dispatch, Slot slot, bool startup, out T? entry) where T : Delegate
+    internal static bool TryCreatePadLatch<T>(Dispatch dispatch, out T? entry) where T : Delegate
+        => TryCreate(dispatch, PadLatch, 2, out entry);
+
+    private static bool TryCreate<T>(Dispatch dispatch, Slot slot, int kind, out T? entry) where T : Delegate
     {
         entry = null;
         var invoke = typeof(T).GetMethod("Invoke");
@@ -60,11 +64,13 @@ internal static class NativeSnapshotBridge
                     || !NativeLibrary.TryGetExport(library, "fhpresent_entry", out var entryPointer)
                     || !NativeLibrary.TryGetExport(library, "fhpresent_startup_bind", out var startupBindPointer)
                     || !NativeLibrary.TryGetExport(library, "fhpresent_startup_entry", out var startupEntryPointer)
-                    || Marshal.GetDelegateForFunctionPointer<Abi>(abiPointer)() != 2)
+                    || !NativeLibrary.TryGetExport(library, "fhpresent_pad_bind", out var padBindPointer)
+                    || !NativeLibrary.TryGetExport(library, "fhpresent_pad_entry", out var padEntryPointer)
+                    || Marshal.GetDelegateForFunctionPointer<Abi>(abiPointer)() != 3)
                     return false;
 
-                T candidate = Marshal.GetDelegateForFunctionPointer<T>(startup ? startupEntryPointer : entryPointer);
-                var bind = Marshal.GetDelegateForFunctionPointer<Bind>(startup ? startupBindPointer : bindPointer);
+                T candidate = Marshal.GetDelegateForFunctionPointer<T>(kind switch { 1 => startupEntryPointer, 2 => padEntryPointer, _ => entryPointer });
+                var bind = Marshal.GetDelegateForFunctionPointer<Bind>(kind switch { 1 => startupBindPointer, 2 => padBindPointer, _ => bindPointer });
                 if (bind(Marshal.GetFunctionPointerForDelegate(dispatch)) != 1) return false;
 
                 // The native callback can outlive a module instance or a failed hook installation.

@@ -47,7 +47,7 @@ public unsafe sealed class PadHistoryReaderTests : IDisposable
             Assert.False(_module.HistoryReady);
             Assert.Equal(15, _module.CodeChecks.Count);
             Assert.Equal(19, _module.OperandChecks.Count);
-            Assert.Equal(8, _module.CallChecks.Count);
+            Assert.Equal(9, _module.CallChecks.Count);
             for (int kind = 0; kind < 4; kind++) Assert.Equal(0x8000, _module.ReadHistory(kind, 0, 0, -1));
             int before = NativeClock.PadCalls;
             _module.CallPad();
