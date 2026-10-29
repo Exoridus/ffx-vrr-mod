@@ -47,7 +47,7 @@ public unsafe sealed partial class VrrModule
         if (_hookRegistration is not null) return true;
         VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, NativePhaseProbe = _config.NativePhaseProbe };
         var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
-            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null));
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null, submissionProbe: SubmissionObservationRequested));
         return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
             out _hookRegistration, out _);
     }
@@ -63,62 +63,13 @@ public unsafe sealed partial class VrrModule
     private void diagnostic_event(string kind, object data)
     {
         if (kind == "graphics_lifecycle") GraphicsEvents.Add(System.Text.Json.JsonSerializer.SerializeToElement(data));
+        if (kind == "submission_observation") SubmissionEvents.Add(System.Text.Json.JsonSerializer.SerializeToElement(data));
+        if (kind.StartsWith("actor_", StringComparison.Ordinal)) ActorDiagnostic?.Invoke(kind, data);
     }
     private bool hook_or_log(HookSiteId site, string name, nint rva, Func<bool> install)
         => ensure_test_hook_registration() && register_hook(site, name, rva, install);
     private void refuse_independent_presentation(string reason, Exception? error = null)
         => _presentationAdmission.Refuse(reason);
-    internal void SeedActorLoan()
-    {
-        nint instance = FhUtil.Base + 0x810000, mesh = FhUtil.Base + 0x811000;
-        nint world = FhUtil.Base + 0x812000, palette = FhUtil.Base + 0x813000;
-        *(nint*)instance = mesh; *(nint*)(instance + 4) = world; *(nint*)(instance + 0xc) = palette;
-        *(uint*)(mesh + 0x18) = 1;
-        var identity = new RenderActorIdentity((long)(FhUtil.Base + 0x814000), (long)mesh, (long)palette, (long)world);
-        var state = new RenderActorNativeState(identity, 1);
-        byte[] canonical = Enumerable.Repeat((byte)0x11, 48).ToArray();
-        byte[] written = Enumerable.Repeat((byte)0x22, 48).ToArray();
-        var canonicalBone = Matrix4x4.CreateTranslation(1, 2, 3);
-        var writtenBone = Matrix4x4.CreateTranslation(4, 5, 6);
-        state.Write.Record(canonical, written, [canonicalBone], [writtenBone]);
-        written.CopyTo(new Span<byte>((void*)world, 48)); *(Matrix4x4*)palette = writtenBone;
-        _renderActorStates[instance] = state;
-    }
-    internal byte[] ActorLoanWorld => new ReadOnlySpan<byte>((void*)(FhUtil.Base + 0x812000), 48).ToArray();
-    internal Matrix4x4 ActorLoanBone => *(Matrix4x4*)(FhUtil.Base + 0x813000);
-    internal int ActorLoans => _renderActorStates.Count;
-    internal int RestoreActorLoanIntoCopies()
-    {
-        byte[] world = ActorLoanWorld; Matrix4x4[] bones = [ActorLoanBone];
-        int result = _renderActorStates.Values.Single().Write.Restore(world, bones);
-        Assert.Equal(Enumerable.Repeat((byte)0x11, 48), world);
-        Assert.Equal(Matrix4x4.CreateTranslation(1, 2, 3), bones[0]);
-        return result;
-    }
-    internal void ActorCaptureLoan()
-    {
-        _renderActorsBound = true;
-        _renderActorSubmittingGroup = FhUtil.Base + 0x814000;
-        Matrix4x4* matrix = (Matrix4x4*)(FhUtil.Base + 0x815000);
-        *matrix = Matrix4x4.Identity;
-        try { h_render_actor_instance(FhUtil.Base + 0x810000, matrix); }
-        finally { _renderActorSubmittingGroup = 0; }
-    }
-    internal bool ActorHasCanonicalWorld => _renderActorStates.Values.Single().HasCanonicalWorld;
-    internal void ActorReset() => reset_render_actors();
-    internal void ActorRestore() => render_actors_restore();
-    internal void ActorPresentation() => render_actors_begin_presentation(.5f);
-    internal void ActorReplay() => replay_render_actors();    internal object ActorGate => _renderActorLock;
-    internal int ActorCallbacks => Volatile.Read(ref _renderActorCallbacks);
-    internal bool ActorSampling => _renderActorsSampling;
-    internal bool ActorActive => _renderActorsActive;
-    internal void ActorBegin() => render_actors_begin_simulation();
-    internal void ActorComplete() => render_actors_complete_simulation();
-    internal void ActorCallback() => h_render_actor_instance(0, null);
-    internal void CaptureActor(float x) => _renderActorHistory.Capture(1, new(1, 2, 3, 4),
-        Matrix4x4.CreateTranslation(x, 0, 0), []);
-    internal bool HasActorPair => _renderActorHistory.TryInterpolateCurrent(1, new(1, 2, 3, 4), [],
-        .5f, out _, []);
     private float _renderCameraAlpha;
     private void render_camera_set_presentation_alpha(float alpha) => _renderCameraAlpha = alpha;
     private void diagnostic_actor_pose(nint actor, Matrix4x4 root, ReadOnlySpan<Matrix4x4> bones, bool rendered) { }
@@ -146,6 +97,8 @@ internal unsafe ref struct FhCallHandle<T>(FhCallLocation location) where T : De
             0x227940 => nameof(BridgeNative.Frame), 0x1b6af0 => nameof(BridgeNative.Flip),
             0x214c00 => nameof(BridgeNative.Slot), 0x193760 => nameof(BridgeNative.Action),
             0x26d810 => nameof(BridgeNative.ActorInstance),
+            0x1b9a90 => nameof(BridgeNative.ActorDraw), 0xf6ef0 => nameof(BridgeNative.ActorHierarchy),
+            0xf27e0 => nameof(BridgeNative.ActorConstruct), 0xf2c50 => nameof(BridgeNative.ActorDestruct),
             0x242bb0 => nameof(BridgeNative.Ordinary), 0x2419d0 => nameof(BridgeNative.Initialize),
             0x2403e0 => nameof(BridgeNative.FinalizeGraphics), 0x2fa70 => nameof(BridgeNative.ResetGraphics),
             _ => throw new InvalidOperationException("unknown target")
@@ -190,7 +143,7 @@ internal unsafe static class MemoryProbe
     }
 }
 
-internal unsafe static class BridgeNative
+internal unsafe static partial class BridgeNative
 {
     internal static readonly Dictionary<nint, Delegate> Callbacks = [];
     internal static bool Initializing, NativeActionOriginal, NativeGraphicsOriginal;

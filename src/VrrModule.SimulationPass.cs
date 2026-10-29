@@ -39,10 +39,12 @@ public unsafe sealed partial class VrrModule
             return;
         }
 
+        long inputProbeClock = input_probe_enter_clock();
         bool completed = false;
         try { advance_vblank(arg1); completed = true; }
         finally
         {
+            input_probe_exit_clock(inputProbeClock, completed);
             try { pad_snapshot_clock_completed(completed); }
             finally { cooperative_tick_clock_completed(completed); }
         }

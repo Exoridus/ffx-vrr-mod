@@ -93,14 +93,26 @@ public unsafe sealed partial class VrrModule
         return pad_replay_stage(tick, 0);
     }
 
-    private void pad_replay_native_fallback(string reason)
+    private void pad_replay_native_fallback(string reason, bool retainObservations = false)
     {
         _padPublicationNativeFallback = true;
         _padReplayRequested = null;
         _padReplayInvalid = true;
         _padReplayApplied = false;
         pad_replay_restore();
-        reset_pad_observation_timeline(reason);
+        if (!retainObservations) reset_pad_observation_timeline(reason);
+        else
+        {
+            lock (_padObservationGate)
+            {
+                _padNativePublicationObserved = _padPublicationSeen = false;
+                _padPreparedTick = null;
+                _padPreparedDeadline = null;
+                _padPreparedPolicyGeneration = null;
+                _padPreparedObservations = [];
+                _padPreparedPollSequence = 0;
+            }
+        }
     }
 
     private void pad_replay_qol_publication(long generation, bool neutralize)
@@ -189,7 +201,6 @@ public unsafe sealed partial class VrrModule
         pad_replay_restore();
         reset_pad_observation_timeline(reason);
     }
-
     private void pad_replay_restore()
     {
         if (_padReplayLoan is not { } loan || _padReplayRestoreAttempted) return;

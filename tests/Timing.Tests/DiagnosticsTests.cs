@@ -11,6 +11,23 @@ public unsafe sealed partial class VrrModule
 public sealed class DiagnosticsTests
 {
     [Fact]
+    public void Unarmed_events_allow_only_explicit_startup_metadata()
+    {
+        Assert.True(DiagnosticSession.AllowsEvent(false, "timing_hook"));
+        Assert.True(DiagnosticSession.AllowsEvent(false, "native_render_validation"));
+        foreach (string kind in new[] { "frame", "phase", "texture_sample", "probe_hook", "probe_binding", "initialization_complete", "timing_hook_suffix", "Timing_hook", "" })
+            Assert.False(DiagnosticSession.AllowsEvent(false, kind));
+    }
+
+    [Fact]
+    public void Armed_events_keep_the_existing_unrestricted_kind_policy()
+    {
+        foreach (string kind in new[] { "timing_hook", "native_render_validation", "frame", "texture_sample", "probe_binding" })
+            Assert.True(DiagnosticSession.AllowsEvent(true, kind));
+    }
+
+
+    [Fact]
     public void Session_is_ordered_has_metadata_and_closes_without_loss()
     {
         string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".jsonl");

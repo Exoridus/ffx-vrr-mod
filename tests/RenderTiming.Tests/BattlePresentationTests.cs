@@ -80,6 +80,7 @@ internal static class MemoryProbe
     internal static bool IsReadable(nint address, int length) => address != 0 && length > 0;
     internal static bool TryCopy(nint address, Span<byte> target)
     {
+        if (NativeInputProbeMemory.TryCopy(address, target, out bool inputCopy)) return inputCopy;
         if (FhUtil.PadRecordPointer != 0 && (address == FhUtil.PadRecordPointer + 0x80 || address == FhUtil.PadRecordPointer + 0x180))
             return NativePadObservation.Copy(address, target);
         NativeActorPool.CopyCount++;

@@ -92,7 +92,7 @@ internal static partial class HookSites
         HookSiteId.MotionSequenceMotionCrossFade => D(site, HookFamily.ActorMotion, HookPurpose.NativeTimingCorrection, "MotionSequenceMotionCrossFade", "MotionSequenceCounters", "Changes actor motion advancement or frame counters.", [], [], "", ""),
         HookSiteId.MotionSurveyMotionAdvance => D(site, HookFamily.Diagnostics, HookPurpose.NativeTimingCorrection, "MotionSurveyMotionAdvance", "MotionSurvey || MotionAdvanceLendFlag || MotionHoldOptedOut", "May lend flags or hold motion advancement in addition to observation.", [], [], "", ""),
         HookSiteId.NeckTrackingChNeckTracking => D(site, HookFamily.ActorMotion, HookPurpose.NativeTimingCorrection, "NeckTrackingChNeckTracking", "NeckTracking", "Changes actor motion advancement or frame counters.", [], [], "", ""),
-        HookSiteId.PadLatchPadLatch => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_history", "IndependentPresentationEnabled", "Controls publication and edge visibility during owned passes.", ["clock.pass_scope"], [], "", ""),
+        HookSiteId.PadLatchPadLatch => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_history", "IndependentPresentationEnabled || NativeInputProbe", "Controls publication and edge visibility during owned passes.", ["clock.pass_scope"], [], "", ""),
         HookSiteId.PadLatchPressedHistory => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_history", "IndependentPresentationEnabled", "Controls publication and edge visibility during owned passes.", ["clock.pass_scope"], [], "", ""),
         HookSiteId.PadLatchReleasedHistory => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_history", "IndependentPresentationEnabled", "Controls publication and edge visibility during owned passes.", ["clock.pass_scope"], [], "", ""),
         HookSiteId.PadLatchRepeatHistory => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_history", "IndependentPresentationEnabled", "Controls publication and edge visibility during owned passes.", ["clock.pass_scope"], [], "", ""),
@@ -117,14 +117,15 @@ internal static partial class HookSites
         HookSiteId.ParticlesPppRunPartFp => D(site, HookFamily.ParticleManagers, HookPurpose.NativeTimingCorrection, "ParticlesPppRunPartFp", "ParticleTimeline", "Controls particle age, producer, restart or pause advancement.", [], [], "", ""),
         HookSiteId.ParticlesPppStartPart => D(site, HookFamily.ParticleManagers, HookPurpose.NativeTimingCorrection, "ParticlesPppStartPart", "ParticleTimeline || IndependentPresentationEnabled || ParticleSpriteClock", "Controls particle age, producer, restart or pause advancement.", [], [], "", ""),
         HookSiteId.PresenterD3D11CreateDeviceAndSwapChain => D(site, HookFamily.DevicePresentation, HookPurpose.ResourceLifecycle, "PresenterD3D11CreateDeviceAndSwapChain", "IndependentPresentationEnabled", "Owns presenter, graphics epoch or device resource lifecycle.", [], [], "", ""),
-        HookSiteId.RenderActorsActorModelWorldGroup => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Captures actor completion and temporarily substitutes render state.", ["actors.capture_completion"], [], "", ""),
-        HookSiteId.RenderActorsActorRendererWorldInstance => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Captures actor completion and temporarily substitutes render state.", ["actors.capture_completion"], [], "", ""),
-        HookSiteId.RenderActorsActorWorldGroup => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Captures actor completion and temporarily substitutes render state.", ["actors.capture_completion"], [], "", ""),
+        HookSiteId.RenderActorsMeshInstanceDraw => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Interpolates constructor-owned actor hierarchy in caller-owned draw scratch without native restore loans.", ["actors.capture_completion"], [], "", ""),
+        HookSiteId.RenderActorsMeshInstanceHierarchy => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Interpolates constructor-owned actor hierarchy in caller-owned draw scratch without native restore loans.", ["actors.capture_completion"], [], "", ""),
+        HookSiteId.RenderActorsMeshInstanceConstruct => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Interpolates constructor-owned actor hierarchy in caller-owned draw scratch without native restore loans.", ["actors.capture_completion"], [], "", ""),
+        HookSiteId.RenderActorsMeshInstanceDestruct => D(site, HookFamily.ActorPresentation, HookPurpose.IndependentPresentation, "independent.actors", "IndependentPresentationEnabled", "Interpolates constructor-owned actor hierarchy in caller-owned draw scratch without native restore loans.", ["actors.capture_completion"], [], "", ""),
         HookSiteId.RenderCameraRenderCameraFinalize => D(site, HookFamily.CameraPresentation, HookPurpose.IndependentPresentation, "RenderCameraRenderCameraFinalize", "IndependentPresentationEnabled", "Captures and temporarily substitutes camera presentation state.", [], [], "", ""),
-        HookSiteId.RenderImagesPApplicationFrame => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
-        HookSiteId.RenderImagesRenderFlipAction => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
-        HookSiteId.RenderImagesRenderFlipSlot => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
-        HookSiteId.RenderImagesRendererFlipIdentity => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
+        HookSiteId.RenderImagesPApplicationFrame => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled || NativeSubmissionProbe", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
+        HookSiteId.RenderImagesRenderFlipAction => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled || NativeSubmissionProbe", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
+        HookSiteId.RenderImagesRenderFlipSlot => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled || NativeSubmissionProbe", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
+        HookSiteId.RenderImagesRendererFlipIdentity => D(site, HookFamily.RenderSubmissionIdentity, HookPurpose.IndependentPresentation, "independent.images", "IndependentPresentationEnabled || NativeSubmissionProbe", "Associates submission identities with image lifetimes.", ["presentation.image_identity"], [], "", ""),
         HookSiteId.RenderSchedulerRenderCalculationRate => D(site, HookFamily.SimulationClock, HookPurpose.IndependentPresentation, "independent.scheduler", "IndependentPresentationEnabled", "Changes native timing arguments or owns pass clock callbacks.", ["clock.calculation_rate"], [], "", ""),
         HookSiteId.RenderSchedulerRenderExecCount => D(site, HookFamily.SimulationClock, HookPurpose.IndependentPresentation, "independent.scheduler", "IndependentPresentationEnabled", "Changes native timing arguments or owns pass clock callbacks.", ["clock.effective_exec"], [], "", ""),
         HookSiteId.RenderSchedulerRenderMainLoop => D(site, HookFamily.SimulationClock, HookPurpose.IndependentPresentation, "independent.scheduler", "IndependentPresentationEnabled", "Changes native timing arguments or owns pass clock callbacks.", ["clock.pass_scope"], [], "main_loop_callback", "independent_scheduler"),
@@ -166,7 +167,7 @@ internal static partial class HookSites
         HookSiteId.UpstreamUiUISPH001SphereGridUpdate => D(site, HookFamily.UiClocks, HookPurpose.NativeTimingCorrection, "UpstreamUiUISPH001SphereGridUpdate", "IndependentPresentationEnabled", "Changes UI, movie or screen-sequence advancement.", [], [], "", ""),
         HookSiteId.VideoOverridePhyFMVPlayerManagerInitialize => D(site, HookFamily.Media, HookPurpose.AssetMediaSubstitution, "VideoOverridePhyFMVPlayerManagerInitialize", "VideoOverride && ReplacementResourcesAvailable", "Substitutes movie decode, playback or audio resource ownership.", [], [], "", ""),
         HookSiteId.VideoOverridePhyFMVPlayerManagerPlayStart => D(site, HookFamily.Media, HookPurpose.AssetMediaSubstitution, "VideoOverridePhyFMVPlayerManagerPlayStart", "VideoOverride && ReplacementResourcesAvailable", "Substitutes movie decode, playback or audio resource ownership.", [], [], "", ""),
-        HookSiteId.PadSnapshotProducer => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_snapshot", "IndependentPresentationEnabled", "Publishes a simulation-owned pad snapshot independently of diagnostic capture.", ["clock.pass_scope", "clock.effective_exec"], [], "", ""),
+        HookSiteId.PadSnapshotProducer => D(site, HookFamily.InputLatch, HookPurpose.IndependentPresentation, "independent.pad_snapshot", "IndependentPresentationEnabled || NativeInputProbe", "Publishes a simulation-owned pad snapshot independently of diagnostic capture.", ["clock.pass_scope", "clock.effective_exec"], [], "", ""),
         _ => null
     };
 
@@ -178,7 +179,7 @@ internal static partial class HookSites
 
 
 internal sealed record HookSelection(HookSiteId Site, bool Enabled = true, string Owner = "module", int? ExpectedInstances = null,
-    bool Required = true, bool Deferred = false, IReadOnlyList<nint>? ExpectedTargets = null);
+    bool Required = true, bool Deferred = false, IReadOnlyList<nint>? ExpectedTargets = null, bool ObservationOnly = false);
 
 // GroupComplete means registration was queued; the stock hook API does not report native commit.
 internal enum HookRegistrationState { Preflighted, Queued, GroupComplete, Refused, Disposed }
@@ -213,6 +214,8 @@ internal sealed partial class HookRegistrationPlan : IDisposable
                 ? null : Array.AsReadOnly(requested.ExpectedTargets.ToArray()) };
             if (HookSites.Describe(selection.Site) is null)
             { error = $"Unknown hook site {selection.Site}."; return false; }
+            if (selection.ObservationOnly && (selection.Required || !selection.Deferred || !IsPassiveProbeSite(selection.Site)))
+            { error = $"Invalid observation-only selection for {selection.Site}."; return false; }
             if (!selected.TryAdd(selection.Site, selection))
             { error = $"Duplicate hook selection {selection.Site}."; return false; }
             if (selection.ExpectedTargets is { } targets && (targets.Count == 0 || targets.Any(t => t == 0)
@@ -246,12 +249,12 @@ internal sealed partial class HookRegistrationPlan : IDisposable
         }
         HookDescriptor[] manifest = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
             .Select(s => HookSites.Describe(s)!).ToArray();
-        var groups = new HashSet<string>(active.Select(d => d.Group), StringComparer.Ordinal);
+        var groups = new HashSet<string>(active.Where(d => !selected[d.Site].ObservationOnly).Select(d => d.Group), StringComparer.Ordinal);
         if (requiredGroups is not null) groups.UnionWith(requiredGroups);
         foreach (string group in groups)
         {
             HookDescriptor[] members = manifest.Where(d => d.Group == group).ToArray();
-            if (members.Length == 0 || members.Any(d => !selected.TryGetValue(d.Site, out HookSelection? s) || !s.Enabled))
+            if (members.Length == 0 || members.Any(d => !selected.TryGetValue(d.Site, out HookSelection? s) || !s.Enabled || s.ObservationOnly))
             { error = $"Incomplete required group {group}."; return false; }
         }
         plan = new HookRegistrationPlan(selected);
@@ -377,7 +380,7 @@ internal sealed partial class HookRegistrationPlan : IDisposable
         if (State is HookRegistrationState.Refused or HookRegistrationState.Disposed) return false;
         HookSiteId[] members = _selected.Values.Where(s => s.Enabled && HookSites.Describe(s.Site)!.Group == group)
             .Select(s => s.Site).ToArray();
-        return members.Length > 0 && members.All(site => HasExpectedInstances(_selected[site]));
+        return members.Length > 0 && members.All(site => !_selected[site].ObservationOnly && HasExpectedInstances(_selected[site]));
     }
 
     private static int? ExpectedCount(HookSelection selection)
@@ -426,7 +429,7 @@ internal sealed partial class HookRegistrationPlan
 
     internal static bool TryCreateResolved(VrrConfig config, bool independent, bool diagnostics, bool binaryDiagnostics,
         IReadOnlyDictionary<HookSiteId, IReadOnlyList<nint>>? templateTargets,
-        out HookRegistrationPlan? plan, out string? error)
+        out HookRegistrationPlan? plan, out string? error, bool inputProbe = false, bool submissionProbe = false, bool actorProbe = false)
     {
         plan = null;
         error = null;
@@ -437,7 +440,7 @@ internal sealed partial class HookRegistrationPlan
         var selections = new List<HookSelection>();
         foreach (HookSiteId site in Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared))
         {
-            HookSelection selection = ResolveSelection(site, config, independent, diagnostics, binaryDiagnostics, templateTargets);
+            HookSelection selection = ResolveSelection(site, config, independent, diagnostics, binaryDiagnostics, templateTargets, inputProbe, submissionProbe, actorProbe);
             if (selection.Enabled && HookSites.Describe(site)!.IsLoopTemplate
                 && (selection.ExpectedTargets is null || selection.ExpectedTargets.Count == 0))
             { error = $"Missing template target inventory for {site}."; return false; }
@@ -448,13 +451,21 @@ internal sealed partial class HookRegistrationPlan
 
     internal static HookSelection ResolveSelection(HookSiteId site, VrrConfig config, bool independent,
         bool diagnostics, bool binaryDiagnostics,
-        IReadOnlyDictionary<HookSiteId, IReadOnlyList<nint>>? templateTargets = null)
+        IReadOnlyDictionary<HookSiteId, IReadOnlyList<nint>>? templateTargets = null, bool inputProbe = false, bool submissionProbe = false, bool actorProbe = false)
     {
         bool enabled = ConfigSelects(site, config, independent, diagnostics, binaryDiagnostics);
+        bool observation = !independent && config.NativePhaseProbe && diagnostics
+            && (inputProbe && site is (HookSiteId.PadLatchPadLatch or HookSiteId.PadSnapshotProducer)
+                || submissionProbe && site is (HookSiteId.RenderImagesPApplicationFrame
+                    or HookSiteId.RenderImagesRendererFlipIdentity or HookSiteId.RenderImagesRenderFlipSlot
+                    or HookSiteId.RenderImagesRenderFlipAction)
+                || actorProbe && site is (HookSiteId.RenderActorsMeshInstanceDraw or HookSiteId.RenderActorsMeshInstanceHierarchy
+                    or HookSiteId.RenderActorsMeshInstanceConstruct or HookSiteId.RenderActorsMeshInstanceDestruct));
+        enabled |= observation;
         HookDescriptor descriptor = HookSites.Describe(site)!;
         IReadOnlyList<nint>? targets = null;
         templateTargets?.TryGetValue(site, out targets);
-        bool deferred = descriptor.Purpose is HookPurpose.Observation or HookPurpose.AssetMediaSubstitution
+        bool deferred = observation || descriptor.Purpose is HookPurpose.Observation or HookPurpose.AssetMediaSubstitution
             || site is HookSiteId.TextureBlendProbeResolve
                 or HookSiteId.DeviceLockFairnessPhyreDeviceLockRelease
                 or HookSiteId.DeviceLockFairnessPhyreDeviceLockTelemetry
@@ -469,9 +480,15 @@ internal sealed partial class HookRegistrationPlan
                 or HookSiteId.GraphicsLifetimeGraphicsInitializeObservation or HookSiteId.GraphicsLifetimeGraphicsResetObservation
                 or HookSiteId.GraphicsLifetimeOrdinaryRenderCompletion);
         if (site == HookSiteId.TimingChSetMotionSpeed || independent && site == HookSiteId.DiagnosticBindingsPadPollObservation) deferred = false;
-        return new(site, enabled, Required: !deferred, Deferred: deferred, ExpectedTargets: targets);
+        return new(site, enabled, Required: !deferred, Deferred: deferred, ExpectedTargets: targets, ObservationOnly: observation);
     }
 
+    private static bool IsPassiveProbeSite(HookSiteId site)
+        => site is HookSiteId.PadLatchPadLatch or HookSiteId.PadSnapshotProducer
+            or HookSiteId.RenderImagesPApplicationFrame or HookSiteId.RenderImagesRendererFlipIdentity
+            or HookSiteId.RenderImagesRenderFlipSlot or HookSiteId.RenderImagesRenderFlipAction
+            or HookSiteId.RenderActorsMeshInstanceDraw or HookSiteId.RenderActorsMeshInstanceHierarchy
+            or HookSiteId.RenderActorsMeshInstanceConstruct or HookSiteId.RenderActorsMeshInstanceDestruct;
     internal static IReadOnlyList<string> AvailableSourceContracts { get; } = Array.AsReadOnly(SourceContracts);
 
 
@@ -576,9 +593,10 @@ internal sealed partial class HookRegistrationPlan
             HookSiteId.ParticlesPppRunPartFp => config.ParticleTimeline,
             HookSiteId.ParticlesPppStartPart => config.ParticleTimeline || independent || config.ParticleSpriteClock,
             HookSiteId.PresenterD3D11CreateDeviceAndSwapChain => independent,
-            HookSiteId.RenderActorsActorModelWorldGroup => independent,
-            HookSiteId.RenderActorsActorRendererWorldInstance => independent,
-            HookSiteId.RenderActorsActorWorldGroup => independent,
+            HookSiteId.RenderActorsMeshInstanceDraw => independent,
+            HookSiteId.RenderActorsMeshInstanceHierarchy => independent,
+            HookSiteId.RenderActorsMeshInstanceConstruct => independent,
+            HookSiteId.RenderActorsMeshInstanceDestruct => independent,
             HookSiteId.RenderCameraRenderCameraFinalize => independent,
             HookSiteId.RenderImagesPApplicationFrame => independent,
             HookSiteId.RenderImagesRenderFlipAction => independent,

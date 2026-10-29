@@ -509,6 +509,8 @@ public static class EngineAddresses
     /// </summary>
     public const nint ChrTexAnimAdvanceOld = 0x37FF00;
 
+    /// <summary>Runs the first static effect list with native scratch setup and commit. Cdecl void().</summary>
+    public const nint EternalEffectRunBefore = 0x400610;
     /// <summary>
     ///     The eternal effect set's second entry point, efftOverTbl+0x10. Ghidra names the pair
     ///     op_effect_run_before and op_effect_run_after: both run FUN_0080cd60 over a different

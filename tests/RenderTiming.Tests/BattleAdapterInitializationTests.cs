@@ -30,6 +30,7 @@ public sealed class BattleAdapterInitializationTests : IDisposable
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.Equal(fieldPauseAccepted, RenderPassContext.IsActive);
         Assert.Equal(0, module.BattlePauseInitCalls);
@@ -53,6 +54,7 @@ public sealed class BattleAdapterInitializationTests : IDisposable
         Assert.Equal(0, module.BattlePauseInitCalls);
         Assert.False(module.BattlePauseInstalled);
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
     }

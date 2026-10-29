@@ -18,15 +18,19 @@ public unsafe sealed partial class VrrModule
     private long _hookRegistrationGeneration;
 
     private bool prepare_hook_registration(VrrConfig config, bool independent, bool diagnostics, bool binaryDiagnostics,
-        IReadOnlyDictionary<HookSiteId, IReadOnlyList<nint>>? templateTargets = null)
+        IReadOnlyDictionary<HookSiteId, IReadOnlyList<nint>>? templateTargets = null, double? probeRate = null)
     {
         if (_hookRegistration is not null)
         {
             _logger.Error("[Vrr] Hook registration already has an owner plan.");
             return false;
         }
+        bool probe = !independent && config.NativePhaseProbe && diagnostics && probeRate == 60;
         if (HookRegistrationPlan.TryCreateResolved(config, independent, diagnostics, binaryDiagnostics,
-            templateTargets, out _hookRegistration, out string? error)) return true;
+            templateTargets, out _hookRegistration, out string? error,
+            inputProbe: probe && Environment.GetEnvironmentVariable("FFX_VRR_INPUT_PROBE") == "1",
+            submissionProbe: probe && Environment.GetEnvironmentVariable("FFX_VRR_SUBMISSION_PROBE") == "1",
+            actorProbe: probe && Environment.GetEnvironmentVariable("FFX_VRR_ACTOR_PROBE") == "1")) return true;
         _logger.Error($"[Vrr] Hook registration preflight refused: {error}");
         return false;
     }

@@ -76,8 +76,15 @@ public unsafe sealed partial class VrrModule
     internal int FinalizeCamera(int viewport = 0) => h_render_camera_finalize(viewport);
     internal void RestoreCamera() => restore_render_camera();
     private bool pad_native_input_owner() => NativeOwner;
+    private bool InputProbeEnabled => false;
+    private bool NativeRenderValidationEnabled => false;
+    private long input_probe_enter_clock() => 0;
+    private void input_probe_exit_clock(long scope, bool returned) { }
+    private void input_probe_latch_invoke(nuint address, nuint slot, d_render_void original) => original();
+    private void input_probe_snapshot_invoke(nuint address, nuint slot, d_render_void original) => original();
     private object? _padReplayLoan => null;
     private void pad_replay_before_snapshot() { }
+    private void pad_replay_native_fallback(string reason, bool retainObservations = false) { }
     private bool cooperative_ticks_ready() => true;
     private bool _padPublicationNativeFallback => false;
     private void pad_native_clock_invoke(float delta) => CameraNative.Resolve<d_advance_vblank>(EngineAddresses.AdvanceVBlankCounters)(delta);
@@ -90,6 +97,7 @@ public unsafe sealed partial class VrrModule
     private bool render_image_admission_begin() => true;
     private bool field_particle_presentation_ready() => true;
     private bool init_particle_presentation() => true;
+    private bool init_static_effect_vm_clock() => true;
     private void init_field_particle_pause() { }
     private bool init_render_actors() => true;
     private void h_diag_loop(float delta) { }
@@ -109,6 +117,8 @@ public unsafe sealed partial class VrrModule
     private void pad_latch_pass_decided(bool presentation) { }
     private void battle_effects_begin_pass(bool presentation) { }
     private void battle_effects_end_pass() { }
+    private bool _padInputPolicyBound = true;
+    private bool pad_observations_have_history() => true;
     private void pad_observations_prepare_tick(double? deadline) { }
     private object? pad_observations_pass_completed(double? deadline) => null;
     private void advance_overlay_spawn_clock() { }

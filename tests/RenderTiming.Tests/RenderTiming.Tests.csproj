@@ -37,7 +37,9 @@
     <Compile Include="../../src/VrrModule.DiagnosticBindings.cs" Link="VrrModule.DiagnosticBindings.cs" />
     <Compile Include="../../src/VrrModule.PadObservations.cs" Link="VrrModule.PadObservations.cs" />
     <Compile Include="../../src/VrrModule.PadReplay.cs" Link="VrrModule.PadReplay.cs" />
+    <Compile Include="../../src/VrrModule.InputProbe.cs" Link="VrrModule.InputProbe.cs" />
     <Compile Include="../../src/VrrModule.InputCooperation.cs" Link="VrrModule.InputCooperation.cs" />
     <Compile Include="../../src/VrrModule.CooperativeTicks.cs" Link="VrrModule.CooperativeTicks.cs" />
+    <EmbeddedResource Include="../../src/IndependentPresentationAdmission.json" LogicalName="Fahrenheit.Mods.Vrr.IndependentPresentationAdmission.json" />
   </ItemGroup>
 </Project>

@@ -306,6 +306,17 @@ public unsafe sealed partial class VrrModule
 
         var original = new FhCallHandle<d_pilot_worker>(new FhCallLocation(PilotWorker, 0)).chain_from(h_particle_pilot_worker).fnptr!;
         int thread = Environment.CurrentManagedThreadId;
+        if (HasEffectVmClockHold)
+        {
+            if (!IsOwnedEffectVmClockHold || family != 0 || mode > 1 || !HasEffectVmClockBackend || _particle_pilot_worker
+                || thread != Volatile.Read(ref _particle_pilot_thread) || !particle_presentation_is_qualified())
+            {
+                refuse_independent_presentation("unexpected_vm_clock_worker_scope");
+                return;
+            }
+            opu_held_walk(original, family, mode);
+            return;
+        }
         bool localHold = IsOwnedBattleEffectHold;
         if (!localHold && !RenderPassContext.IsPresentation && family <= 1 && mode <= 1
             && Interlocked.CompareExchange(ref _particle_pilot_thread, thread, 0) == 0)
@@ -323,6 +334,19 @@ public unsafe sealed partial class VrrModule
                 || _particle_pilot_worker || !particle_presentation_is_qualified())
             {
                 refuse_independent_presentation("unexpected_held_worker_scope");
+                return;
+            }
+            opu_held_walk(original, family, mode);
+            return;
+        }
+        if (RenderPassContext.IsPresentation && _staticEffectVmClockInstalled && family == 0)
+        {
+            long epoch = RenderPassContext.HistoryEpoch, image = RenderPassContext.ImageSerial;
+            if (mode > 1 || !OwnsRenderPass || _particle_pilot_worker || !ReferenceEquals(s_battle_effects, this)
+                || _bx == null || !MemoryProbe.IsReadable((nint)_bx, 0x20) || !particle_presentation_is_qualified()
+                || epoch != RenderPassContext.HistoryEpoch || image != RenderPassContext.ImageSerial)
+            {
+                refuse_independent_presentation("unexpected_static_vm_presentation_scope");
                 return;
             }
             opu_held_walk(original, family, mode);

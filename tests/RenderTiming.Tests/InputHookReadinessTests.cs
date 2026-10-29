@@ -21,6 +21,7 @@ public sealed class InputHookReadinessTests : IDisposable
         var module = new VrrModule();
         Assert.True(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         module.InputReadiness(latch, readers);
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
@@ -54,6 +55,7 @@ public sealed class InputHookReadinessTests : IDisposable
         var module = new VrrModule();
         Assert.True(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         module.InputReadiness(true, true);
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);

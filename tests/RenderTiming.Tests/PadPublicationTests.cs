@@ -27,6 +27,8 @@ public unsafe sealed class PadPublicationTests : IDisposable
         _module.CaptureLoops(false);
         _module.DeadlineImage(10);
         _module.DeadlineClockAndExit();
+        _module.DeadlineImage(10.001);
+        _module.DeadlineClockAndExit();
         Seed(1, 10.008, 10.01);
         _module.DiagnosticEvents.Clear();
     }
@@ -450,6 +452,95 @@ public unsafe sealed class PadPublicationTests : IDisposable
         Assert.Equal(JsonValueKind.Null, Correlation().ValueKind);
     }
 
+    [Theory]
+    [InlineData(10.001, 2f)]
+    [InlineData(10.05, 2f)]
+    [InlineData(10.5, 1f)]
+    public void NewlyUnmappedClockAfterParryGrantReturnsToNativeOnce(double now, float speed)
+    {
+        var parry = BindCooperativeReplay();
+        int clocks = 0;
+        NativeClock.Advance = () => { clocks++; Publish(); };
+        NativeClock.SnapshotAction = () => Assert.Equal(90, _records[0x84]);
+        NativeClock.LoopAction = _ =>
+        {
+            Assert.True(parry.PreUpdate(.025f));
+            _module.SnapshotClock(speed / 60);
+            Assert.Null(_module.PreparedPadTickForTest);
+            _module.CallSnapshotCore();
+        };
+        _module.DeadlineImage(now);
+        _module.CallDiagnosticLoop(1f / 60);
+        Assert.Null(_module.CoopFailure);
+        Assert.Equal(1, clocks);
+        Assert.Equal(1, parry.Calls);
+        Assert.Equal(.025f, parry.Delta);
+        Assert.Equal(90, _records[0x84]);
+        if (now == 10.5)
+        {
+            int standaloneAfterReset = 0;
+            NativeClock.LoopAction = _ =>
+            {
+                if (!parry.PreUpdate(.025f)) standaloneAfterReset++;
+                _module.SnapshotClock(1f / 60);
+                _module.CallSnapshotCore();
+                _module.ReadExec();
+            };
+            _module.RealSnapshotImage(now + .01);
+            _module.CallDiagnosticLoop(1f / 60);
+            Assert.Equal(1, standaloneAfterReset);
+            Assert.True(_module.SnapshotBaseline);
+            SeedRecoverySamples(now + .012, now + .07);
+            NativeClock.SnapshotAction = () => Assert.Equal(64, _records[0x84]);
+            _module.RealSnapshotImage(now + .05);
+            _module.CallDiagnosticLoop(1f / 60);
+            Assert.Null(_module.CoopFailure);
+            Assert.Equal(2, parry.Calls);
+            Assert.Equal(1f / 60, parry.Delta);
+            Assert.Equal(3, clocks);
+            Assert.True(Correlation().GetProperty("native_input_applied").GetBoolean());
+        }
+    }
+
+    [Fact]
+    public void NativeOwnerLateBaselineDoesNotLoanParryBeforeTheClockMappingIsReady()
+    {
+        var parry = BindCooperativeReplay();
+        _module.BeginRealSnapshotLifecycle();
+        _module.DeadlineReset();
+        _module.NativeMovie = true;
+        int standaloneTicks = 0, nativeClocks = 0;
+        NativeClock.Advance = () => { nativeClocks++; _module.NativeMovie = false; Publish(); };
+        NativeClock.LoopAction = _ =>
+        {
+            if (!parry.PreUpdate(.025f)) standaloneTicks++;
+            _module.SnapshotClock(1f / 60);
+            _module.CallSnapshotCore();
+            _module.ReadExec();
+        };
+        _module.RealSnapshotImage(10.05);
+        _module.CallDiagnosticLoop(1f / 60);
+        _module.CallDiagnosticLoop(1f / 60);
+        Assert.True(_module.SnapshotBaseline);
+        Assert.False(_module.BootstrapClockMappedForTest);
+        _module.RealSnapshotImage(10.07);
+        _module.CallDiagnosticLoop(1f / 60);
+        Assert.Null(_module.CoopFailure);
+        Assert.Equal(3, standaloneTicks + parry.Calls);
+        Assert.Equal(3, nativeClocks);
+        Assert.Equal(90, _records[0x84]);
+        SeedRecoverySamples(10.075, 10.095);
+        NativeClock.SnapshotAction = () => Assert.Equal(64, _records[0x84]);
+        parry.DuringTick = () => Assert.Equal(64, _records[0x84]);
+        _module.RealSnapshotImage(10.09);
+        _module.CallDiagnosticLoop(1f / 60);
+        Assert.Null(_module.CoopFailure);
+        Assert.Equal(1, parry.Calls);
+        Assert.Equal(1f / 60, parry.Delta);
+        Assert.Equal(4, nativeClocks);
+        Assert.True(Correlation().GetProperty("native_input_applied").GetBoolean());
+        Assert.Equal(90, _records[0x84]);
+    }
     [Fact]
     public void RealLoopDispatchesParryAfterSelectedInputSnapshotAndBeforeRestoration()
     {
@@ -543,6 +634,13 @@ public unsafe sealed class PadPublicationTests : IDisposable
         Assert.Equal(1f / 60, parry.Delta);
         Assert.Equal(90, _records[0x84]);
         Assert.Equal(2, _records[0x98]);
+    }
+    private void SeedRecoverySamples(double past, double future)
+    {
+        for (int port = 0; port < 2; port++) _records[port * 0x100 + 0x84] = 64;
+        Seed(3, past, past + .001);
+        for (int port = 0; port < 2; port++) _records[port * 0x100 + 0x84] = 90;
+        Seed(4, future, future + .001);
     }
     private Fahrenheit.Mods.Parry.ParryModule BindCooperativeReplay()
     {
@@ -740,6 +838,7 @@ public unsafe sealed class PadPublicationTests : IDisposable
 
 public unsafe sealed partial class VrrModule
 {
+    internal bool BootstrapClockMappedForTest => _simulationClock.HasMappedInterval;
     internal void ClearSyntheticCooperationBindingForTest()
     {
         _cooperativeBound = false;

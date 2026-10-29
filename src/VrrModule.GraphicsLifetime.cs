@@ -219,7 +219,7 @@ public unsafe sealed partial class VrrModule
             qualifiedAtEntry = frame is { Valid: true, Admitted: true, AnimationComplete: true }
                 && graphics_epoch_ready(epoch);
         bool nested = _renderImageOrdinaryDepth.Value++ != 0;
-        if (nested && _presenter_active && RenderSchedulerReady)
+        if (nested && (_submissionProbe is null || IndependentPresentationEnabled) && _presenter_active && RenderSchedulerReady)
             refuse_independent_presentation("render_image_nested_ordinary");
         bool normal = false;
         uint result = 0;
@@ -237,6 +237,8 @@ public unsafe sealed partial class VrrModule
         finally
         {
             _renderImageOrdinaryDepth.Value--;
+            if (_submissionProbe?.Frame.Value is { AnimationComplete: true } observed && normal && !nested)
+                observed.OrdinaryComplete = true;
             diagnostic_graphics_lifecycle("ordinary_exit", normal, normal ? result : null);
         }
     }

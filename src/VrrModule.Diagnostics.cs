@@ -137,7 +137,7 @@ public unsafe sealed partial class VrrModule
 
     private void diagnostic_event(string kind, object? data = null)
     {
-        if (!RuntimeEffectsArmed) return;
+        if (!DiagnosticSession.AllowsEvent(RuntimeEffectsArmed, kind)) return;
         var session = kind.StartsWith("texture_", StringComparison.Ordinal)
             ? _textureBlendDiagnostics ?? _diagnostics : _diagnostics;
         try { if (session?.IsCapturing == true) session.TryWrite(kind, _frames, new { loop = _diagnosticLoopId, detail = data }); }

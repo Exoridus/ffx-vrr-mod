@@ -24,6 +24,7 @@ public sealed class EffectRenderOwnershipTests
         {
             var module = new VrrModule();
             module.SetHookScope(true, true, true, presentation);
+            if (!presentation) module.SetBattlePause(0);
             module.RunEffectsWithoutLegacyHold(advance);
             Assert.Equal(expected, NativeClock.EffectCalls);
             Assert.Equal(expected, NativeClock.EternalCalls);
@@ -49,14 +50,14 @@ public sealed class EffectRenderOwnershipTests
     [InlineData(false, true, true, false, 0)]
     [InlineData(false, false, false, false, 1)]
     [InlineData(false, true, false, true, 1)]
-    public void Eternal_simulation_respects_its_own_hold_switch(bool presentation, bool hold, bool eternal, bool advance, int expected)
+    public void Eternal_native_clock_and_presentation_respect_their_hold_switch(bool presentation, bool hold, bool eternal, bool advance, int expected)
     {
         RenderPassContext.IsPresentation = presentation;
         NativeClock.EternalCalls = 0;
         try
         {
             var module = new VrrModule();
-            module.SetHookScope(true, true, true, presentation);
+            module.SetHookScope(true, presentation, true, presentation);
             module.RunEternal(hold, eternal, advance);
             Assert.Equal(expected, NativeClock.EternalCalls);
         }
@@ -133,12 +134,13 @@ internal static partial class NativeClock
 {
     internal static readonly List<string> Hooks = [];
     internal static int EffectCalls, EternalCalls;
-    public static void Effect(int mode) => EffectCalls++;
+    public static void Effect(int mode) { EffectCalls++; EffectAction?.Invoke(mode); }
     public static void Eternal() { EternalCalls++; EternalAction?.Invoke(); }
 }
 
 internal static partial class EngineAddresses
 {
+    public const nint EternalEffectRunBefore = 0x400610;
     public const nint MsEffectProcess = 0, EternalEffectRunAfter = 0, GlobalEffectOverlayState = 0;
     public const nint PlayerChrs = 0xd334d4;
 }

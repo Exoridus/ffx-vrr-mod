@@ -21,6 +21,8 @@ public sealed class FixedSimulationClock(int frequency = 60)
     private int _deadlineCount;
     /// <summary>Whether the latest interval has a stable model time mapping, including zero-step images.</summary>
     public bool HasMappedInterval { get; private set; }
+    // A native bootstrap may establish an origin without qualifying a model deadline.
+    internal bool HasClockOrigin => double.IsFinite(_previous);
 
     public void Reset()
     {

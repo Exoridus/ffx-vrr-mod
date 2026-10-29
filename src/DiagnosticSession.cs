@@ -42,6 +42,9 @@ internal sealed class DiagnosticSession : IDisposable
         _worker = Task.Factory.StartNew(WriteLoop, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 
+    internal static bool AllowsEvent(bool runtimeEffectsArmed, string kind)
+        => runtimeEffectsArmed || kind is "timing_hook" or "native_render_validation";
+
     internal bool TryWrite(string kind, long frame, object? data = null)
     {
         lock (_gate)

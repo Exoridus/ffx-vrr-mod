@@ -111,7 +111,7 @@ internal sealed class RenderActorHistory
             && TryInterpolate(key, identity, entry.Root, liveBones, alpha, out root, renderedBones);
     }
 
-    private static bool TryBlend(Matrix4x4 previous, Matrix4x4 current, float alpha, out Matrix4x4 result)
+    internal static bool TryBlend(Matrix4x4 previous, Matrix4x4 current, float alpha, out Matrix4x4 result)
     {
         result = current;
         if (!Affine(previous) || !Affine(current)) return false;

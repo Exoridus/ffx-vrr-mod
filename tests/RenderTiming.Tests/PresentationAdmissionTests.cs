@@ -67,6 +67,7 @@ public sealed class LateAdmissionSchedulerTests : IDisposable
     {
         var module = new VrrModule();
         module.PreparePass();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);
         module.RefusePresentation("unknown_producer");

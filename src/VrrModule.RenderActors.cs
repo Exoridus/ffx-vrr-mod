@@ -1,379 +1,427 @@
 using System.Numerics;
+using System.Threading;
 
 namespace Fahrenheit.Mods.Vrr;
 
 public unsafe sealed partial class VrrModule
 {
-    private const nint RenderActorWorldGroup = 0x23c3e0;
-    private const nint RenderActorWorldModel = 0x23c430;
-    private const nint RenderActorWorldInstance = 0x26d810;
-    private const nint RenderActorSkeletonCommit = 0x23be60;
-    [ThreadStatic] private static nint _renderActorSubmittingGroup;
-    private readonly RenderActorHistory _renderActorHistory = new();
-    private readonly Dictionary<nint, RenderActorNativeState> _renderActorStates = [];
+    private const nint RenderActorDraw = 0x1b9a90, RenderActorHierarchy = 0xf6ef0;
+    private const nint RenderActorConstruct = 0xf27e0, RenderActorDestruct = 0xf2c50;
     private readonly object _renderActorLock = new();
-    private bool _renderActorsBound, _renderActorsActive, _renderActorsSampling;
-    private long _renderActorCaptures, _renderActorBlends, _renderActorSkipped, _renderActorRestores;
-    private long _renderActorBoneBlends, _renderActorUnchanged, _renderActorLayoutRejects, _renderActorReplays;
-    private int _renderActorCallbacks;
-    // shortcut: Refused loans stay retained until a qualified quiescent recovery boundary is implemented.
-    private bool _renderActorCompletionRefused;
-    private long? _renderActorGraphicsEpoch;
+    private readonly Dictionary<long, RenderActorState> _renderActorStates = [];
+    private readonly ThreadLocal<RenderActorDrawScope?> _renderActorDrawScope = new();
+    private bool _renderActorsBound;
+    private long _renderActorLifetime, _renderActorGeneration, _renderActorResetGeneration;
+    private ActorSimulationReceipt? _renderActorTick;
+    private ActorImageReceipt? _renderActorLatestReceipt;
+    private uint? _renderActorAmbiguousStamp;
+    private long _renderActorCaptures, _renderActorBlends, _renderActorSkipped, _renderActorBoneBlends;
+    private long _renderActorUnchanged, _renderActorLayoutRejects;
+
+    private sealed class ActorSimulationReceipt(long serial, long generation, long historyEpoch)
+    {
+        internal readonly long Serial = serial, Generation = generation, HistoryEpoch = historyEpoch;
+        private int _complete, _invalid;
+        internal bool Complete => Volatile.Read(ref _complete) != 0 && !Invalid;
+        internal bool Invalid => Volatile.Read(ref _invalid) != 0;
+        internal void Finish() => Volatile.Write(ref _complete, 1);
+        internal void Invalidate() => Volatile.Write(ref _invalid, 1);
+    }
+
+    private sealed record ActorImageReceipt(PresentationAdmission.Image Image, uint NativeStamp, long Renderer,
+        ActorSimulationReceipt Tick, long Epoch, long ResetGeneration, float Alpha, bool Simulation, bool Interpolate)
+    {
+        internal readonly Dictionary<long, RenderActorImagePose> Poses = [];
+    }
+
+    private sealed record RenderActorPose(ActorSimulationReceipt Tick, Matrix4x4[] Matrices, float Step, bool Paired);
+    private sealed record RenderActorImagePose(long Lifetime, Matrix4x4[] Canonical, Matrix4x4[] Rendered);
+    private sealed class RenderActorState(long mesh, long lifetime)
+    {
+        internal readonly long Mesh = mesh, Lifetime = lifetime;
+        internal RenderActorPose? Previous, Current;
+    }
+    private sealed class RenderActorDrawScope(nint instance, RenderActorState state, ActorImageReceipt receipt)
+    {
+        internal readonly nint Instance = instance;
+        internal readonly RenderActorState State = state;
+        internal readonly ActorImageReceipt Receipt = receipt;
+        internal bool Seen, Invalid, Blended;
+    }
 
     private object render_actors_counters()
     {
         lock (_renderActorLock) return new
         {
             captures = _renderActorCaptures, blends = _renderActorBlends, skipped = _renderActorSkipped,
-            restores = _renderActorRestores, bone_matrices_blended = _renderActorBoneBlends,
-            unchanged = _renderActorUnchanged, layout_rejects = _renderActorLayoutRejects,
-            tracked_instances = _renderActorStates.Count, replays = _renderActorReplays
+            restores = 0, bone_matrices_blended = _renderActorBoneBlends, unchanged = _renderActorUnchanged,
+            layout_rejects = _renderActorLayoutRejects, tracked_instances = _renderActorStates.Count, replays = 0
         };
     }
-
     private uint[] render_actors_counter_words()
     {
         lock (_renderActorLock) return
             [unchecked((uint)_renderActorCaptures), unchecked((uint)_renderActorBlends), unchecked((uint)_renderActorSkipped),
-            unchecked((uint)_renderActorRestores), unchecked((uint)_renderActorBoneBlends), unchecked((uint)_renderActorUnchanged),
-            unchecked((uint)_renderActorLayoutRejects), (uint)_renderActorStates.Count, unchecked((uint)_renderActorReplays)];
+            0, unchecked((uint)_renderActorBoneBlends), unchecked((uint)_renderActorUnchanged),
+            unchecked((uint)_renderActorLayoutRejects), (uint)_renderActorStates.Count, 0];
     }
 
-    private sealed class RenderActorNativeState(RenderActorIdentity identity, int boneCount)
-    {
-        internal readonly RenderActorIdentity Identity = identity;
-        internal readonly Matrix4x4[] RenderedBones = new Matrix4x4[boneCount];
-        internal readonly RenderActorWrite Write = new(boneCount);
-        internal readonly byte[] CanonicalWorld = new byte[48];
-        internal bool HasCanonicalWorld;
-        internal long Generation;
-    }
-
-    private long _renderActorGeneration;
+    private bool ActorObservationRequested => Environment.GetEnvironmentVariable("FFX_VRR_ACTOR_PROBE") == "1"
+        && _config.NativePhaseProbe && _diagnostics?.IsCapturing == true
+        && ChosenFramerate == 60d && !IndependentPresentationEnabled;
 
     private bool init_render_actors()
     {
-        if (!NativeBuild.TryValidate(out string error))
-        {
-            _logger.Error($"[Vrr] Actor renderer binding refused: {error}");
-            return false;
-        }
-        byte* group = FhUtil.ptr_at<byte>(RenderActorWorldGroup);
-        byte* model = FhUtil.ptr_at<byte>(RenderActorWorldModel);
-        byte* instance = FhUtil.ptr_at<byte>(RenderActorWorldInstance);
-        byte* skeleton = FhUtil.ptr_at<byte>(RenderActorSkeletonCommit);
-        bool valid = MemoryProbe.IsReadable((nint)group, 67) && MemoryProbe.IsReadable((nint)model, 190)
-            && MemoryProbe.IsReadable((nint)instance, 252) && MemoryProbe.IsReadable((nint)skeleton, 348)
-            && new ReadOnlySpan<byte>(group, 9).SequenceEqual<byte>([0x55, 0x8b, 0xec, 0x57, 0x8b, 0x7d, 8, 0x85, 0xff])
-            && new ReadOnlySpan<byte>(model, 10).SequenceEqual<byte>([0x55, 0x8b, 0xec, 0x83, 0xec, 0x0c, 0x53, 0x8b, 0x5d, 8])
-            && new ReadOnlySpan<byte>(instance, 15).SequenceEqual<byte>([0x55, 0x8b, 0xec, 0x83, 0xec, 0x50,
-                0x8b, 0x45, 0x0c, 0x56, 0xd9, 0, 0x8b, 0x75, 8])
-            && new ReadOnlySpan<byte>(instance + 0xf9, 3).SequenceEqual<byte>([0xc2, 8, 0])
-            && new ReadOnlySpan<byte>(skeleton + 0x25, 17).SequenceEqual<byte>([0x8b, 0x41, 4, 0x8b, 4, 0x98,
-                0x8b, 0x50, 0x0c, 0x8b, 0, 0x8b, 0x78, 0x18, 0x8b, 0x41, 0x10])
-            && group[0x2d] == 0xe8 && group + 0x32 + *(int*)(group + 0x2e) == instance
-            && model[0x70] == 0xe8 && model + 0x75 + *(int*)(model + 0x71) == instance;
-        if (!valid)
-        {
-            _logger.Error("[Vrr] Actor renderer binding refused: world submission/palette layout/stack cleanup contract mismatch.");
-            return false;
-        }
-        bool ok = hook_or_log(HookSiteId.RenderActorsActorWorldGroup, "actor world group", RenderActorWorldGroup,
-            () => new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0)).hook(this, with_hook_continuation<d_render_actor_group>(h_render_actor_group)));
-        ok &= hook_or_log(HookSiteId.RenderActorsActorModelWorldGroup, "actor model world group", RenderActorWorldModel,
-            () => new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0)).hook(this, with_hook_continuation<d_render_actor_model>(h_render_actor_model)));
-        ok &= hook_or_log(HookSiteId.RenderActorsActorRendererWorldInstance, "actor renderer world instance", RenderActorWorldInstance,
-            () => new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0)).hook(this, with_hook_continuation<d_render_actor_instance>(h_render_actor_instance)));
+        if (IntPtr.Size != 4 || !NativeBuild.TryValidate(out _)) return false;
+        bool valid = render_image_prefix(RenderActorDraw, [0x55,0x8b,0xec,0x6a,0xff])
+            && render_image_prefix(0x1b9b78, [0xc7,0x45,0xfc,0,0,0,0,0x89,0x45,0xe0,0xe8,0x69,0xd3,0xf3,0xff])
+            && render_image_prefix(0x1b9ecc, [0x8b,0xe5,0x5d,0xc2,0x10,0])
+            && render_image_prefix(RenderActorHierarchy, [0x55,0x8b,0xec,0x81,0xec,0x80,0,0,0,0x56,0x57,0x8b,0xf9,0xf6,0x47,0x6c,1])
+            && render_image_prefix(0xf6f53, [0x8b,0x75,8,0x50,0x8d,0x4e,0xc0,0xe8,0xe1,0xc3,0xf5,0xff,0x56,0x8b,0xcf,0xe8,0x59,0,0,0,0x5f,0x5e,0x8b,0xe5,0x5d,0xc2,4,0])
+            && render_image_prefix(RenderActorConstruct, [0x55,0x8b,0xec,0x6a,0xff])
+            && render_image_prefix(0xf28df, [0x8b,0xc6,0x8b,0x4d,0xf4,0x64,0x89,0x0d,0,0,0,0,0x59,0x5e,0x8b,0xe5,0x5d,0xc2,4,0])
+            && render_image_prefix(RenderActorDestruct, [0x55,0x8b,0xec,0x6a,0xff])
+            && render_image_prefix(0xf2dcb, [0x8b,0x4d,0xf4,0x64,0x89,0x0d,0,0,0,0,0x59,0x5f,0x5e,0x5b,0x8b,0xe5,0x5d,0xc3]);
+        if (!valid) { _logger.Error("[Vrr] Actor draw/hierarchy/lifetime binding refused."); return false; }
+        bool ok = hook_or_log(HookSiteId.RenderActorsMeshInstanceDraw, "actor mesh draw", RenderActorDraw,
+            () => new FhCallHandle<d_render_actor_draw>(new FhCallLocation(RenderActorDraw, 0)).hook(this, with_hook_continuation<d_render_actor_draw>(h_render_actor_draw)));
+        ok &= hook_or_log(HookSiteId.RenderActorsMeshInstanceHierarchy, "actor draw hierarchy", RenderActorHierarchy,
+            () => new FhCallHandle<d_render_actor_hierarchy>(new FhCallLocation(RenderActorHierarchy, 0)).hook(this, with_hook_continuation<d_render_actor_hierarchy>(h_render_actor_hierarchy)));
+        ok &= hook_or_log(HookSiteId.RenderActorsMeshInstanceConstruct, "actor instance construction", RenderActorConstruct,
+            () => new FhCallHandle<d_render_actor_construct>(new FhCallLocation(RenderActorConstruct, 0)).hook(this, with_hook_continuation<d_render_actor_construct>(h_render_actor_construct)));
+        ok &= hook_or_log(HookSiteId.RenderActorsMeshInstanceDestruct, "actor instance destruction", RenderActorDestruct,
+            () => new FhCallHandle<d_render_actor_destruct>(new FhCallLocation(RenderActorDestruct, 0)).hook(this, with_hook_continuation<d_render_actor_destruct>(h_render_actor_destruct)));
         _renderActorsBound = ok;
         return ok;
     }
 
-    private void render_actors_begin_simulation()
-    {
-        lock (_renderActorLock)
-        {
-            if (!render_actor_lifetime_valid(bind: true)) return;
-            render_actors_restore();
-            if (!render_actor_lifetime_valid()) return;
-            _renderActorGeneration++;
-            _renderActorHistory.BeginSimulation();
-            _renderActorsActive = _renderActorsSampling = true;
-        }
-    }
-
-    private bool render_actor_lifetime_valid(bool bind = false)
-    {
-        if (_renderActorCompletionRefused) return false;
-        lock (_graphicsLifetimeGate)
-        {
-            if (_renderActorGraphicsEpoch is null && !bind) return true;
-            if (_graphicsActive != 0 || (_renderActorGraphicsEpoch is { } epoch && epoch != _graphicsEpoch))
-            {
-                refuse_render_actor_completion("actor_graphics_lifetime_changed");
-                return false;
-            }
-            _renderActorGraphicsEpoch ??= _graphicsEpoch;
-            return true;
-        }
-    }
-
-    private static bool render_actor_jobs_idle()
-    {
-        Span<byte> word = stackalloc byte[sizeof(uint)];
-        nint slot = (nint)FhUtil.ptr_at<byte>(0x8dede4);
-        if (!MemoryProbe.TryCopy(slot, word)) return false;
-        uint scheduler = MemoryMarshal.Read<uint>(word);
-        if (scheduler == 0 || !MemoryProbe.TryCopy((nint)(nuint)scheduler + 0x1f8, word)
-            || MemoryMarshal.Read<int>(word) != 8) return false;
-        return MemoryProbe.TryCopy(slot, word) && MemoryMarshal.Read<uint>(word) == scheduler;
-    }
-    private void refuse_render_actor_completion(string reason)
-    {
-        _renderActorCompletionRefused = true;
-        _renderActorsActive = _renderActorsSampling = false;
-        _renderActorHistory.Reset();
-        refuse_independent_presentation(reason);
-    }
+    private void render_actors_begin_simulation() => render_actors_begin_image(true, _renderCameraAlpha);
+    private void render_actors_begin_presentation(float alpha) => render_actors_begin_image(false, alpha);
     private void render_actors_complete_simulation()
     {
         lock (_renderActorLock)
         {
-            if (!render_actor_lifetime_valid()) return;
-            if (System.Threading.Volatile.Read(ref _renderActorCallbacks) != 0)
-            {
-                refuse_render_actor_completion("actor_callbacks_outstanding");
-                return;
-            }
-            // Native queue credit includes jobs whose callbacks have not entered; this check does not join them.
-            if (!render_actor_jobs_idle())
-            {
-                refuse_render_actor_completion("actor_jobs_unconfirmed");
-                return;
-            }
-            if (!render_actor_lifetime_valid()) return;
-            _renderActorHistory.CompleteSimulation();
-            _renderActorsSampling = false;
-            foreach (var key in _renderActorStates.Where(pair => pair.Value.Generation != _renderActorGeneration).Select(pair => pair.Key).ToArray())
-            {
-                restore_render_actor(key, _renderActorStates[key]);
-                if (!render_actor_lifetime_valid()) return;
-                _renderActorStates.Remove(key);
-            }
+            if (_renderActorTick is not { } tick) return;
+            if (tick.Serial == RenderPassContext.SimulationSerial && tick.HistoryEpoch == RenderPassContext.HistoryEpoch) tick.Finish();
+            else tick.Invalidate();
         }
     }
-
-    private void render_actors_begin_presentation(float alpha)
-    {
-        lock (_renderActorLock)
-        {
-            if (!render_actor_lifetime_valid(bind: true)) return;
-            render_actors_restore();
-            if (!render_actor_lifetime_valid()) return;
-            render_camera_set_presentation_alpha(alpha);
-            _renderActorsActive = true;
-            _renderActorsSampling = false;
-            replay_render_actors();
-        }
-    }
-
     private void render_actors_restore()
     {
-        lock (_renderActorLock)
-        {
-            if (!render_actor_lifetime_valid()) return;
-            foreach (var pair in _renderActorStates) restore_render_actor(pair.Key, pair.Value);
-        }
+        // Hierarchy substitutions belong to native draw scratch; game-owned actor storage is never borrowed.
     }
-
     private void reset_render_actors()
     {
         lock (_renderActorLock)
         {
-            if (!render_actor_lifetime_valid()) return;
-            render_actors_restore();
-            if (!render_actor_lifetime_valid()) return;
-            _renderActorHistory.Reset();
-            _renderActorStates.Clear();
-            _renderActorGraphicsEpoch = null;
-            _renderActorsActive = _renderActorsSampling = false;
+            _renderActorResetGeneration++;
+            _renderActorTick?.Invalidate();
+            _renderActorTick = null;
+            _renderActorLatestReceipt = null;
+            _renderActorAmbiguousStamp = null;
+            foreach (var state in _renderActorStates.Values) state.Previous = state.Current = null;
         }
     }
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void d_render_actor_group(nint group, Matrix4x4* matrix);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void d_render_actor_model(nint group, Matrix4x4* matrix, uint model);
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate void d_render_actor_instance(nint instance, Matrix4x4* matrix);
+    private void render_actors_begin_image(bool simulation, float alpha)
+    {
+        lock (_renderActorLock)
+        {
+            if (!_renderActorsBound || _renderImageFrame.Value is not { Valid: true } frame) return;
+            Span<byte> word = stackalloc byte[4];
+            if (!MemoryProbe.TryCopy(frame.Application + 0x260, word)) return;
+            uint stamp = MemoryMarshal.Read<uint>(word);
+            if ((_renderActorLatestReceipt is { } previous && previous.NativeStamp == stamp && previous.Image.Serial != frame.Image.Serial)
+                || _renderActorAmbiguousStamp == stamp)
+            {
+                reset_render_actors();
+                _renderActorAmbiguousStamp = stamp;
+                frame.ActorReceipt = null;
+                return;
+            }
+            _renderActorAmbiguousStamp = null;
+            long epoch;
+            lock (_graphicsLifetimeGate)
+            {
+                if (_graphicsActive != 0) return;
+                epoch = _graphicsEpoch;
+            }
+            if (_renderActorLatestReceipt is { } old && (old.Epoch != epoch || old.Tick.HistoryEpoch != RenderPassContext.HistoryEpoch)) reset_render_actors();
+            if (simulation) _renderActorTick = new(RenderPassContext.SimulationSerial, ++_renderActorGeneration, RenderPassContext.HistoryEpoch);
+            if (_renderActorTick is null) return;
+            var receipt = new ActorImageReceipt(frame.Image, stamp, (long)(frame.Application + 0x124), _renderActorTick, epoch, _renderActorResetGeneration, alpha, simulation, frame.Admitted);
+            frame.ActorReceipt = _renderActorLatestReceipt = receipt;
+        }
+    }
 
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    private void h_render_actor_group(nint group, Matrix4x4* matrix)
+    [UnmanagedFunctionPointer(CallingConvention.ThisCall)] private delegate uint d_render_actor_draw(nint renderer, nint instance, nint materials, int segment, int stamp);
+    [UnmanagedFunctionPointer(CallingConvention.ThisCall)] private delegate void d_render_actor_hierarchy(nint instance, nint output);
+    [UnmanagedFunctionPointer(CallingConvention.ThisCall)] private delegate nint d_render_actor_construct(nint instance, nint mesh);
+    [UnmanagedFunctionPointer(CallingConvention.ThisCall)] private delegate uint d_render_actor_destruct(nint instance);
+
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
+    private nint h_render_actor_construct(nint instance, nint mesh)
     {
         if (!RuntimeEffectsArmed)
         {
-            HookSites.Native(() => new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0)).chain_from(h_render_actor_group).fnptr)(group, matrix);
-            return;
+            return HookSites.Native(() => new FhCallHandle<d_render_actor_construct>(new FhCallLocation(RenderActorConstruct, 0)).chain_from(h_render_actor_construct).fnptr)(instance, mesh);
         }
 
-        nint previous = _renderActorSubmittingGroup;
-        _renderActorSubmittingGroup = group;
+        var original = new FhCallHandle<d_render_actor_construct>(new FhCallLocation(RenderActorConstruct, 0)).chain_from(h_render_actor_construct).fnptr!;
+        long? before;
+        lock (_renderActorLock)
+        {
+            before = _renderActorStates.TryGetValue((long)instance, out var state) ? state.Lifetime : null;
+            _renderActorStates.Remove((long)instance);
+        }
+        bool normal = false;
+        nint result = 0;
         try
         {
-            new FhCallHandle<d_render_actor_group>(new FhCallLocation(RenderActorWorldGroup, 0))
-                .chain_from(h_render_actor_group).fnptr!(group, matrix);
+            result = original(instance, mesh);
+            if (RuntimeEffectsArmed && _renderActorsBound && result == instance)
+                lock (_renderActorLock) _renderActorStates[(long)instance] = new((long)mesh, ++_renderActorLifetime);
+            normal = true;
+            return result;
         }
-        finally { _renderActorSubmittingGroup = previous; }
+        finally { diagnostic_actor_lifetime("ctor", instance, normal, normal ? unchecked((uint)(nuint)result) : null, before); }
     }
-
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    private void h_render_actor_model(nint group, Matrix4x4* matrix, uint model)
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
+    private uint h_render_actor_destruct(nint instance)
     {
         if (!RuntimeEffectsArmed)
         {
-            HookSites.Native(() => new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0)).chain_from(h_render_actor_model).fnptr)(group, matrix, model);
-            return;
+            return HookSites.Native(() => new FhCallHandle<d_render_actor_destruct>(new FhCallLocation(RenderActorDestruct, 0)).chain_from(h_render_actor_destruct).fnptr)(instance);
         }
 
-        nint previous = _renderActorSubmittingGroup;
-        _renderActorSubmittingGroup = group;
+        long? before;
+        lock (_renderActorLock)
+        {
+            before = _renderActorStates.TryGetValue((long)instance, out var state) ? state.Lifetime : null;
+            _renderActorStates.Remove((long)instance);
+        }
+        bool normal = false;
+        uint result = 0;
         try
         {
-            new FhCallHandle<d_render_actor_model>(new FhCallLocation(RenderActorWorldModel, 0))
-                .chain_from(h_render_actor_model).fnptr!(group, matrix, model);
+            result = new FhCallHandle<d_render_actor_destruct>(new FhCallLocation(RenderActorDestruct, 0)).chain_from(h_render_actor_destruct).fnptr!(instance);
+            normal = true;
+            return result;
         }
-        finally { _renderActorSubmittingGroup = previous; }
+        finally { diagnostic_actor_lifetime("dtor", instance, normal, normal ? result : null, before); }
     }
 
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    private void h_render_actor_instance(nint instance, Matrix4x4* matrix)
+    private void diagnostic_actor_lifetime(string kind, nint instance, bool normal, uint? result, long? before)
+    {
+        try
+        {
+            if (!RuntimeEffectsArmed || !ActorObservationRequested) return;
+            long? after;
+            lock (_renderActorLock) after = _renderActorStates.TryGetValue((long)instance, out var state) ? state.Lifetime : null;
+            diagnostic_event(kind == "ctor" ? "actor_constructor" : "actor_destructor", new
+            {
+                kind, instance = (uint)(nuint)instance, normal_return = normal, native_result = result,
+                lifetime_before = before, lifetime_after = after
+            });
+        }
+        catch (Exception) { }
+    }
+    private ActorImageReceipt? render_actor_receipt(nint renderer, int stamp)
+    {
+        ActorImageReceipt? receipt;
+        if (_renderImageAction.Value is { } action)
+        {
+            receipt = action.ActorReceipt;
+            if (receipt is null || !ReferenceEquals(action.Image, receipt.Image) || renderer != action.Application + 0x124) return null;
+        }
+        else if (_renderImageFrame.Value is { Valid: true } frame)
+        {
+            receipt = frame.ActorReceipt;
+            if (receipt is null || !ReferenceEquals(frame.Image, receipt.Image) || renderer != frame.Application + 0x124) return null;
+        }
+        else return null;
+        return receipt.ResetGeneration == _renderActorResetGeneration && receipt.Renderer == (long)renderer && receipt.NativeStamp == unchecked((uint)stamp) && !receipt.Tick.Invalid
+            && receipt.Tick.HistoryEpoch == RenderPassContext.HistoryEpoch && !receipt.Image.IsRejected ? receipt : null;
+    }
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
+    private uint h_render_actor_draw(nint renderer, nint instance, nint materials, int segment, int stamp)
     {
         if (!RuntimeEffectsArmed)
         {
-            HookSites.Native(() => new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0)).chain_from(h_render_actor_instance).fnptr)(instance, matrix);
-            return;
+            return HookSites.Native(() => new FhCallHandle<d_render_actor_draw>(new FhCallLocation(RenderActorDraw, 0)).chain_from(h_render_actor_draw).fnptr)(renderer, instance, materials, segment, stamp);
         }
 
-        System.Threading.Interlocked.Increment(ref _renderActorCallbacks);
-        try { lock (_renderActorLock) submit_render_actor_instance(instance, matrix); }
-        finally { System.Threading.Interlocked.Decrement(ref _renderActorCallbacks); }
-    }
-
-    private void submit_render_actor_instance(nint instance, Matrix4x4* matrix)
-    {
-        var original = new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0))
-            .chain_from(h_render_actor_instance).fnptr!;
-        if (!_renderActorsBound || !_renderActorsActive || _renderActorSubmittingGroup == 0 || !render_actor_lifetime_valid())
+        var original = new FhCallHandle<d_render_actor_draw>(new FhCallLocation(RenderActorDraw, 0)).chain_from(h_render_actor_draw).fnptr!;
+        RenderActorDrawScope? previous = _renderActorDrawScope.Value, scope = null;
+        lock (_renderActorLock)
         {
-            original(instance, matrix);
-            return;
+            if (RuntimeEffectsArmed && _renderActorsBound && previous is null && render_actor_receipt(renderer, stamp) is { } receipt
+                && _renderActorStates.TryGetValue((long)instance, out var state)) scope = new(instance, state, receipt);
+            else _renderActorSkipped++;
+            if (previous is not null) previous.Invalid = true;
         }
-        if (!MemoryProbe.IsReadable((nint)matrix, 64)
-            || !try_render_actor_layout(instance, _renderActorSubmittingGroup, out var identity, out int boneCount))
+        _renderActorDrawScope.Value = scope;
+        bool normal = false;
+        uint result = 0;
+        try { result = original(renderer, instance, materials, segment, stamp); normal = true; return result; }
+        finally
         {
-            _renderActorLayoutRejects++;
-            original(instance, matrix);
-            return;
-        }
-        if (!_renderActorStates.TryGetValue(instance, out var state) || state.Identity != identity
-            || state.RenderedBones.Length != boneCount)
-            _renderActorStates[instance] = state = new(identity, boneCount);
-        restore_render_actor(instance, state);
-        if (!render_actor_lifetime_valid()) { original(instance, matrix); return; }
-        var palette = new Span<Matrix4x4>((void*)(nint)identity.Palette, boneCount);
-        Matrix4x4 canonical = *matrix;
-        diagnostic_actor_pose(instance, canonical, palette, rendered: false);
-        if (_renderActorsSampling)
-        {
-            _renderActorHistory.Capture((long)instance, identity, canonical, palette);
-            _renderActorCaptures++;
-            state.Generation = _renderActorGeneration;
-        }
-        original(instance, matrix);
-        if (!render_actor_lifetime_valid()) return;
-        if (_renderActorsSampling)
-        {
-            new ReadOnlySpan<byte>((void*)(nint)identity.World, 48).CopyTo(state.CanonicalWorld);
-            state.HasCanonicalWorld = true;
-        }
-        if (!_renderActorHistory.TryInterpolate((long)instance, identity, canonical, palette,
-                _renderCameraAlpha, out var renderedRoot, state.RenderedBones))
-        {
-            _renderActorSkipped++;
-            diagnostic_actor_pose(instance, canonical, palette, rendered: true);
-            return;
-        }
-        if (RenderCameraWrite.BitwiseEqual(canonical, renderedRoot) && RenderActorHistory.Equal(palette, state.RenderedBones))
-        {
-            _renderActorUnchanged++;
-            diagnostic_actor_pose(instance, canonical, palette, rendered: true);
-            return;
-        }
-
-        Span<byte> canonicalWorld = stackalloc byte[48];
-        new ReadOnlySpan<byte>((void*)(nint)identity.World, 48).CopyTo(canonicalWorld);
-        // The native setter copies this input synchronously; no stack pointer reaches the draw.
-        original(instance, &renderedRoot);
-        if (!render_actor_lifetime_valid()) return;
-        state.Write.Record(canonicalWorld, new ReadOnlySpan<byte>((void*)(nint)identity.World, 48), palette, state.RenderedBones);
-        if (!render_actor_lifetime_valid()) return;
-        _renderActorBlends++;
-        for (int i = 0; i < palette.Length; i++)
-            if (!RenderCameraWrite.BitwiseEqual(palette[i], state.RenderedBones[i])) _renderActorBoneBlends++;
-        state.RenderedBones.CopyTo(palette);
-        diagnostic_actor_pose(instance, renderedRoot, palette, rendered: true);
-    }
-
-    private void replay_render_actors()
-    {
-        if (!render_actor_lifetime_valid() || !_renderActorsBound) return;
-        var original = new FhCallHandle<d_render_actor_instance>(new FhCallLocation(RenderActorWorldInstance, 0))
-            .chain_from(h_render_actor_instance).fnptr!;
-        foreach (var pair in _renderActorStates)
-        {
-            if (!render_actor_lifetime_valid()) return;
-            var state = pair.Value;
-            if (!state.HasCanonicalWorld
-                || !try_render_actor_layout(pair.Key, (nint)state.Identity.Group, out var identity, out int count)
-                || state.Identity != identity || count != state.RenderedBones.Length) continue;
-            var world = new Span<byte>((void*)(nint)identity.World, 48);
-            var palette = new Span<Matrix4x4>((void*)(nint)identity.Palette, count);
-            if (!world.SequenceEqual(state.CanonicalWorld)
-                || !_renderActorHistory.TryInterpolateCurrent((long)pair.Key, identity, palette,
-                    _renderCameraAlpha, out var root, state.RenderedBones)) continue;
-            // Render-only paths may reuse an instance without resubmitting its world matrix.
-            original(pair.Key, &root);
-            if (!render_actor_lifetime_valid()) return;
-            state.Write.Record(state.CanonicalWorld, world, palette, state.RenderedBones);
-            if (!render_actor_lifetime_valid()) return;
-            state.RenderedBones.CopyTo(palette);
-            diagnostic_actor_pose(pair.Key, root, palette, rendered: true);
-            _renderActorReplays++;
+            _renderActorDrawScope.Value = previous;
+            if (RuntimeEffectsArmed && _config.NativePhaseProbe && _diagnostics?.IsCapturing == true)
+                try
+                {
+                    long? lifetime;
+                    lock (_renderActorLock) lifetime = _renderActorStates.TryGetValue((long)instance, out var known) ? known.Lifetime : null;
+                    diagnostic_event("actor_draw_scope", new { stamp, renderer = (uint)(nuint)renderer, instance = (uint)(nuint)instance,
+                        image = scope?.Receipt.Image.Serial, simulation_serial = scope?.Receipt.Tick.Serial,
+                        simulation = scope?.Receipt.Simulation, completed = scope?.Receipt.Tick.Complete,
+                        constructor_lifetime = lifetime, hierarchy_seen = scope?.Seen, blended = scope?.Blended,
+                        normal_return = normal, native_result = normal ? (uint?)result : null });
+                }
+                catch (Exception) { }
         }
     }
 
-    private static bool try_render_actor_layout(nint instance, nint group, out RenderActorIdentity identity, out int bones)
+    private void diagnostic_actor_hierarchy(nint instance, nint output, bool normal)
     {
-        identity = default;
-        bones = 0;
-        if (!MemoryProbe.IsReadable(instance, 0x10)) return false;
-        nint mesh = *(nint*)instance;
-        nint world = *(nint*)(instance + 4);
-        nint palette = *(nint*)(instance + 0x0c);
-        if (!MemoryProbe.IsReadable(mesh, 0x1c) || !MemoryProbe.IsReadable(world, 48)) return false;
-        uint count = *(uint*)(mesh + 0x18) & 0x7fffffff;
-        if (count > 2048 || (count != 0 && !MemoryProbe.IsReadable(palette, checked((int)count * 64)))) return false;
-        bones = (int)count;
-        identity = new((long)group, (long)mesh, (long)palette, (long)world);
-        return true;
+        try
+        {
+            if (!RuntimeEffectsArmed || !ActorObservationRequested) return;
+            Span<byte> instanceBytes = stackalloc byte[16], meshBytes = stackalloc byte[28], sample = stackalloc byte[128];
+            int? matrices = null;
+            uint[]? words = null;
+            if (normal && (nuint)output >= 64 && MemoryProbe.TryCopy(instance, instanceBytes))
+            {
+                uint mesh = MemoryMarshal.Read<uint>(instanceBytes);
+                if (MemoryProbe.TryCopy(unchecked((nint)(nuint)mesh), meshBytes))
+                {
+                    uint count = MemoryMarshal.Read<uint>(meshBytes[24..]) & 0x7fffffff;
+                    if (count <= 2048)
+                    {
+                        matrices = (int)count + 1;
+                        var bytes = sample[..(Math.Min(matrices.Value, 2) * 64)];
+                        if (MemoryProbe.TryCopy(output - 64, bytes)) words = MemoryMarshal.Cast<byte, uint>(bytes).ToArray();
+                    }
+                }
+            }
+            long? lifetime;
+            lock (_renderActorLock) lifetime = _renderActorStates.TryGetValue((long)instance, out var state) ? state.Lifetime : null;
+            diagnostic_event("actor_hierarchy_output", new { instance = (uint)(nuint)instance, output = (uint)(nuint)output,
+                normal_return = normal, constructor_lifetime = lifetime, matrix_count = matrices,
+                sampled_matrices = words is null ? 0 : words.Length / 16, raw_words = words,
+                snapshot_atomic = false, native_actor_storage_written = false });
+        }
+        catch (Exception) { }
+    }
+    private static bool render_actor_ranges_overlap(nuint start, nuint length, nuint other, nuint otherLength)
+        => length != 0 && otherLength != 0 && start <= nuint.MaxValue - length && other <= nuint.MaxValue - otherLength
+            && start < other + otherLength && other < start + length;
+    private static bool render_actor_output_layout(nint instance, nint output, long meshIdentity, out int matrices)
+    {
+        matrices = 0;
+        Span<byte> header = stackalloc byte[16], meshHeader = stackalloc byte[48];
+        if (!MemoryProbe.TryCopy(instance, header)) return false;
+        var fields = MemoryMarshal.Cast<byte, uint>(header);
+        nint mesh = unchecked((nint)(nuint)fields[0]);
+        if ((long)mesh != meshIdentity || !MemoryProbe.TryCopy(mesh, meshHeader)) return false;
+        var meshWords = MemoryMarshal.Cast<byte, uint>(meshHeader);
+        uint bones = meshWords[6] & 0x7fffffff;
+        if (bones > 2048 || (bones != 0 && (fields[3] == 0 || meshWords[11] == 0)) || (nuint)output < 64) return false;
+        matrices = checked((int)bones + 1);
+        nuint start = (nuint)output - 64, bytes = (nuint)matrices * 64;
+        if (start > nuint.MaxValue - bytes || (nuint)instance > nuint.MaxValue - 0x84
+            || (nuint)mesh > nuint.MaxValue - 48 || (fields[1] != 0 && fields[1] > nuint.MaxValue - 48)
+            || (bones != 0 && fields[3] > nuint.MaxValue - bones * 64)) return false;
+        return !render_actor_ranges_overlap(start, bytes, (nuint)instance, 0x84)
+            && !render_actor_ranges_overlap(start, bytes, (nuint)mesh, 48)
+            && !render_actor_ranges_overlap(start, bytes, fields[1], fields[1] == 0 ? 0u : 48u)
+            && !render_actor_ranges_overlap(start, bytes, fields[3], bones * 64);
     }
 
-    private void restore_render_actor(nint instance, RenderActorNativeState state)
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvThiscall)])]
+    private void h_render_actor_hierarchy(nint instance, nint output)
     {
-        if (!render_actor_lifetime_valid()) return;
-        if (!try_render_actor_layout(instance, (nint)state.Identity.Group, out var identity, out int count)
-            || identity != state.Identity || count != state.RenderedBones.Length) return;
-        if (!render_actor_lifetime_valid()) return;
-        if (state.Write.Restore(new Span<byte>((void*)(nint)identity.World, 48),
-                new Span<Matrix4x4>((void*)(nint)identity.Palette, count)) > 0) _renderActorRestores++;
+        if (!RuntimeEffectsArmed)
+        {
+            HookSites.Native(() => new FhCallHandle<d_render_actor_hierarchy>(new FhCallLocation(RenderActorHierarchy, 0)).chain_from(h_render_actor_hierarchy).fnptr)(instance, output);
+            return;
+        }
+
+        var original = new FhCallHandle<d_render_actor_hierarchy>(new FhCallLocation(RenderActorHierarchy, 0)).chain_from(h_render_actor_hierarchy).fnptr!;
+        var scope = _renderActorDrawScope.Value;
+        bool eligible = scope is { Invalid: false, Seen: false } && scope.Instance == instance;
+        if (scope is not null) { if (scope.Seen || scope.Instance != instance) scope.Invalid = true; scope.Seen = true; }
+        int matrices = 0;
+        if (eligible)
+            try { eligible = render_actor_output_layout(instance, output, scope!.State.Mesh, out matrices); }
+            catch (Exception) { eligible = false; }
+        bool normal = false;
+        try { original(instance, output); normal = true; }
+        finally { diagnostic_actor_hierarchy(instance, output, normal); }
+        if (!eligible || scope is null) { if (scope is not null) lock (_renderActorLock) _renderActorLayoutRejects++; return; }
+        try { render_actor_apply_hierarchy(scope, instance, output, matrices); }
+        catch (Exception)
+        {
+            lock (_renderActorLock) { scope.Invalid = true; _renderActorLayoutRejects++; }
+        }
+    }
+
+    private void render_actor_apply_hierarchy(RenderActorDrawScope scope, nint instance, nint output, int matrices)
+    {
+        Span<byte> raw = stackalloc byte[matrices * 64];
+        if (!MemoryProbe.TryCopy(output - 64, raw)) return;
+        lock (_renderActorLock)
+        {
+            if (scope.Invalid || scope.Receipt.ResetGeneration != _renderActorResetGeneration || scope.Receipt.Tick.Invalid || scope.Receipt.Tick.HistoryEpoch != RenderPassContext.HistoryEpoch
+                || scope.Receipt.Image.IsRejected
+                || !_renderActorStates.TryGetValue((long)instance, out var current) || !ReferenceEquals(current, scope.State)) return;
+            lock (_graphicsLifetimeGate)
+                if (_graphicsActive != 0 || _graphicsEpoch != scope.Receipt.Epoch) return;
+            if (!render_actor_output_layout(instance, output, scope.State.Mesh, out int currentMatrices) || currentMatrices != matrices) return;
+            var canonical = MemoryMarshal.Cast<byte, Matrix4x4>(raw);
+            var receipt = scope.Receipt;
+            if (receipt.Poses.TryGetValue((long)instance, out var cached))
+            {
+                if (cached.Lifetime == current.Lifetime && RenderActorHistory.Equal(canonical, cached.Canonical) && receipt.Interpolate)
+                { cached.Rendered.CopyTo(new Span<Matrix4x4>((void*)(output - 64), matrices)); scope.Blended = !ReferenceEquals(cached.Rendered, cached.Canonical); }
+                return;
+            }
+            if (receipt.Simulation)
+            {
+                if (current.Current is { } seen && seen.Tick.Serial > receipt.Tick.Serial) return;
+                if (current.Current is null || !ReferenceEquals(current.Current.Tick, receipt.Tick))
+                {
+                    var preceding = current.Current;
+                    float step = preceding is null ? 0 : Vector3.Distance(preceding.Matrices[0].Translation, canonical[0].Translation);
+                    bool pair = preceding is not null && preceding.Tick.Complete && preceding.Tick.Serial + 1 == receipt.Tick.Serial
+                        && preceding.Matrices.Length == matrices && step <= 500
+                        && !(preceding.Paired && step > 30 && step > 3 * preceding.Step);
+                    current.Previous = pair ? preceding : null;
+                    current.Current = new(receipt.Tick, canonical.ToArray(), step, pair);
+                    _renderActorCaptures++;
+                }
+            }
+            if (current.Current is not { } pose || !ReferenceEquals(pose.Tick, receipt.Tick)
+                || (!receipt.Simulation && !pose.Tick.Complete) || !RenderActorHistory.Equal(canonical, pose.Matrices)) return;
+            Matrix4x4[] rendered = pose.Matrices;
+            if (receipt.Interpolate && float.IsFinite(receipt.Alpha) && current.Previous is { } prior && prior.Tick.Complete)
+            {
+                var candidate = new Matrix4x4[matrices];
+                bool valid = true;
+                for (int i = 0; i < matrices; i++)
+                    if (!RenderActorHistory.TryBlend(prior.Matrices[i], canonical[i], Math.Clamp(receipt.Alpha, 0, 1), out candidate[i])) { valid = false; break; }
+                if (valid && !RenderActorHistory.Equal(canonical, candidate))
+                {
+                    rendered = candidate;
+                    candidate.CopyTo(new Span<Matrix4x4>((void*)(output - 64), matrices));
+                    scope.Blended = true; _renderActorBlends++;
+                    for (int i = 1; i < matrices; i++)
+                        if (!RenderCameraWrite.BitwiseEqual(canonical[i], candidate[i])) _renderActorBoneBlends++;
+                }
+                else _renderActorUnchanged++;
+            }
+            else _renderActorSkipped++;
+            receipt.Poses[(long)instance] = new(current.Lifetime, pose.Matrices, rendered);
+        }
     }
 }

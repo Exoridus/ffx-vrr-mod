@@ -78,6 +78,7 @@ public sealed class RenderSchedulerTests
         var module = new VrrModule();
         Assert.True(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         Assert.Equal(1, module.FieldPauseInstalls);
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);
@@ -96,6 +97,7 @@ public sealed class RenderSchedulerTests
         var module = new VrrModule { ProducerQualified = false };
         Assert.True(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         Assert.Equal(1, module.FieldPauseInstalls);
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
@@ -183,6 +185,15 @@ public unsafe sealed partial class VrrModule
     private void viewport_restore(bool presentation) => sphere_probe_exit(presentation);
     private void party_swap_collect() { }
     private void party_swap_end_pass(bool presentation) => DiagnosticCleanup?.Invoke();
+    internal void PrimeMappedClockForAdmission()
+    {
+        double now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+        _simulationClock.Reset();
+        _simulationClock.Plan(now - 2d / 60);
+        _simulationClock.Plan(now - 1d / 60);
+        Assert.True(_simulationClock.HasClockOrigin);
+        Assert.True(_simulationClock.HasMappedInterval);
+    }
     internal void BeginFrame() => render_scheduler_begin_frame();
     internal void RefusePresentation(string reason) => _presentationAdmission.Refuse(reason);
     internal void EndPass() => render_scheduler_exit_loop();
@@ -227,7 +238,7 @@ public unsafe sealed partial class VrrModule
         if (_hookRegistration is not null) return true;
         VrrConfig config = new VrrConfig { VrrEnabled = _config.VrrEnabled, NativePhaseProbe = _config.NativePhaseProbe, ParticleTimeline = _config.ParticleTimeline, EffectHold = _config.EffectHold };
         var selections = Enum.GetValues<HookSiteId>().Where(HookSites.IsDeclared)
-            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null));
+            .Select(site => HookRegistrationPlan.ResolveSelection(site, config, IndependentPresentationEnabled, true, false, null, inputProbe: InputProbeEnabled));
         return HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
             out _hookRegistration, out _);
     }
@@ -318,12 +329,12 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
                 },
                 "d_menu_edge" => location.Rva == 0x4be4b0 ? nameof(NativeClock.MenuPressed) : nameof(NativeClock.MenuRepeat),
                 "d_effect_process" => nameof(NativeClock.Effect),
-                "d_eternal_run" => nameof(NativeClock.Eternal),
+                "d_eternal_run" => location.Rva == 0x400610 ? nameof(NativeClock.StaticBefore) : nameof(NativeClock.Eternal),
                 "d_render_exec" => nameof(NativeClock.Exec),
                 "d_pad_port_poll" => nameof(NativeClock.Poll),
                 "d_render_void" => location.Rva == 0x42d070 ? nameof(NativeClock.Snapshot) : location.Rva == 0x4be500 ? nameof(NativeClock.MenuCacheUpdate) : location.Rva == 0x4893e0 ? nameof(NativeClock.Pad) : nameof(NativeClock.Calculate),
                 "d_render_emit" => nameof(NativeClock.Emit),
-                "d_diag_exec" => nameof(NativeClock.Exec),
+                "d_diag_exec" => nameof(NativeClock.DiagnosticExec),
                 "d_diag_loop" => nameof(NativeClock.Loop),
                 _ => nameof(NativeClock.Tick),
             };
@@ -340,6 +351,8 @@ internal readonly struct FhCallHandle<T>(FhCallLocation location) where T : Dele
 }
 internal static partial class NativeClock
 {
+    internal static Func<uint>? DiagnosticExecRead;
+    public static uint DiagnosticExec() => DiagnosticExecRead?.Invoke() ?? Exec();
     internal static Action? Advance;
     public static void Tick(float delta) => Advance?.Invoke();
 }
@@ -354,6 +367,8 @@ internal static unsafe class FhUtil
     internal static byte Dummy;
     public static T* ptr_at<T>(nint rva) where T : unmanaged
     {
+        if (NativeInputProbeMemory.Enabled && rva == 0xf270c0) return (T*)NativeInputProbeMemory.ScriptPointer;
+        if (NativeInputProbeMemory.Enabled && rva == 0x420ba8) return (T*)(nuint)0x820ba8;
         if (NativeSnapshotFixture.TryPointer<T>(rva, out nint snapshot)) return (T*)snapshot;
         if (PadRecordPointer == 0 || rva < 0xf30288 || rva >= 0xf30488) throw new InvalidOperationException("Unmapped pad fixture");
         return (T*)(PadRecordPointer + rva - 0xf30288);

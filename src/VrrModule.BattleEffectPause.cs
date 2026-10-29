@@ -15,37 +15,19 @@ public unsafe sealed partial class VrrModule
 {
     private const nint BxMagicFunctions = 0x864ce8, BxPppPauseCompare = 0x31228a, BxPppSpawnCall = 0x31226d;
     private const nint BxUnitProgramSite = 0x4008fe, BxPauseSetter = 0x32a750;
-    private const nint BxStreamHead = 0x40d4b0, BxSentry = 0x40d528, BxHandler = 0x40d586, BxDec = 0x40d5f4,
-        BxPcCommit = 0x40d5ef, BxFreshWait = 0x40d5b8, BxNext = 0x40d5fa,
-        BxGate = 0x40d69e, BxFollowSite = 0x40d986, BxFollowCall = 0x40d994, BxFollowReturn = 0x40d9a5;
-    private const nint BxFollowAttach = 0x415670, BxFindUnit = 0x401060, BxFollowTable = 0x8492c8;
-    private const nint BxRunAfterWalk = 0x4006b1, BxRunBeforeWalk = 0x400644, BxPassTwoWalk = 0x400a54;
     private const nint BxOppDispatch = 0x40c3c5, BxOppTable = 0x848e78;
     private const nint BxFallbackDispatch = 0x4210a2, BxShaderSetup = 0x2a48d0;
     private const nint BxNodeWalkSite = 0x525498, BxNodeWalk = 0x530300, BxNodeStep = 0x52ed90;
     private const nint BxRecordStepSite = 0x52f1ab, BxRecordStep = 0x52eec0;
     private const nint BxMagicFileStart = 0x5da7f0, BxMagicHandle = 0x864cac, BxMagicId = 0x864ca0, BxInitMagicPrx = 0x1efb6a0;
     private static readonly (int Op, nint Handler)[] BxOppOps = [(1, 0x411120), (9, 0x4124b0), (10, 0x411530), (17, 0x411bc0)];
-    private static readonly ushort[] BxDeniedOpcodes = [0x1f, 0x7f];
-    private const nint BxOpuTable = 0x848ec8;
-    private static readonly (ushort Opcode, nint TargetRva)[] BxOpuHandlers =
-        [(0x002, 0x4168b0), (0x009, 0x40c500), (0x053, 0x4171a0), (0x061, 0x419940)];
 
     private const string BxStepPauseOpcodes = "83 3D ?? ?? ?? ?? 00 75 42";
     private const string BxUnitProgramPattern = "A1 ?? ?? ?? ?? 6A 30 57 C7 00 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B F0 83 C4 08 85 F6 74 ?? 0F B7 47 1E";
     private const string BxPauseSetterPattern = "55 8B EC 8B 45 08 A3 ?? ?? ?? ?? 5D C3";
-    private const string BxHeadPattern = "80 BE 1F 02 00 00 00 74 0D 80 BE 1D 02 00 00 00 0F 84 56 01 00 00 0F BF";
-    private const string BxSentryPattern = "0F BF 8E 16 02 00 00 8A 44 19 10";
-    private const string BxHandlerPattern = "57 56 FF D0 83 C4 08 80 BE 10 02 00 00 00 8B F8";
-    private const string BxPcCommitPattern = "89 04 8B EB 06";
-    private const string BxFreshWaitPattern = "FE C8 00 44 19 10";
-    private const string BxDecPattern = "FE C8 88 44 19 10";
-    private const string BxNextPattern = "66 FF 86 16 02 00 00 66 83 BE 16 02 00 00 04 0F 8C A1 FE FF FF 80 BE 1D 02 00 00 00 0F 85";
-    private const string BxGatePattern = "0F BF 8E 12 02 00 00 89 0D";
     private const string BxFollowPattern = "8A 83 BA 00 00 00 84 C0 74 15 3C 0C 73 11 0F B6 C0 57 8B 04 85 ?? ?? ?? ?? 56 FF D0 83 C4 08 66 FF 86 18 02 00 00";
     private const string BxAttachPattern = "55 8B EC 53 8B 5D 08 56 57 8B BB 20 02 00 00 0F B7 87 A0 00 00 00 50 8D 83 00 03 00 00 57 50 E8 ?? ?? ?? ?? 83 C4 0C 8B B0 BC 00 00 00 0F BF 06";
     private const string BxFindUnitPattern = "55 8B EC 56 8B 75 0C 57 66 8B 7D 10 66 85 FF 79 4F";
-    private const string BxRunAfterPattern = "68 ?? ?? ?? ?? E8 ?? ?? ?? ?? 6A 01 6A 00 E8 ?? ?? ?? ?? 6A 00 E8";
     private const string BxOppDispatchPattern = "0F B6 C0 8B 04 85 ?? ?? ?? ?? 85 C0 0F 85 ?? ?? ?? ?? 68";
     private const string BxFallbackPattern = "E8 ?? ?? ?? ?? 85 C0 75 1C 50 E8 ?? ?? ?? ?? 83 C4 04 80 3D ?? ?? ?? ?? 00 74 0A E8";
     private const string BxShaderPattern = "55 8B EC 81 EC 8C 00 00 00 A1 ?? ?? ?? ?? 33 C5 89 45 FC 53 8B 5D 0C 56 57 8B F9 68 ?? ?? ?? ?? 8B 47 3C 89 85 74 FF FF FF 8B 47 24 8B 80 94 00 00 00 FF 70 20 FF 15";

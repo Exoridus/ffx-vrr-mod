@@ -189,6 +189,92 @@ public sealed class HookRegistrationTests
         Assert.False(plan.IsGroupComplete(nameof(HookSiteId.AtelRateSettersAllLevelsTemplate)));
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Native_probe_selection_is_optional_and_does_not_select_independent_mutators(bool input, bool submission)
+    {
+        var config = new VrrConfig { NativePhaseProbe = true };
+        foreach (var site in new[] { HookSiteId.PadLatchPadLatch, HookSiteId.PadSnapshotProducer,
+            HookSiteId.RenderImagesPApplicationFrame, HookSiteId.RenderImagesRendererFlipIdentity,
+            HookSiteId.RenderImagesRenderFlipSlot, HookSiteId.RenderImagesRenderFlipAction })
+        {
+            bool expected = site is HookSiteId.PadLatchPadLatch or HookSiteId.PadSnapshotProducer ? input : submission;
+            var selection = HookRegistrationPlan.ResolveSelection(site, config, false, true, false,
+                inputProbe: input, submissionProbe: submission);
+            Assert.Equal(expected, selection.Enabled);
+            if (expected) { Assert.True(selection.Deferred); Assert.False(selection.Required); }
+        }
+        foreach (var site in new[] { HookSiteId.RenderSchedulerRenderExecCount, HookSiteId.RenderSchedulerRenderCalculationRate,
+            HookSiteId.RenderSchedulerRenderParticleEmission, HookSiteId.RenderActorsMeshInstanceDraw,
+            HookSiteId.PadLatchPressedHistory, HookSiteId.PresenterD3D11CreateDeviceAndSwapChain })
+            Assert.False(HookRegistrationPlan.ResolveSelection(site, config, false, true, false,
+                inputProbe: input, submissionProbe: submission).Enabled);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void Native_probe_selection_requires_phase_capture(bool phase, bool capture)
+    {
+        var config = new VrrConfig { NativePhaseProbe = phase };
+        foreach (var site in new[] { HookSiteId.PadLatchPadLatch, HookSiteId.PadSnapshotProducer,
+            HookSiteId.RenderImagesPApplicationFrame })
+            Assert.False(HookRegistrationPlan.ResolveSelection(site, config, false, capture, false,
+                inputProbe: true, submissionProbe: true).Enabled);
+    }
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Full_native_probe_plan_does_not_require_the_independent_mutation_groups(bool input, bool submission)
+    {
+        var config = new VrrConfig { NativePhaseProbe = true, AtelWorkerMotion = false, ParticleKernelHold = false };
+        Assert.True(HookRegistrationPlan.TryCreateResolved(config, false, true, false, null, out var plan, out var error,
+            inputProbe: input, submissionProbe: submission), error);
+        Assert.False(plan!.IsGroupComplete("independent.pad_history"));
+        Assert.False(plan.IsGroupComplete("independent.images"));
+        Assert.False(plan.IsSelected(HookSiteId.PadLatchPressedHistory));
+    }
+    [Fact]
+    public void Observation_only_cannot_bypass_an_execution_group_or_explicit_required_group()
+    {
+        Assert.False(HookRegistrationPlan.TryCreate([new(HookSiteId.RenderSchedulerRenderExecCount,
+            Required: false, Deferred: true, ObservationOnly: true)], HookRegistrationPlan.AvailableSourceContracts, out _, out _));
+        Assert.False(HookRegistrationPlan.TryCreate([new(HookSiteId.PadLatchPadLatch,
+            ObservationOnly: true)], HookRegistrationPlan.AvailableSourceContracts, out _, out _));
+        Assert.False(HookRegistrationPlan.TryCreate([new(HookSiteId.PadLatchPadLatch,
+            Required: false, Deferred: true, ObservationOnly: true)], HookRegistrationPlan.AvailableSourceContracts,
+            out _, out _, ["independent.pad_history"]));
+    }
+    [Fact]
+    public void Actor_observation_selects_only_the_four_passive_actor_entries()
+    {
+        var config = new VrrConfig { NativePhaseProbe = true, AtelWorkerMotion = false, ParticleKernelHold = false };
+        foreach (var site in new[] { HookSiteId.RenderActorsMeshInstanceDraw, HookSiteId.RenderActorsMeshInstanceHierarchy,
+            HookSiteId.RenderActorsMeshInstanceConstruct, HookSiteId.RenderActorsMeshInstanceDestruct })
+        {
+            var selected = HookRegistrationPlan.ResolveSelection(site, config, false, true, false, actorProbe: true);
+            Assert.True(selected.Enabled); Assert.True(selected.ObservationOnly); Assert.True(selected.Deferred); Assert.False(selected.Required);
+        }
+        Assert.True(HookRegistrationPlan.TryCreateResolved(config, false, true, false, null, out var plan, out var error, actorProbe: true), error);
+        Assert.False(plan!.IsSelected(HookSiteId.RenderSchedulerRenderExecCount));
+        Assert.False(plan.IsSelected(HookSiteId.PresenterD3D11CreateDeviceAndSwapChain));
+    }
+
+    [Fact]
+    public void Completed_observation_registrations_do_not_satisfy_an_execution_group()
+    {
+        var selections = new[] { HookSiteId.RenderImagesPApplicationFrame, HookSiteId.RenderImagesRendererFlipIdentity,
+            HookSiteId.RenderImagesRenderFlipSlot, HookSiteId.RenderImagesRenderFlipAction }
+            .Select(site => new HookSelection(site, Required: false, Deferred: true, ExpectedInstances: 1, ObservationOnly: true)).ToArray();
+        Assert.True(HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts, out var plan, out _));
+        foreach (var s in selections) Assert.True(plan!.Install(s.Site, () => true));
+        Assert.False(plan!.IsGroupComplete("independent.images"));
+        Assert.False(HookRegistrationPlan.TryCreate(selections, HookRegistrationPlan.AvailableSourceContracts,
+            out _, out _, ["independent.images"]));
+    }
     private static HookSelection[] Waits() => [new(HookSiteId.TimingATELWaitInit),
         new(HookSiteId.TimingATELWaitExec), new(HookSiteId.TimingMovieFrameDelta)];
 }

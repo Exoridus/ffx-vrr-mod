@@ -8,6 +8,7 @@ public unsafe sealed partial class VrrModule
     private object? _padObservationOwner;
     private bool _padObservationAttempted, _padObservationInstalled;
     private long _padObservedDropped;
+    private long? _padObservationPolicyGeneration;
     private long _padObservationSequence;
     private int _padObservationFailed;
     private PadTickCorrelation? _padPreparedTick;
@@ -50,17 +51,32 @@ public unsafe sealed partial class VrrModule
     }
 
     // Active candidate epochs belong to the module; telemetry sessions cannot invalidate them.
-    private bool pad_observation_context(bool recording)
+    private bool pad_observation_context(bool recording, bool requireOwnedPass = true)
     {
         bool required = IndependentPresentationEnabled;
         var session = _diagnostics;
+        bool owned = OwnsRenderPass;
+        bool nativeRoot = _padSnapshotOwner == Environment.CurrentManagedThreadId && _padSnapshotLoopDepth == 1
+            && _padSnapshotProducerDepth == 0;
         string? reason = System.Threading.Volatile.Read(ref _padObservationFailed) != 0 ? "observer_failed"
             : required && !pad_observation_binding_ready() ? "observer_unready"
-            : !OwnsRenderPass || _presentationAdmission.Failure is not null ? "unowned_or_native"
+            : (!owned && !nativeRoot) || _presentationAdmission.Failure is not null ? "unowned_or_native"
             : !pad_input_presentation_ready() ? "input_group_unready"
             : pad_native_input_owner() ? "native_input_owner"
             : !required && session?.IsCapturing != true ? "capture_inactive" : null;
         if (reason is not null) { _padTimeline.Reset(reason); return false; }
+        if (_qolInputPolicy is not null)
+        {
+            if (!pad_input_policy(out long generation, out bool neutralize) || neutralize)
+            {
+                _padTimeline.Reset("native_input_owner");
+                return false;
+            }
+            if (_padObservationPolicyGeneration is { } previous && previous != generation)
+                _padTimeline.Reset("focus_policy_changed");
+            _padObservationPolicyGeneration = generation;
+        }
+        else _padObservationPolicyGeneration = null;
         object owner = required ? this : session!;
         long dropped = required ? 0 : session!.DroppedEvents;
         if (!ReferenceEquals(_padObservationOwner, owner))
@@ -68,7 +84,7 @@ public unsafe sealed partial class VrrModule
             _padObservationOwner = owner;
             _padObservedDropped = dropped;
             _padTimeline.Reset(required ? "observation_owner_changed" : "capture_changed");
-            return recording;
+            return recording && (!requireOwnedPass || owned);
         }
         if (!required && dropped != _padObservedDropped)
         {
@@ -76,9 +92,15 @@ public unsafe sealed partial class VrrModule
             _padTimeline.Reset("capture_loss");
             return false;
         }
-        return true;
+        // Native bootstrap supplies historical facts; replay still requires an owned prepared tick.
+        return !requireOwnedPass || owned;
     }
 
+    private bool pad_observations_have_history()
+    {
+        lock (_padObservationGate)
+            return _padPreparedTick is { Latest.Length: 2 } tick && tick.Latest[0] is not null && tick.Latest[1] is not null;
+    }
     private void stop_pad_observations(Exception error)
     {
         reset_pad_observation_timeline("observer_failed");
@@ -128,7 +150,7 @@ public unsafe sealed partial class VrrModule
             long epoch;
             lock (_padObservationGate)
             {
-                eligible = pad_observation_context(true);
+                eligible = pad_observation_context(true, requireOwnedPass: false);
                 epoch = _padTimeline.Epoch;
             }
             Span<byte> snapshot = stackalloc byte[32];
@@ -138,7 +160,7 @@ public unsafe sealed partial class VrrModule
             uint[]? words = valid ? MemoryMarshal.Cast<byte, uint>(snapshot).ToArray() : null;
             lock (_padObservationGate)
             {
-                if (eligible && pad_observation_context(false))
+                if (eligible && pad_observation_context(false, requireOwnedPass: false))
                 {
                     if (epoch != _padTimeline.Epoch) _padTimeline.Reset("interleaved_observation");
                     else if (words is null) _padTimeline.Reset("invalid_observation");

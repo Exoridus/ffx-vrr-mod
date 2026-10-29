@@ -89,7 +89,7 @@ public unsafe sealed partial class VrrModule
     {
         _pad_latch_installed = _pad_history_readers_ready = false;
         _padSnapshotInstalled = false;
-        if (!IndependentPresentationEnabled) return true;
+        if (!IndependentPresentationEnabled && !InputProbeEnabled) return true;
         if (!fx_code_matches(PadLatch, PadLatchPattern)
             || !fx_code_matches(PadRecordBaseSite, "55 8B EC 8B 45 08 03 45 0C C1 E0 08 05 ?? ?? ?? ?? 5D C3")
             || !fx_operand_is(PadRecordBaseSite + 0xD, PadRecords)
@@ -139,6 +139,7 @@ public unsafe sealed partial class VrrModule
         if (!NativeSnapshotBridge.TryCreatePadLatch(_padLatchDispatch, out _padLatchEntry)) return false;
         bool ok = hook_or_log(HookSiteId.PadLatchPadLatch, "pad latch", PadLatch,
             () => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0)).hook(this, with_hook_continuation<d_render_void>(_padLatchEntry!)));
+        if (InputProbeEnabled) return ok && init_pad_snapshot_hook();
         ok &= hook_or_log(HookSiteId.PadLatchPressedHistory, "pad pressed history", PadPressedHistory,
             () => new FhCallHandle<d_pad_history>(new FhCallLocation(PadPressedHistory, 0)).hook(this, with_hook_continuation<d_pad_history>(h_pad_pressed_history)));
         ok &= hook_or_log(HookSiteId.PadLatchReleasedHistory, "pad released history", PadReleasedHistory,
@@ -208,7 +209,17 @@ public unsafe sealed partial class VrrModule
 
     private void h_pad_latch_dispatch(nuint returnAddress, nuint returnSlot)
     {
-        try { pad_latch_invoke(returnAddress, returnSlot); }
+        try
+        {
+            if (InputProbeEnabled)
+            {
+                var original = HookSites.Native(() => new FhCallHandle<d_render_void>(new FhCallLocation(PadLatch, 0))
+                    .chain_from(_padLatchEntry!).fnptr);
+                input_probe_latch_invoke(returnAddress, returnSlot, original);
+                return;
+            }
+            pad_latch_invoke(returnAddress, returnSlot);
+        }
         catch (Exception error) { Environment.FailFast("Pad publication failed; native forwarding cannot be retried.", error); }
     }
 

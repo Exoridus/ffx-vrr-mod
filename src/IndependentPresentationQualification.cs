@@ -6,6 +6,10 @@ internal sealed record IndependentPresentationQualification(string Reason, int C
 {
     internal bool Enabled => false;
 
+    internal bool AllowsNativeValidation(string? request, bool requested, bool diagnostics, bool phaseProbe, double? rate)
+        => request == "1" && requested && diagnostics && phaseProbe && rate == 60d
+            && ContractCount > 0 && BlockerCount > 0;
+
     internal static IndependentPresentationQualification ReadEmbedded()
     {
         using var stream = typeof(IndependentPresentationQualification).Assembly.GetManifestResourceStream(

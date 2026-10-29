@@ -24,6 +24,7 @@ public unsafe sealed partial class VrrModule
     private float _render_input_delta;
     private bool _render_native_owner_reported;
     private bool _render_snapshot_warmup, _render_snapshot_ready_at_frame;
+    private bool _render_clock_bootstrap;
     private double _render_clock_speed = 1;
     private int _render_owner_thread;
     private bool RenderSchedulerReady => _render_mode_ready && _render_scheduler_active;
@@ -52,6 +53,7 @@ public unsafe sealed partial class VrrModule
             _logger.Error("[Vrr] Independent presentation requires the existing vblank, character and particle-timeline corrections.");
             return false;
         }
+        if (!init_static_effect_vm_clock()) return false;
         // A refusal is logged there and keeps every frame on the native clock.
         init_field_particle_pause();
         // Dynamic overlay patches lack unload-safe journal ownership; battle retains the native clock.
@@ -71,7 +73,8 @@ public unsafe sealed partial class VrrModule
     }
 
     private string _render_gate_reason()
-        => _presentationAdmission.Failure ?? (EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
+        => _presentationAdmission.Failure ?? (_render_clock_bootstrap ? "simulation_clock_bootstrap" : EngineSyncPaced ? "syncdata" : fmv_playing() ? "movie"
+            : NativeRenderValidationEnabled && _diagnostics?.IsCapturing != true ? "native_validation_capture_inactive"
             : IndependentPresentationEnabled && !cooperative_ticks_ready() ? "cooperative_ticks_unready"
             : !pad_observation_binding_ready() ? "pad_observer_not_installed"
             : !pad_input_presentation_ready() ? "pad_history_not_installed"
@@ -84,7 +87,8 @@ public unsafe sealed partial class VrrModule
         => !_filter_presentation_hold && FhUtil.get_at<int>(EngineAddresses.FilterActiveMask) != 0;
 
     private bool render_scheduler_frame_eligible(bool allowNativeInputOwner = false)
-        => _presentationAdmission.Failure is null && cooperative_ticks_ready() && render_image_admission_ready()
+        => _presentationAdmission.Failure is null && (!NativeRenderValidationEnabled || _diagnostics?.IsCapturing == true)
+            && cooperative_ticks_ready() && render_image_admission_ready()
             && pad_observation_binding_ready() && pad_input_presentation_ready() && (allowNativeInputOwner || !pad_native_input_owner())
             && field_particle_presentation_ready() && !filter_needs_native_clock();
 
@@ -95,7 +99,7 @@ public unsafe sealed partial class VrrModule
         _render_previous_time = now;
         if (!RenderSchedulerReady)
         {
-            _render_frame_enabled = false;
+            _render_frame_enabled = _render_clock_bootstrap = false;
             RenderPassContext.IsActive = false;
             RenderPassContext.IsPresentation = false;
             return;
@@ -104,7 +108,8 @@ public unsafe sealed partial class VrrModule
         bool eligible = render_scheduler_frame_eligible();
         _render_snapshot_ready_at_frame = pad_snapshot_presentation_ready();
         _render_snapshot_warmup = eligible && !_render_snapshot_ready_at_frame;
-        _render_frame_enabled = eligible && _render_snapshot_ready_at_frame;
+        _render_clock_bootstrap = eligible && _render_snapshot_ready_at_frame && !_simulationClock.HasClockOrigin;
+        _render_frame_enabled = eligible && _render_snapshot_ready_at_frame && !_render_clock_bootstrap;
         if (_render_snapshot_warmup)
         {
             _simulationClock.Reset();
@@ -201,6 +206,7 @@ public unsafe sealed partial class VrrModule
     private RenderClockAction render_scheduler_clock(float nativeDelta)
     {
         if (!IsOwnedRenderLoop) return RenderClockAction.Native;
+        bool unmappedNativeFallback = false;
         _render_clock_seen = true;
         double speed = _render_input_delta > 0 && float.IsFinite(nativeDelta) ? nativeDelta / _render_input_delta : 1;
         _render_clock_speed = double.IsFinite(speed) ? Math.Clamp(speed, 0, 8) : 1;
@@ -233,14 +239,21 @@ public unsafe sealed partial class VrrModule
         {
             if (!_render_frame_enabled)
             {
-                _simulationClock.Reset();
-                _render_plan = new(1, 1, !_render_snapshot_warmup, 0);
+                if (_render_clock_bootstrap) _simulationClock.Plan(_render_now, _render_clock_speed);
+                else _simulationClock.Reset();
+                _render_plan = new(1, 1, !_render_snapshot_warmup && !_render_clock_bootstrap, 0);
             }
             else _render_plan = _simulationClock.Plan(_render_now, _render_clock_speed);
             _render_plan_pending = false;
             _render_steps_remaining = _render_plan.Steps;
             _simulation_debt_dropped += _render_plan.DroppedSteps;
-            if (_render_plan.Reset)
+            if (_render_frame_enabled && !_simulationClock.HasMappedInterval)
+            {
+                render_scheduler_native_input_handover();
+                _simulationClock.Plan(_render_now, _render_clock_speed);
+                unmappedNativeFallback = true;
+            }
+            else if (_render_plan.Reset)
             {
                 RenderPassContext.ResetHistory();
                 reset_render_camera();
@@ -257,6 +270,13 @@ public unsafe sealed partial class VrrModule
         RenderPassContext.IsPresentation = !_render_simulation_pass;
         if (RenderPassContext.IsPresentation) viewport_presentation_begin();
         pad_observations_prepare_tick(render_simulation_tick_deadline());
+        if (unmappedNativeFallback) pad_replay_native_fallback("simulation_clock_unmapped");
+        if (_render_frame_enabled && _render_simulation_pass && _padInputPolicyBound && !pad_observations_have_history())
+        {
+            render_scheduler_native_input_handover();
+            _simulationClock.Plan(_render_now, _render_clock_speed);
+            pad_replay_native_fallback("input_history_bootstrap", retainObservations: true);
+        }
         pad_latch_pass_decided(RenderPassContext.IsPresentation);
         battle_effects_begin_pass(RenderPassContext.IsPresentation);
         RenderPassContext.SetPass(_render_frame_enabled ? _render_plan.Alpha : 1, _render_frame_enabled && (!_render_simulation_pass || _render_steps_remaining <= 1));

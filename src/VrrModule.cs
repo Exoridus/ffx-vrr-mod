@@ -123,7 +123,7 @@ public unsafe sealed partial class VrrModule : FhModule
                 [HookSiteId.AtelDeadlineSettersOneLevelTemplate] = AtelDeadlineSettersOneLevel.Select(t => t.Rva).ToArray(),
                 [HookSiteId.ParticleStepKernelTemplate] = KernelUpdates.Select(t => t.Rva).ToArray(),
                 [HookSiteId.ParticlePresentationKernelTemplate] = Enum.GetValues<ParticlePresentationKernel>().Select(t => (nint)(int)t).ToArray()
-            })) return false;
+            }, probeRate: ChosenFramerate)) return false;
 
 
         if (!preflight_expanded_menu_water()) return false;
@@ -142,6 +142,11 @@ public unsafe sealed partial class VrrModule : FhModule
             begin_startup_preparation();
             bool ok = init_startup_hook();
             init_diagnostics();
+            init_input_probe();
+            if (NativeRenderValidationEnabled)
+                diagnostic_event("native_render_validation", new { enabled = true, whole_game_qualified = false,
+                    simulation_hz = TargetFramerate, render_cap = VrrConfig.NormalizeMaxFramerate(_max_framerate.get()),
+                    capture_active = _diagnostics?.IsCapturing == true });
             ok &= init_pad_observations();
 
             if (_config.Present)
@@ -161,6 +166,7 @@ public unsafe sealed partial class VrrModule : FhModule
 
             ok &= init_timing_hooks();
             ok &= init_render_images();
+            if (ActorObservationRequested) ok &= init_render_actors();
             ok &= init_render_scheduler();
             ok &= init_vrr_presenter();
             ok &= init_battle_hooks();
@@ -223,14 +229,14 @@ public unsafe sealed partial class VrrModule : FhModule
 
             apply_rate_patches();
             ok &= _hookRegistration?.RequiredRegistrationsComplete == true;
-            bool renderReady = ok && _render_scheduler_active;
+            bool renderReady = ok && _render_scheduler_active && (!NativeRenderValidationEnabled || _diagnostics?.IsCapturing == true);
             if (IndependentPresentationEnabled && !renderReady)
             {
                 _render_scheduler_active = false;
                 _logger.Error("[Vrr] Independent presentation was not armed because a required initialization failed. The native swapchain and 60 Hz limiter are retained.");
             }
             _initialized = false;
-            diagnostic_event("initialization_complete", new { success = ok, independent_presentation_requested = _config.VrrEnabled, independent_presentation_enabled = IndependentPresentationEnabled, independent_presentation_ready = _render_mode_ready, qualification = _independentQualification.Reason });
+            diagnostic_event("initialization_complete", new { success = ok, independent_presentation_requested = _config.VrrEnabled, independent_presentation_enabled = IndependentPresentationEnabled, independent_presentation_ready = _render_mode_ready, native_render_validation = NativeRenderValidationEnabled, qualification = _independentQualification.Reason });
             if (!ok) StartupFailure.Abort(() => cleanup_runtime(failedStartup: true), Environment.FailFast);
             complete_startup_preparation(renderReady);
             return true;
@@ -261,6 +267,7 @@ public unsafe sealed partial class VrrModule : FhModule
             Environment.FailFast("VRR initialization failed and native patches could not be restored safely.");
         if (restored)
         {
+            release_static_effect_vm_clock();
             try { release_fmv_surfaces(); }
             catch (Exception error) { _logger.Error($"[Vrr] Movie storage cleanup failed: {error}"); }
         }

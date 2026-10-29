@@ -24,6 +24,7 @@ public sealed class RenderActivationTests : IDisposable
         module.RunNativePass();
         Assert.Equal(serial + 1, RenderPassContext.SimulationSerial);
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);
     }
@@ -33,6 +34,7 @@ public sealed class RenderActivationTests : IDisposable
     {
         var module = new VrrModule();
         module.PreparePass();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);
         module.ProducerQualified = false;
@@ -63,6 +65,7 @@ public sealed class RenderActivationTests : IDisposable
         var module = new VrrModule { RejectedHook = rejected };
         Assert.False(module.EnableAdapter().InitScheduler());
         module.ArmScheduler();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
         Assert.Equal(60, module.ReportedRate);
@@ -142,10 +145,10 @@ public sealed class RenderActivationTests : IDisposable
     [InlineData((byte)1, false)]
     [InlineData((byte)0, true)]
     [InlineData((byte)1, true)]
-    public void Held_simulation_walk_draws_once_and_restores_prior_pause(byte previous, bool throws)
+    public void Native_clock_held_walk_draws_once_and_restores_prior_pause(byte previous, bool throws)
     {
         var module = new VrrModule();
-        module.SetHookScope(true, true, true, false);
+        module.SetHookScope(true, false, true, false);
         module.SetBattlePause(previous);
         int draws = 0;
         NativeClock.EternalAction = () =>
@@ -162,10 +165,10 @@ public sealed class RenderActivationTests : IDisposable
     }
 
     [Fact]
-    public void Installed_held_walk_refuses_unlearned_owner_before_outer_original()
+    public void Installed_native_clock_held_walk_refuses_unlearned_owner_before_outer_original()
     {
         var module = new VrrModule();
-        module.SetHookScope(true, true, true, false);
+        module.SetHookScope(true, false, true, false);
         module.SetBattlePause(7);
         module.ForgetBattleOwner();
         NativeClock.EternalCalls = 0;

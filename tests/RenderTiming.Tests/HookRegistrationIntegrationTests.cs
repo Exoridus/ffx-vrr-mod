@@ -92,7 +92,7 @@ public unsafe sealed partial class VrrModule
 {
     internal bool PrepareRegistrationsForTest(VrrConfig config, bool independent = false,
         IReadOnlyDictionary<HookSiteId, IReadOnlyList<nint>>? targets = null)
-        => prepare_hook_registration(config, independent, true, false, targets);
+        => prepare_hook_registration(config, independent, true, false, targets, probeRate: ChosenFramerate);
     internal bool RegisterOrdinaryForTest(HookSiteId site, Func<bool> install)
         => register_hook(site, site.ToString(), 0x100 + (int)site, install);
     internal bool RegisterDiagnosticForTest(Func<bool> install)

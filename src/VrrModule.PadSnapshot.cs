@@ -26,7 +26,7 @@ public unsafe sealed partial class VrrModule
 
     private bool init_pad_snapshot_hook()
     {
-        if (!IndependentPresentationEnabled) return true;
+        if (!IndependentPresentationEnabled && !InputProbeEnabled) return true;
         if (_padSnapshotEntry is null) return false;
         _padSnapshotInstalled = hook_or_log(HookSiteId.PadSnapshotProducer, "pad snapshot producer", PadSnapshotProducer,
             () => new FhCallHandle<d_render_void>(new FhCallLocation(PadSnapshotProducer, 0)).hook(this, with_hook_continuation<d_render_void>(_padSnapshotEntry!)));
@@ -197,6 +197,7 @@ public unsafe sealed partial class VrrModule
         try
         {
             if (!RuntimeEffectsArmed) { original(); return; }
+            if (InputProbeEnabled) { input_probe_snapshot_invoke(returnAddress, returnSlot, original); return; }
             pad_snapshot_invoke(returnAddress, original);
         }
         catch (Exception error) { Environment.FailFast("Snapshot native invocation or completion failed; forwarding cannot be retried.", error); }

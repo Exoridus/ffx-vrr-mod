@@ -10,6 +10,7 @@ public sealed class RenderImageReadinessTests
     {
         var module = new VrrModule { CommitImage = false };
         module.PreparePass();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
         Assert.Equal(0, module.AdmittedImages);
@@ -21,6 +22,7 @@ public sealed class RenderImageReadinessTests
     {
         var module = new VrrModule();
         module.PreparePass();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.Equal(1, module.AdmittedImages);
         module.ProducerQualified = false;
@@ -33,6 +35,7 @@ public sealed class RenderImageReadinessTests
     {
         var module = new VrrModule { ImageReady = false };
         module.PreparePass();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.False(RenderPassContext.IsActive);
         Assert.Equal(60, module.ReportedRate);
@@ -43,6 +46,7 @@ public sealed class RenderImageReadinessTests
     {
         var module = new VrrModule();
         module.PreparePass();
+        module.PrimeMappedClockForAdmission();
         module.BeginFrame();
         Assert.True(RenderPassContext.IsActive);
         module.ImageReady = false;

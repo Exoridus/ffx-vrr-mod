@@ -160,6 +160,8 @@ public sealed class PadPreparedTickTests : IDisposable
         module.CaptureLoops(capture);
         module.DeadlineImage(10);
         module.DeadlineClockAndExit();
+        module.DeadlineImage(10.001);
+        module.DeadlineClockAndExit();
         module.DiagnosticEvents.Clear();
         return module;
     }

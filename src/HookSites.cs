@@ -93,9 +93,9 @@ internal enum HookSiteId
     ParticleUvPppDrawMdlTs2UVClock,
     ParticleUvPppDrawMdlTs3UVClock,
     PresenterD3D11CreateDeviceAndSwapChain,
-    RenderActorsActorModelWorldGroup,
-    RenderActorsActorRendererWorldInstance,
-    RenderActorsActorWorldGroup,
+    RenderActorsMeshInstanceDraw,
+    RenderActorsMeshInstanceHierarchy,
+    RenderActorsMeshInstanceConstruct,
     RenderCameraRenderCameraFinalize,
     RenderImagesPApplicationFrame,
     RenderImagesRendererFlipIdentity,
@@ -152,6 +152,7 @@ internal enum HookSiteId
     PadLatchMenuRepeat,
     PadSnapshotProducer,
     ModuleStartupCookieInitialization,
+    RenderActorsMeshInstanceDestruct,
 }
 
 internal static partial class HookSites

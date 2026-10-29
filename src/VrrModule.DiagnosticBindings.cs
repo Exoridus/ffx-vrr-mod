@@ -77,11 +77,13 @@ public unsafe sealed partial class VrrModule
         _diagnosticLoopId = System.Threading.Interlocked.Increment(ref _diagnosticLoopCounter);
         _load_passes++;
         PadSnapshotScope snapshotScope = pad_snapshot_enter_loop();
+        long inputProbeScope = 0;
         long? nativeStart = null;
         bool nativeReturned = false;
         bool successful = false;
         try
         {
+            inputProbeScope = input_probe_enter_loop(snapshotScope);
             cooperative_tick_enter_loop(snapshotScope);
             pad_replay_enter_loop(snapshotScope);
             if (snapshotScope.Owned) render_scheduler_enter_loop(delta);
@@ -108,10 +110,18 @@ public unsafe sealed partial class VrrModule
                 {
                     try
                     {
+                        object? exitView = null;
+                        try
+                        {
+                            // The effective-exec getter participates in the live held-input scope.
+                            if (_diagnostics?.IsCapturing == true)
+                                exitView = diagnostic_view(nativeStart, nativeEnd, nativeStart.HasValue ? nativeReturned : null);
+                        }
+                        catch (Exception) { }
                         if (snapshotScope.Owned) render_scheduler_exit_loop(nativeReturned);
                         diagnostic_raw(4, delta);
-                        if (_diagnostics?.IsCapturing == true)
-                            diagnostic_event("loop_exit", diagnostic_view(nativeStart, nativeEnd, nativeStart.HasValue ? nativeReturned : null));
+                        if (_diagnostics?.IsCapturing == true && exitView is not null)
+                            diagnostic_event("loop_exit", exitView);
                         successful = nativeReturned;
                     }
                     catch when (!nativeReturned)
@@ -122,7 +132,11 @@ public unsafe sealed partial class VrrModule
                     {
                         try { pad_snapshot_exit_loop(snapshotScope, successful); }
                         catch when (!successful) { }
-                        finally { _diagnosticLoopId = previous; }
+                        finally
+                        {
+                            try { input_probe_exit_loop(inputProbeScope, nativeReturned); }
+                            finally { _diagnosticLoopId = previous; }
+                        }
                     }
                 }
             }

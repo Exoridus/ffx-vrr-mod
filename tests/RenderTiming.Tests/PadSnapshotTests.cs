@@ -15,6 +15,7 @@ public unsafe sealed class PadSnapshotTests : IDisposable
         NativeSnapshotBridge.CreateCalls = 0;
         NativeClock.SnapshotCalls = NativeClock.ExecCalls = 0;
         NativeClock.SnapshotAction = NativeClock.ExecAction = NativeClock.Advance = null;
+        NativeClock.DiagnosticExecRead = null;
         NativeClock.ExecValue = 0xfedcba98u;
         NativeClock.LoopAction = null;
         NativeClock.HistoryHookAction = null;
@@ -44,6 +45,49 @@ public unsafe sealed class PadSnapshotTests : IDisposable
         module.CallDiagnosticLoop(1f / 60);
     }
 
+    [Fact]
+    public void Exit_diagnostic_sampling_failure_cannot_skip_input_or_scheduler_cleanup()
+    {
+        var module = Module(true);
+        Pass(module, false);
+        module.EnableSnapshotExitDiagnostic();
+        int reads = 0;
+        NativeClock.DiagnosticExecRead = () => ++reads == 2
+            ? throw new InvalidOperationException("exit diagnostic fixture") : module.ReadExec();
+
+        Pass(module, true);
+
+        Assert.Equal(2, reads);
+        Assert.True(module.SnapshotBaseline);
+        Assert.False(module.SnapshotHeld);
+        Assert.False(module.SnapshotPresentationOwned);
+    }
+    [Fact]
+    public void Exit_diagnostic_samples_the_held_exec_before_owner_teardown_and_preserves_later_images()
+    {
+        var module = Module(true);
+        module.EnableSnapshotExitDiagnostic();
+        var ownedReads = new List<bool>();
+        NativeClock.DiagnosticExecRead = () =>
+        {
+            if (module.SnapshotHeld) ownedReads.Add(module.SnapshotPresentationOwned);
+            return module.ReadExec();
+        };
+        Pass(module, false);
+        Assert.True(module.SnapshotBaseline);
+        int snapshots = NativeClock.SnapshotCalls;
+
+        Pass(module, true);
+        Assert.True(module.SnapshotBaseline);
+        Pass(module, true);
+
+        Assert.True(module.SnapshotBaseline);
+        Assert.Equal(snapshots, NativeClock.SnapshotCalls);
+        Assert.Equal(new[] { true, true }, ownedReads);
+        var exits = module.DiagnosticEvents.Where(e => e.Kind == "loop_exit").TakeLast(2);
+        foreach (var exit in exits)
+            Assert.Equal(0u, JsonSerializer.SerializeToElement(exit.Data).GetProperty("effective_exec").GetUInt32());
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -535,6 +579,21 @@ public unsafe sealed class PadSnapshotTests : IDisposable
         module.RealSnapshotImage(10.001);
         NativeClock.LoopAction = _ => { module.SnapshotClock(nextSpeed / 60); module.CallSnapshot(); module.ReadExec(); };
         module.CallDiagnosticLoop(1f / 60);
+        if (warmupSpeed != nextSpeed)
+        {
+            Assert.Equal(1, module.SnapshotPlan.Steps);
+            Assert.Equal(1, nativeClocks);
+            Assert.Equal(2, module.CompletionState.SimulationTicks);
+            Assert.Null(module.InputGateReason.Length == 0 ? null : module.InputGateReason);
+            module.RealSnapshotImage(10.01);
+            module.CallDiagnosticLoop(1f / 60);
+            Assert.True(module.SnapshotBaseline);
+            module.RealSnapshotImage(10.02);
+            module.CallDiagnosticLoop(1f / 60);
+            Assert.Equal(due, module.SnapshotPlan.Steps);
+            Assert.Equal(3, nativeClocks);
+            return;
+        }
         Assert.Equal(0, module.SnapshotPlan.Steps);
         Assert.Equal(0, nativeClocks);
         Assert.Equal(1, module.CompletionState.SimulationTicks);
@@ -643,6 +702,8 @@ public unsafe sealed partial class VrrModule
 {
     internal bool SnapshotBaseline => _padSnapshotBaseline;
     internal bool SnapshotHeld => _padSnapshotHeld;
+    internal bool SnapshotPresentationOwned => IsOwnedPresentationPass;
+    internal void EnableSnapshotExitDiagnostic() => _diagnosticExecAvailable = true;
     internal void CallSnapshot() => CallSnapshotAt(NativeSnapshotFixture.ReturnAddress);
     internal void CallSnapshotAt(nuint address) => _padSnapshotDispatch!(address, 0);
     internal void CallSnapshotCore() => pad_snapshot_invoke(NativeSnapshotFixture.ReturnAddress, NativeClock.Snapshot);
